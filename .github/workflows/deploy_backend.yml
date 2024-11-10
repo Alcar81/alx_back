@@ -15,6 +15,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Fixer l'URL du remote Git pour utiliser SSH
+      - name: Set Git remote URL to use SSH
+        run: git remote set-url origin git@github.com:Alcar81/alx_back.git
+
       # Étape 2 : Configuration de Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
