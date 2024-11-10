@@ -25,19 +25,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Étape 4 : build
+      # Étape 4 : Build
       - name: Build project
         run: npm run build
 
-      # Étape 5 : Ajout de la clé SSH pour se connecter au serveur
-      - name: Start SSH agent and add key
+      # Étape 5 : Configurer Git pour utiliser le PAT
+      - name: Setup Git Authentication
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
         run: |
-          eval $(ssh-agent -s)
-          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
-          chmod 600 /tmp/git_id_rsa
-          ssh-add /tmp/git_id_rsa
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "github-actions-bot@users.noreply.github.com"
+          git remote set-url origin https://$GITHUB_PAT@github.com/Alcar81/back_node.git
 
       # Étape 6 : Copier le backend sur le serveur
       - name: Copy backend to server
@@ -45,9 +44,13 @@ jobs:
           touch known_hosts
           chmod 600 known_hosts
           ssh-keyscan -p 49645 -H 148.113.194.130 >> known_hosts
+          
+          # Assurez-vous que la clé privée est bien placée et accessible
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/git_id_rsa_new
+          chmod 600 /tmp/git_id_rsa_new
 
           # Effectuer la copie vers le serveur
-          rsync -avz --delete ./ root@148.113.194.130:/home/alxmultimedia.com/backend -e "ssh -p 49645 -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes -i /tmp/git_id_rsa"
+          rsync -avz --delete build/ root@148.113.194.130:/home/alxmultimedia.com/public_html/build -e "ssh -p 49645 -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes -i /tmp/git_id_rsa_new"
 
       # Étape 7 : Redémarrer le conteneur Docker du backend sur le serveur
       - name: Restart Backend Container
@@ -59,7 +62,7 @@ jobs:
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
         run: |
-          ssh -p 49645 -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes -i /tmp/git_id_rsa root@148.113.194.130 "
+          ssh -p 49645 -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes -i /tmp/git_id_rsa_new root@148.113.194.130 "
           docker stop back_node_prod || true &&
           docker rm back_node_prod || true &&
           docker run -d --name back_node_prod \
@@ -73,4 +76,3 @@ jobs:
             -p 7002:7000 \
             back_node_prod
           "
-
