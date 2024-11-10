@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Étape 1 : Checkout du dépôt Git
+      # Étape 1 : Checkout du dépôt Git.
       - name: Checkout repository
         uses: actions/checkout@v3
 
