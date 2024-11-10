@@ -23,11 +23,7 @@ jobs:
 
       # Étape 3 : Installation des dépendances
       - name: Install dependencies
-        run: npm install
-
-      # Étape 4 : Build
-      - name: Build project
-        run: npm run build
+        run: npm install      
 
       # Étape 5 : Ajout de la clé SSH pour se connecter au serveur
       - name: Start SSH agent and add key
