@@ -1,0 +1,24 @@
+# Ignorer le fichier de configuration des variables d'environnement
+.env
+
+# Ignorer le dossier node_modules
+node_modules/
+
+# Ignorer les logs
+*.log
+
+# Ignorer les fichiers de configuration de l'éditeur (ex: VS Code)
+.vscode/
+
+# Ignorer les fichiers de configuration de l'IDE (ex: JetBrains)
+.idea/
+
+# Ignorer les fichiers de sauvegarde
+*~ 
+*.bak
+
+
+# Ignorer les fichiers de certificats
+certificates/
+*.pem
+
