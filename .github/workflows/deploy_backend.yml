@@ -21,21 +21,18 @@ jobs:
       - name: 2 - Build Docker image
         run: docker build -t ${{ secrets.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
 
-      # Étape 3 - Push Docker image to registry (optionnel)
+      # Étape 3 : Push Docker image to registry (optionnel)
       - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
-          ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
         run: |
-          echo "Pushing to Docker registry $DOCKER_REGISTRY"
-          echo "Using Docker image name: $DOCKER_NAME:$ENV"
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME:$ENV $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
-            docker push $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
+            docker tag $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
