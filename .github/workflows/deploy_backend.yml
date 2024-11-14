@@ -27,11 +27,12 @@ jobs:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
-            docker push $DOCKER_REGISTRY/my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker tag $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
