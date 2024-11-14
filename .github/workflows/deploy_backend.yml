@@ -13,63 +13,65 @@ jobs:
     environment: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
 
     steps:
-      # Étape 1 : Checkout du dépôt Git
+      # Étape 1 - Checkout du dépôt Git
       - name: 1 - Checkout repository
         uses: actions/checkout@v3
 
-      # Étape 2 : Build Docker image for backend
+      # Étape 2 - Build Docker image for backend
       - name: 2 - Build Docker image
         run: docker build -t ${{ secrets.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
 
-      # Étape 3 : Push Docker image to registry (optionnel)
+      # Étape 3 - Push Docker image to registry (optionnel)
       - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+          ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
-            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker tag $DOCKER_NAME:$ENV $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
+            docker push $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
 
-      # Étape 4 : Start SSH agent and add key
+      # Étape 4 - Start SSH agent and add key
       - name: 4 - Start SSH agent and add key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          eval $(ssh-agent -s)
           echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
           chmod 600 /tmp/git_id_rsa
+          eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-      # Étape 5 : Deploy Docker container on server
+      # Étape 5 - Deploy Docker container on server
       - name: 5 - Deploy Docker container on server
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          ENVIRONMENT: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
-          PORT: ${{ github.ref == 'refs/heads/master' && secrets.PORT_PROD || secrets.PORT_DEV }}
           NETWORK: ${{ github.ref == 'refs/heads/master' && secrets.NETWORK_PROD || secrets.NETWORK_DEV }}
+          PORT: ${{ github.ref == 'refs/heads/master' && secrets.PORT_PROD || secrets.PORT_DEV }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+          ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop back_node_$ENVIRONMENT || true &&
-            docker rm back_node_$ENVIRONMENT || true &&
-            docker run -d --name back_node_$ENVIRONMENT \
+            docker stop back_node_$ENV || true &&
+            docker rm back_node_$ENV || true &&
+            docker run -d --name back_node_$ENV \
               --network $NETWORK \
-              -e NODE_ENV=$ENVIRONMENT \
+              -e NODE_ENV=$ENV \
               -e DB_USERNAME=$DB_USERNAME \
               -e DB_PASSWORD=$DB_PASSWORD \
               -e DB_HOST=$DB_HOST \
@@ -77,11 +79,11 @@ jobs:
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
               -p $PORT:7000 \
-              $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:$ENVIRONMENT
+              $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
           "
           rm -f /tmp/git_id_rsa
 
-      # Étape 6 : Set Remote Git URL (si nécessaire)
+      # Étape 6 - Set Remote Git URL (si nécessaire)
       - name: 6 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
