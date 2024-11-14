@@ -37,6 +37,7 @@ jobs:
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
 
+
       # Étape 4 : Démarrer une session SSH et déployer le conteneur Docker sur le serveur
       - name: Deploy Docker container on server
         env:
