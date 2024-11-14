@@ -21,7 +21,7 @@ jobs:
       - name: 2 - Build Docker image
         run: docker build -t ${{ secrets.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
 
-      # Étape 3 : Push Docker image to registry (optionnel)
+      # Étape 3 - Push Docker image to registry (optionnel)
       - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
@@ -31,8 +31,8 @@ jobs:
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
-            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker tag $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker push $DOCKER_REGISTRY/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
@@ -53,13 +53,13 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          NETWORK: ${{ github.ref == 'refs/heads/master' && secrets.NETWORK_PROD || secrets.NETWORK_DEV }}
-          PORT: ${{ github.ref == 'refs/heads/master' && secrets.PORT_PROD || secrets.PORT_DEV }}
+          NETWORK: ${{ secrets.NETWORK }}
+          PORT: ${{ secrets.PORT }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_HOST: "${{ secrets.DB_HOST }}${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
           DB_PORT: ${{ secrets.DB_PORT }}
-          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_NAME: "${{ secrets.DB_NAME }}${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
