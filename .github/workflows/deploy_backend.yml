@@ -1,4 +1,4 @@
-# /home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
+#/home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
 name: Deploy Backend
 
 on:
