@@ -19,20 +19,22 @@ jobs:
 
       # Étape 2 - Build Docker image for backend
       - name: 2 - Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
+        env:
+          DOCKER_NAME: "${{ secrets.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+        run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
-      # Étape 3 - Push Docker image to registry (optionnel)
+      # Étape 3 : Push Docker image to registry (optionnel)
       - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+          DOCKER_NAME: "${{ secrets.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
-            docker push $DOCKER_REGISTRY/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker tag $DOCKER_NAME $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME
+            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
@@ -53,16 +55,16 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          NETWORK: ${{ secrets.NETWORK }}
-          PORT: ${{ secrets.PORT }}
+          NETWORK: "${{ secrets.NETWORK }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          PORT: ${{ github.ref == 'refs/heads/master' && secrets.PORT_PROD || secrets.PORT_DEV }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: "${{ secrets.DB_HOST }}${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DB_HOST: "${{ secrets.DB_HOST }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
           DB_PORT: ${{ secrets.DB_PORT }}
-          DB_NAME: "${{ secrets.DB_NAME }}${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DB_NAME: "${{ secrets.DB_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+          DOCKER_NAME: "${{ secrets.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker stop $DOCKER_NAME || true &&
@@ -77,7 +79,7 @@ jobs:
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
               -p $PORT:7000 \
-              $DOCKER_REGISTRY/$DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+              $DOCKER_REGISTRY/$DOCKER_NAME
           "
           rm -f /tmp/git_id_rsa
 
