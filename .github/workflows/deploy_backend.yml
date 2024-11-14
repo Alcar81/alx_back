@@ -1,59 +1,52 @@
-# /home/alxmultimedia.com/backend/deploy.yml
+# /home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
 name: Deploy Backend
 
 on:
   push:
     branches:
       - master
+      - dev
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
 
     steps:
       # Étape 1 : Checkout du dépôt Git.
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Étape 2 : Configuration de Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+      # Étape 2 : Build Docker image for backend
+      - name: Build Docker image
+        run: docker build -t my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
 
-      # Étape 3 : Installation des dépendances
-      - name: Install dependencies
-        run: npm install      
-
-      # Étape 4 : Ajout de la clé SSH pour se connecter au serveur
-      - name: Start SSH agent and add key
+      # Étape 3 : Push Docker image to registry (optionnel)
+      - name: Push Docker image to registry
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
-          eval $(ssh-agent -s)
-          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
-          chmod 600 /tmp/git_id_rsa
-          ssh-add /tmp/git_id_rsa
+          if [ -n "$DOCKER_REGISTRY" ]; then
+            echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
+            docker tag my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} $DOCKER_REGISTRY/my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+            docker push $DOCKER_REGISTRY/my-backend:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+          else
+            echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
+          fi
 
-      # Étape 5 : Copier le backend sur le serveur
-      - name: Copy backend to server
+      # Étape 4 : Démarrer une session SSH et déployer le conteneur Docker sur le serveur
+      - name: Deploy Docker container on server
         env:
+          SSH_USER: ${{ secrets.SSH_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
-        run: |
-          touch known_hosts
-          chmod 600 known_hosts
-          ssh-keyscan -p $SSH_PORT -H $SERVER_IP >> known_hosts
-          
-          # Effectuer la copie vers le serveur
-          rsync -avz --delete ./ root@$SERVER_IP:/home/alxmultimedia.com/backend -e "ssh -p $SSH_PORT -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes -i /tmp/git_id_rsa"
-
-      # Étape 6 : Redémarrer le conteneur Docker du backend sur le serveur
-      - name: Restart Backend Container
-        env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          ENVIRONMENT: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+          PORT: ${{ github.ref == 'refs/heads/master' && secrets.PORT_PROD || secrets.PORT_DEV }}
+          NETWORK: ${{ github.ref == 'refs/heads/master' && secrets.NETWORK_PROD || secrets.NETWORK_DEV }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_HOST: ${{ secrets.DB_HOST }}
@@ -61,23 +54,31 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=known_hosts -o IdentitiesOnly=yes -i /tmp/git_id_rsa root@$SERVER_IP "
-          docker stop back_node_prod || true &&
-          docker rm back_node_prod || true &&
-          docker run -d --name back_node_prod \
-            --network prod_network \
-            -e NODE_ENV=production \
-            -e DB_USERNAME=${DB_USERNAME} \
-            -e DB_PASSWORD=${DB_PASSWORD} \
-            -e DB_HOST=${DB_HOST} \
-            -e DB_PORT=${DB_PORT} \
-            -e DB_NAME=${DB_NAME} \
-            -e JWT_SECRET=${JWT_SECRET} \
-            -p 7002:7000 \
-            back_node_prod
-          "
+          # Initialiser l'agent SSH et ajouter la clé privée pour se connecter au serveur
+          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
+          chmod 600 /tmp/git_id_rsa
+          eval $(ssh-agent -s)
+          ssh-add /tmp/git_id_rsa
 
-      # Étape 7 : Mettre à jour l'URL du remote Git
+          # Se connecter au serveur et déployer le conteneur
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            docker stop back_node_$ENVIRONMENT || true &&
+            docker rm back_node_$ENVIRONMENT || true &&
+            docker run -d --name back_node_$ENVIRONMENT \
+              --network $NETWORK \
+              -e NODE_ENV=$ENVIRONMENT \
+              -e DB_USERNAME=$DB_USERNAME \
+              -e DB_PASSWORD=$DB_PASSWORD \
+              -e DB_HOST=$DB_HOST \
+              -e DB_PORT=$DB_PORT \
+              -e DB_NAME=$DB_NAME \
+              -e JWT_SECRET=$JWT_SECRET \
+              -p $PORT:7000 \
+              $DOCKER_REGISTRY/my-backend:$ENVIRONMENT
+          "
+          rm -f /tmp/git_id_rsa
+
+      # Étape 5 : Mettre à jour l'URL du remote Git (si nécessaire)
       - name: Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
