@@ -28,11 +28,12 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+          NODE_ENV: ${{ secrets.NODE_ENV }}
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME:${{ secrets.NODE_ENV }} $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ secrets.NODE_ENV }}
-            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:${{ secrets.NODE_ENV }}
+            docker tag $DOCKER_NAME:$NODE_ENV $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:$NODE_ENV
+            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:$NODE_ENV
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
@@ -65,20 +66,27 @@ jobs:
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
         run: |
+          # Assign local variables for better handling of environment variables
+          env_var=$NODE_ENV
+          network=$NETWORK
+          port=$PORT
+          docker_registry=$DOCKER_REGISTRY
+          docker_name=$DOCKER_NAME
+          
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop back_node_${NODE_ENV,,} || true &&
-            docker rm back_node_${NODE_ENV,,} || true &&
-            docker run -d --name back_node_${NODE_ENV,,} \
-              --network $NETWORK \
-              -e NODE_ENV=$NODE_ENV \
+            docker stop back_node_$env_var || true &&
+            docker rm back_node_$env_var || true &&
+            docker run -d --name back_node_$env_var \
+              --network $network \
+              -e NODE_ENV=$env_var \
               -e DB_USERNAME=$DB_USERNAME \
               -e DB_PASSWORD=$DB_PASSWORD \
               -e DB_HOST=$DB_HOST \
               -e DB_PORT=$DB_PORT \
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
-              -p $PORT:7000 \
-              $DOCKER_REGISTRY/$DOCKER_NAME:$NODE_ENV
+              -p $port:7000 \
+              $docker_registry/$docker_name:$env_var
           "
           rm -f /tmp/git_id_rsa
 
