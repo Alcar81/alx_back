@@ -19,7 +19,10 @@ jobs:
 
       # Étape 2 - Build Docker image for backend
       - name: 2 - Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_NAME }}:${{ secrets.NODE_ENV }} -f Dockerfile.backend .
+        env:
+          TAG: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
+          IMAGE_NAME: "back_node_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+        run: docker build -t $IMAGE_NAME -f Dockerfile.backend .
 
       # Étape 3 - Push Docker image to registry (optionnel)
       - name: 3 - Push Docker image to registry
@@ -27,13 +30,12 @@ jobs:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
-          NODE_ENV: ${{ secrets.NODE_ENV }}
+          IMAGE_NAME: "back_node_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME:$NODE_ENV $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:$NODE_ENV
-            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:$NODE_ENV
+            docker tag $IMAGE_NAME $DOCKER_REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME
+            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
@@ -63,30 +65,22 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
-          NODE_ENV: ${{ secrets.NODE_ENV }}
+          IMAGE_NAME: "back_node_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
         run: |
-          # Assign local variables for better handling of environment variables
-          env_var=$NODE_ENV
-          network=$NETWORK
-          port=$PORT
-          docker_registry=$DOCKER_REGISTRY
-          docker_name=$DOCKER_NAME
-          
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop back_node_$env_var || true &&
-            docker rm back_node_$env_var || true &&
-            docker run -d --name back_node_$env_var \
-              --network $network \
-              -e NODE_ENV=$env_var \
+            docker stop $IMAGE_NAME || true &&
+            docker rm $IMAGE_NAME || true &&
+            docker run -d --name $IMAGE_NAME \
+              --network $NETWORK \
+              -e NODE_ENV=${{ github.ref == 'refs/heads/master' && 'production' || 'development' }} \
               -e DB_USERNAME=$DB_USERNAME \
               -e DB_PASSWORD=$DB_PASSWORD \
               -e DB_HOST=$DB_HOST \
               -e DB_PORT=$DB_PORT \
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
-              -p $port:7000 \
-              $docker_registry/$docker_name:$env_var
+              -p $PORT:7000 \
+              $DOCKER_REGISTRY/$DOCKER_USERNAME/$IMAGE_NAME
           "
           rm -f /tmp/git_id_rsa
 
