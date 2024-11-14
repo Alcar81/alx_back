@@ -19,9 +19,11 @@ jobs:
 
       # Étape 2 - Build Docker image for backend
       - name: 2 - Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
+        env:
+          DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+        run: docker build -t $DOCKER_NAME:${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} -f Dockerfile.backend .
 
-      # Étape 3 : Push Docker image to registry (optionnel)
+      # Étape 3 - Push Docker image to registry (optionnel)
       - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
@@ -78,7 +80,7 @@ jobs:
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
               -p $PORT:7000 \
-              $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
+              $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:$ENV
           "
           rm -f /tmp/git_id_rsa
 
