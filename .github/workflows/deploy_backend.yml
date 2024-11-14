@@ -54,23 +54,24 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          NETWORK: "${{ github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}"
+          NETWORK: "${{ vars.NETWORK }}"
           PORT: ${{ secrets.PORT }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: "${{ secrets.DB_HOST }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DB_HOST: "${{ secrets.DB_HOST }}"
           DB_PORT: ${{ secrets.DB_PORT }}
-          DB_NAME: "${{ secrets.DB_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DB_NAME: "${{ secrets.DB_NAME }}"
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo \"$DOCKER_PASSWORD\" | docker login $DOCKER_REGISTRY -u \"$DOCKER_USERNAME\" --password-stdin &&
-            docker stop back_node || true &&
-            docker rm back_node || true &&
-            docker run -d --name back_node \
+            docker stop $CONTAINER_NAME || true &&
+            docker rm $CONTAINER_NAME || true &&
+            docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
               -e NODE_ENV=${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} \
               -e DB_USERNAME=$DB_USERNAME \
