@@ -86,4 +86,4 @@ jobs:
       - name: 6 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
-        run: git remote set-url origin $GIT_REPO_URL
+        run: git remote set-url origin $GIT_REPO_URL 
