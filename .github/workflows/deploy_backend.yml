@@ -54,7 +54,7 @@ jobs:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          NETWORK: "${{ secrets.NETWORK }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          NETWORK: ${{ vars.NETWORK }}
           PORT: ${{ secrets.PORT }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
