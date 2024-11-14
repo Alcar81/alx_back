@@ -20,7 +20,7 @@ jobs:
       # Étape 2 - Build Docker image for backend
       - name: 2 - Build Docker image
         env:
-          DOCKER_NAME: "${{ secrets.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DOCKER_NAME: "${{ secrets.DOCKER_NAME }}_$ENV{{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
         run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
       # Étape 3 : Push Docker image to registry (optionnel)
