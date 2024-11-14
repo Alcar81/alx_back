@@ -1,4 +1,4 @@
-#/home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
+# /home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
 name: Deploy Backend
 
 on:
@@ -21,11 +21,9 @@ jobs:
       - name: Build Docker image
         env:
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
-        run: |
-          docker build -t $DOCKER_NAME -f Dockerfile.backend .
+        run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
-
-      # Étape 3 : Push Docker image to registry
+      # Étape 3 : Push Docker image to registry (optionnel)
       - name: Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
@@ -35,22 +33,30 @@ jobs:
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
-            docker tag $DOCKER_NAME $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:latest
-            docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:latest
+            docker tag $DOCKER_NAME $DOCKER_REGISTRY/$DOCKER_NAME:latest
+            docker push $DOCKER_REGISTRY/$DOCKER_NAME:latest
           else
             echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
 
+      # Étape 4 : Ajouter la clé SSH pour se connecter au serveur
+      - name: Start SSH agent and add key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
+          chmod 600 /tmp/git_id_rsa
+          eval $(ssh-agent -s)
+          ssh-add /tmp/git_id_rsa
 
-
-      # Étape 4 : Démarrer une session SSH et déployer le conteneur Docker sur le serveur
+      # Étape 5 : Déployer le conteneur Docker sur le serveur
       - name: Deploy Docker container on server
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           ENVIRONMENT: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
           PORT: ${{ github.ref == 'refs/heads/master' && secrets.PORT_PROD || secrets.PORT_DEV }}
           NETWORK: ${{ github.ref == 'refs/heads/master' && secrets.NETWORK_PROD || secrets.NETWORK_DEV }}
@@ -61,7 +67,7 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa root@$SERVER_IP "
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker stop back_node_$ENVIRONMENT || true &&
             docker rm back_node_$ENVIRONMENT || true &&
             docker run -d --name back_node_$ENVIRONMENT \
@@ -74,11 +80,11 @@ jobs:
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
               -p $PORT:7000 \
-              $DOCKER_REGISTRY/$DOCKER_USERNAME/$DOCKER_NAME:latest
+              $DOCKER_REGISTRY/$DOCKER_NAME:latest
           "
+          rm -f /tmp/git_id_rsa
 
-
-      # Étape 5 : Mettre à jour l'URL du remote Git (si nécessaire)
+      # Étape 6 : Mettre à jour l'URL du remote Git (si nécessaire)
       - name: Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
