@@ -3,6 +3,13 @@
 # Utiliser une image légère Node.js Alpine comme base
 FROM node:18-alpine
 
+# Installer les dépendances système nécessaires pour certains modules Node.js
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libpq
+
 # Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
@@ -22,6 +29,9 @@ RUN npm rebuild bcrypt
 
 # Copier tout le code source dans le répertoire de travail
 COPY . .
+
+# Vérifier si server.js existe et est exécutable
+RUN ls -l /app/server.js && file /app/server.js
 
 # Exposer le port sur lequel le backend va écouter
 EXPOSE 7000
