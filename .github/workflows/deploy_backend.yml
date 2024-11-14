@@ -20,7 +20,7 @@ jobs:
       # Étape 2 - Build Docker image for backend
       - name: 2 - Build Docker image
         env:
-          DOCKER_NAME: "${{ vars.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DOCKER_NAME: "${{ vars.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}"
         run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
       # Étape 3 : Push Docker image to registry (optionnel)
@@ -29,7 +29,7 @@ jobs:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKER_NAME: "${{ vars.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DOCKER_NAME: "${{ vars.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}"
         run: |
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
@@ -64,7 +64,7 @@ jobs:
           DB_NAME: "${{ secrets.DB_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_NAME: "${{ vars.DOCKER_NAME }}_${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}"
+          DOCKER_NAME: "${{ vars.DOCKER_NAME }}:${{ github.ref == 'refs/heads/master' && 'latest' || 'dev' }}"
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker stop $DOCKER_NAME || true &&
