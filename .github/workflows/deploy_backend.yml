@@ -65,10 +65,11 @@ jobs:
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
         run: |
+          CONTAINER_NAME="${DOCKER_NAME}_${NODE_ENV}"
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop $DOCKER_NAME_$NODE_ENV || true &&
-            docker rm $DOCKER_NAME_$NODE_ENV || true &&
-            docker run -d --name $DOCKER_NAME_$NODE_ENV \
+            docker stop ${CONTAINER_NAME} || true &&
+            docker rm ${CONTAINER_NAME} || true &&
+            docker run -d --name ${CONTAINER_NAME} \
               --network $NETWORK \
               -e NODE_ENV=$NODE_ENV \
               -e DB_USERNAME=$DB_USERNAME \
@@ -86,4 +87,4 @@ jobs:
       - name: 6 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
-        run: git remote set-url origin $GIT_REPO_URL 
+        run: git remote set-url origin $GIT_REPO_URL
