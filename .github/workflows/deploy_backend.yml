@@ -30,6 +30,8 @@ jobs:
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
           ENV: ${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }}
         run: |
+          echo "Pushing to Docker registry $DOCKER_REGISTRY"
+          echo "Using Docker image name: $DOCKER_NAME:$ENV"
           if [ -n "$DOCKER_REGISTRY" ]; then
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
             docker tag $DOCKER_NAME:$ENV $DOCKER_REGISTRY/$DOCKER_NAME:$ENV
