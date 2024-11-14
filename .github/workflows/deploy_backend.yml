@@ -66,9 +66,9 @@ jobs:
           NODE_ENV: ${{ secrets.NODE_ENV }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop back_node_$NODE_ENV || true &&
-            docker rm back_node_$NODE_ENV || true &&
-            docker run -d --name back_node_$NODE_ENV \
+            docker stop back_node_${NODE_ENV,,} || true &&
+            docker rm back_node_${NODE_ENV,,} || true &&
+            docker run -d --name back_node_${NODE_ENV,,} \
               --network $NETWORK \
               -e NODE_ENV=$NODE_ENV \
               -e DB_USERNAME=$DB_USERNAME \
