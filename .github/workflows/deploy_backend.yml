@@ -14,17 +14,17 @@ jobs:
 
     steps:
       # Étape 1 : Checkout du dépôt Git.
-      - name: Checkout repository
+      - name: 1 - Checkout repository
         uses: actions/checkout@v3
 
       # Étape 2 : Build Docker image for backend
-      - name: Build Docker image
+      - name: 2 - Build Docker image
         env:
           DOCKER_NAME: ${{ secrets.DOCKER_NAME }}
         run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
       # Étape 3 : Push Docker image to registry (optionnel)
-      - name: Push Docker image to registry
+      - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -40,7 +40,7 @@ jobs:
           fi
 
       # Étape 4 : Ajouter la clé SSH pour se connecter au serveur
-      - name: Start SSH agent and add key
+      - name: 4 - Start SSH agent and add key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
@@ -50,7 +50,7 @@ jobs:
           ssh-add /tmp/git_id_rsa
 
       # Étape 5 : Déployer le conteneur Docker sur le serveur
-      - name: Deploy Docker container on server
+      - name: 5 - Deploy Docker container on server
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -85,7 +85,7 @@ jobs:
           rm -f /tmp/git_id_rsa
 
       # Étape 6 : Mettre à jour l'URL du remote Git (si nécessaire)
-      - name: Set Remote Git URL
+      - name: 6 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
         run: git remote set-url origin $GIT_REPO_URL
