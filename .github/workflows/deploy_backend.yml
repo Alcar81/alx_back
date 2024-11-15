@@ -80,6 +80,7 @@ jobs:
               -e DB_PORT=$DB_PORT \
               -e DB_NAME=$DB_NAME \
               -e JWT_SECRET=$JWT_SECRET \
+              -e DATABASE_URL=$DATABASE_URL \
               -p $PORT:7000 \
               $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
           "

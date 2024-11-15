@@ -8,6 +8,18 @@ const { PrismaClient } = require('@prisma/client');
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 3000;
+
+// Construire dynamiquement DATABASE_URL
+const DATABASE_TYPE = process.env.DATABASE_TYPE || 'postgresql';
+const DB_USERNAME = process.env.DB_USERNAME;
+const DB_PASSWORD = process.env.DB_PASSWORD;
+const DB_HOST = process.env.DB_HOST;
+const DB_PORT = process.env.DB_PORT;
+const DB_NAME = process.env.DB_NAME;
+
+// Configurer DATABASE_URL pour Prisma
+process.env.DATABASE_URL = `${DATABASE_TYPE}://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
+
 const prisma = new PrismaClient();
 
 // Middleware
