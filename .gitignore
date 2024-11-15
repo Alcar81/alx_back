@@ -21,4 +21,7 @@ node_modules/
 # Ignorer les fichiers de certificats
 certificates/
 *.pem
+*.key
 
+# Ignorer les fichiers de clé ssh
+known_hosts
