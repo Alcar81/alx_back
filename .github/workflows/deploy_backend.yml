@@ -47,7 +47,7 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-      # Étape 5 - Deploy PostgreSQL container
+            # Étape 5 - Deploy PostgreSQL container
       - name: 5 - Deploy PostgreSQL container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
@@ -64,10 +64,10 @@ jobs:
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker volume create $POSTGRES_VOLUME || { echo 'Failed to create volume'; exit 1; }
-            docker pull $POSTGRES_IMAGE || { echo 'Failed to pull image'; exit 1; }
-            docker stop $POSTGRES_CONTAINER_NAME || true
-            docker rm $POSTGRES_CONTAINER_NAME || true
+            docker volume create $POSTGRES_VOLUME || true &&
+            docker pull $POSTGRES_IMAGE &&
+            docker stop $POSTGRES_CONTAINER_NAME || true &&
+            docker rm $POSTGRES_CONTAINER_NAME || true &&
             docker run -d --name $POSTGRES_CONTAINER_NAME \
               --network $NETWORK \
               -e POSTGRES_USER=$DB_USERNAME \
@@ -75,22 +75,22 @@ jobs:
               -e POSTGRES_DB=$DB_NAME \
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
-              $POSTGRES_IMAGE || { echo 'Failed to start PostgreSQL container'; exit 1; }
-
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<-EOSQL
-              DO \$\$ 
-              BEGIN 
-                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN 
-                  CREATE ROLE \"$DB_USERNAME\" LOGIN PASSWORD '$DB_PASSWORD'; 
-                END IF; 
-                IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$DB_NAME') THEN 
-                  CREATE DATABASE \"$DB_NAME\"; 
-                  GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USERNAME\"; 
-                END IF; 
-              END 
+              $POSTGRES_IMAGE &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<EOSQL
+              DO \$\$
+              BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${DB_USERNAME}') THEN
+                  CREATE ROLE \"${DB_USERNAME}\" LOGIN PASSWORD '${DB_PASSWORD}';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}') THEN
+                  CREATE DATABASE \"${DB_NAME}\";
+                  GRANT ALL PRIVILEGES ON DATABASE \"${DB_NAME}\" TO \"${DB_USERNAME}\";
+                END IF;
+              END
               \$\$;
             EOSQL
           "
+
 
       # Étape 6 - Deploy Backend container
       - name: 6 - Deploy Backend container
