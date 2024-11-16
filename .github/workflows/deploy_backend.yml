@@ -74,7 +74,28 @@ jobs:
               -e POSTGRES_DB=$DB_NAME \
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT:5432 \
-              $POSTGRES_IMAGE
+              $POSTGRES_IMAGE &&
+            docker exec $POSTGRES_CONTAINER_NAME psql -U postgres -c \"
+              DO
+              \$\$
+              BEGIN
+                  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$DB_USERNAME') THEN
+                      CREATE USER $DB_USERNAME WITH PASSWORD '$DB_PASSWORD';
+                  END IF;
+              END
+              \$\$;
+            \" &&
+            docker exec $POSTGRES_CONTAINER_NAME psql -U postgres -c \"
+              DO
+              \$\$
+              BEGIN
+                  IF NOT EXISTS (SELECT datname FROM pg_database WHERE datname = '$DB_NAME') THEN
+                      CREATE DATABASE $DB_NAME;
+                      GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
+                  END IF;
+              END
+              \$\$;
+            \"
           "
 
       # Étape 6 - Deploy Backend container
@@ -84,7 +105,7 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
-          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@postgres_dev:5432/${{ secrets.DB_NAME }}"
+          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@postgres_dev:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
           PORT: ${{ secrets.PORT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -92,11 +113,6 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo 'Variables utilisées:'
-            echo CONTAINER_NAME: $CONTAINER_NAME
-            echo DATABASE_URL: $DATABASE_URL
-            echo NETWORK: $NETWORK
-            echo PORT: $PORT
             docker stop $CONTAINER_NAME || true &&
             docker rm $CONTAINER_NAME || true &&
             docker run -d --name $CONTAINER_NAME \
