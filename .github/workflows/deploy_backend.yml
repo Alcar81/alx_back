@@ -97,6 +97,7 @@ jobs:
             echo DATABASE_URL: $DATABASE_URL
             echo NETWORK: $NETWORK
             echo PORT: $PORT
+            sleep 10 &&  # Ajout d'un délai pour s'assurer que PostgreSQL est prêt
             docker stop $CONTAINER_NAME || true &&
             docker rm $CONTAINER_NAME || true &&
             docker run -d --name $CONTAINER_NAME \
