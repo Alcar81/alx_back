@@ -62,7 +62,7 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
           DB_PORT_INT: 5432
-          DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5433 }}"
+          DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5432 }}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
@@ -90,7 +90,7 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5433 }}"
+          DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5432 }}"
           DB_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
           DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${DB_PORT_EXT}/${DB_NAME}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
