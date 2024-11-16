@@ -24,9 +24,9 @@ const prisma = new PrismaClient();
 
 // Middleware
 const corsOptions = {
-  origin: [
-    'https://alxmultimedia.com'  // Spécifique pour la production
-  ],
+  origin: process.env.NODE_ENV === 'prod'
+    ? ['https://alxmultimedia.com']  // Production
+    : ['https://dev.alxmultimedia.com', 'http://localhost:3000'],  // Développement
   credentials: true,
   allowedHeaders: ['Authorization', 'Content-Type']
 };
