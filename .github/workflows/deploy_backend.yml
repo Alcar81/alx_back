@@ -15,6 +15,7 @@ jobs:
       DB_PORT_INT: 5432
       DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5433 }}"
       DB_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
+      DB_HOST: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
       NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -23,7 +24,8 @@ jobs:
       POSTGRES_VOLUME: "${{ github.ref == 'refs/heads/master' && 'postgres_data_prod' || 'postgres_data_dev' }}"
       CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
       MOUNT_PATH: "${{ github.ref == 'refs/heads/master' && '/home/prod.alxmultimedia.com/backend' || '/home/dev.alxmultimedia.com/backend' }}"
-      DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}:${DB_PORT_EXT}/${DB_NAME}"
+      DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@$DB_HOST:$DB_PORT_INT/$DB_NAME"
+      BACKEND_PORT: "${{ secrets.PORT }}"
 
     steps:
       # Étape 1 - Checkout du dépôt Git
@@ -92,7 +94,7 @@ jobs:
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               -v $MOUNT_PATH:/app \
               -w /app \
-              -p ${{ secrets.PORT }}:7000 \
+              -p $BACKEND_PORT:7000 \
               back_node:latest
           "
 
@@ -104,5 +106,5 @@ jobs:
       - name: 8 - Health Check
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            curl http://localhost:${{ secrets.PORT }}/api/health || exit 1
+            curl http://localhost:$BACKEND_PORT/api/health || exit 1
           "
