@@ -1,4 +1,3 @@
-// \backend\config.js
 require('dotenv').config(); // Charger les variables depuis .env
 
 const config = {
@@ -13,10 +12,13 @@ const config = {
     url: `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT_EXT}/${process.env.DB_NAME}`,
   },
   cors: {
-    allowedOrigins:
-      process.env.NODE_ENV === 'prod'
+    options: {
+      origin: process.env.NODE_ENV === 'prod'
         ? ['https://alxmultimedia.com']
         : ['https://dev.alxmultimedia.com', 'http://localhost:3000'],
+      credentials: true,
+      allowedHeaders: ['Authorization', 'Content-Type'],
+    },
   },
   jwtSecret: process.env.JWT_SECRET,
 };

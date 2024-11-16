@@ -3,33 +3,24 @@ const cors = require('cors');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const { PrismaClient } = require('@prisma/client');
+const config = require('./config'); // Importer la configuration centralisée
 
 // Charger les variables d'environnement
 require('dotenv').config();
 const app = express();
-const PORT = process.env.SERVER_PORT || 3000;
+const PORT = config.port;
 
-// Construction dynamique de DATABASE_URL
-const DATABASE_URL = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT_EXT}/${process.env.DB_NAME}`;
-
-// Initialisation de Prisma
+// Initialisation de Prisma avec la configuration centralisée
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: DATABASE_URL,
+      url: config.database.url,
     },
   },
 });
 
 // Middleware
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'prod'
-    ? ['https://alxmultimedia.com'] // Production
-    : ['https://dev.alxmultimedia.com', 'http://localhost:3000'], // Développement
-  credentials: true,
-  allowedHeaders: ['Authorization', 'Content-Type'],
-};
-app.use(cors(corsOptions));
+app.use(cors(config.cors.options)); // Utilisation de la configuration CORS centralisée
 app.use(express.json());
 
 // Routes
