@@ -78,18 +78,20 @@ jobs:
               -p $DB_PORT_EXT:$DB_PORT_INT \
               $POSTGRES_IMAGE
 
-            # Créer un fichier SQL temporaire
-            echo \"DO \$\$ 
-            BEGIN 
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN 
-                CREATE ROLE \\\"$DB_USERNAME\\\" LOGIN PASSWORD '$DB_PASSWORD'; 
-              END IF; 
-              IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$DB_NAME') THEN 
-                CREATE DATABASE \\\"$DB_NAME\\\"; 
-                GRANT ALL PRIVILEGES ON DATABASE \\\"$DB_NAME\\\" TO \\\"$DB_USERNAME\\\"; 
-              END IF; 
-            END 
-            \$\$;\" > /tmp/init.sql
+            # Créer un fichier SQL temporaire avec des variables correctement injectées
+            cat <<EOF > /tmp/init.sql
+            DO \$\$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
+                CREATE ROLE \"$DB_USERNAME\" LOGIN PASSWORD '$DB_PASSWORD';
+              END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$DB_NAME') THEN
+                CREATE DATABASE \"$DB_NAME\";
+                GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USERNAME\";
+              END IF;
+            END
+            \$\$;
+            EOF
 
             # Exécuter le script SQL sur le conteneur
             docker cp /tmp/init.sql $POSTGRES_CONTAINER_NAME:/init.sql &&
