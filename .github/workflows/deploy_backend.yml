@@ -84,7 +84,7 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
-          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@postgres_dev:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}"
+          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@postgres_dev:5432/${{ secrets.DB_NAME }}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
           PORT: ${{ secrets.PORT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -97,7 +97,6 @@ jobs:
             echo DATABASE_URL: $DATABASE_URL
             echo NETWORK: $NETWORK
             echo PORT: $PORT
-            sleep 10 &&  # Ajout d'un délai pour s'assurer que PostgreSQL est prêt
             docker stop $CONTAINER_NAME || true &&
             docker rm $CONTAINER_NAME || true &&
             docker run -d --name $CONTAINER_NAME \
