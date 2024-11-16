@@ -1,4 +1,3 @@
-# /home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
 name: Deploy Backend
 
 on:
@@ -48,46 +47,50 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-      # Étape 5 - Deploy Docker container on server
-      - name: 5 - Deploy Docker container on server
+      # Étape 5 - Deploy PostgreSQL container
+      - name: 5 - Deploy PostgreSQL container
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
-          PORT: ${{ secrets.PORT }}
+          POSTGRES_CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
+          POSTGRES_IMAGE: postgres:13
+          POSTGRES_VOLUME: "${{ github.ref == 'refs/heads/master' && 'postgres_data_prod' || 'postgres_data_dev' }}"
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: "${{ secrets.DB_HOST }}"
+          DB_NAME: ${{ secrets.DB_NAME }}
           DB_PORT: ${{ secrets.DB_PORT }}
-          DB_NAME: "${{ secrets.DB_NAME }}"
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
+          NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo \"$DOCKER_PASSWORD\" | docker login $DOCKER_REGISTRY -u \"$DOCKER_USERNAME\" --password-stdin &&
+            docker volume create $POSTGRES_VOLUME || true &&
+            docker pull $POSTGRES_IMAGE &&
+            docker stop $POSTGRES_CONTAINER_NAME || true &&
+            docker rm $POSTGRES_CONTAINER_NAME || true &&
+            docker run -d --name $POSTGRES_CONTAINER_NAME \
+              --network $NETWORK \
+              -e POSTGRES_USER=$DB_USERNAME \
+              -e POSTGRES_PASSWORD=$DB_PASSWORD \
+              -e POSTGRES_DB=$DB_NAME \
+              -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
+              -p $DB_PORT:5432 \
+              $POSTGRES_IMAGE
+          "
+
+      # Étape 6 - Deploy Backend container
+      - name: 6 - Deploy Backend container
+        env:
+          CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
+          DATABASE_URL: "postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
+          NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
+          PORT: ${{ secrets.PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker stop $CONTAINER_NAME || true &&
             docker rm $CONTAINER_NAME || true &&
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
-              -e NODE_ENV=${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} \
-              -e DB_USERNAME=$DB_USERNAME \
-              -e DB_PASSWORD=$DB_PASSWORD \
-              -e DB_HOST=$DB_HOST \
-              -e DB_PORT=$DB_PORT \
-              -e DB_NAME=$DB_NAME \
-              -e JWT_SECRET=$JWT_SECRET \
               -e DATABASE_URL=$DATABASE_URL \
+              -e NODE_ENV=${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} \
+              -e JWT_SECRET=$JWT_SECRET \
               -p $PORT:7000 \
               $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
           "
-          rm -f /tmp/git_id_rsa
-
-      # Étape 6 - Set Remote Git URL (si nécessaire)
-      - name: 6 - Set Remote Git URL
-        env:
-          GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
-        run: git remote set-url origin $GIT_REPO_URL
