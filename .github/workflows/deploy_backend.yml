@@ -88,7 +88,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
           DATABASE_HOST: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
-          DB_PORT_EXT: ${{ env.DB_PORT_EXT }}
+          DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5433 }}"
           DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${DATABASE_HOST}:${DB_PORT_EXT}/${{ secrets.DB_NAME }}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
           PORT: ${{ secrets.PORT }}
