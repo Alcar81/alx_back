@@ -3,7 +3,7 @@ const cors = require('cors');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const { PrismaClient } = require('@prisma/client');
-const config = require('./config'); // Importer la configuration centralisée
+const config = require('./config/config'); // Importer la configuration centralisée
 
 // Charger les variables d'environnement
 require('dotenv').config();
