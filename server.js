@@ -5,6 +5,7 @@ const authRoutes = require('./routes/auth');
 const { PrismaClient } = require('@prisma/client');
 
 // Charger les variables d'environnement
+require('dotenv').config();
 const app = express();
 const PORT = process.env.SERVER_PORT || 3000;
 
