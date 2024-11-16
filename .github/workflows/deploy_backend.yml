@@ -1,3 +1,4 @@
+# /home/dev.alxmultimedia.com/backend/.github/workflows/deploy_backend.yml
 name: Deploy Backend
 
 on:
@@ -50,6 +51,9 @@ jobs:
       # Étape 5 - Deploy PostgreSQL container
       - name: 5 - Deploy PostgreSQL container
         env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
           POSTGRES_CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
           POSTGRES_IMAGE: postgres:13
           POSTGRES_VOLUME: "${{ github.ref == 'refs/heads/master' && 'postgres_data_prod' || 'postgres_data_dev' }}"
@@ -59,7 +63,9 @@ jobs:
           DB_PORT: ${{ secrets.DB_PORT }}
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
         run: |
+          echo "Testing SSH connection to $SERVER_IP with port $SSH_PORT"
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            echo 'SSH Connection successful' &&
             docker volume create $POSTGRES_VOLUME || true &&
             docker pull $POSTGRES_IMAGE &&
             docker stop $POSTGRES_CONTAINER_NAME || true &&
@@ -74,23 +80,8 @@ jobs:
               $POSTGRES_IMAGE
           "
 
-      # Étape 6 - Deploy Backend container
-      - name: 6 - Deploy Backend container
+      # Étape 6 - Set Remote Git URL (si nécessaire)
+      - name: 6 - Set Remote Git URL
         env:
-          CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
-          DATABASE_URL: "postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME"
-          NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
-          PORT: ${{ secrets.PORT }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop $CONTAINER_NAME || true &&
-            docker rm $CONTAINER_NAME || true &&
-            docker run -d --name $CONTAINER_NAME \
-              --network $NETWORK \
-              -e DATABASE_URL=$DATABASE_URL \
-              -e NODE_ENV=${{ github.ref == 'refs/heads/master' && 'prod' || 'dev' }} \
-              -e JWT_SECRET=$JWT_SECRET \
-              -p $PORT:7000 \
-              $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
-          "
+          GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
+        run: git remote set-url origin $GIT_REPO_URL
