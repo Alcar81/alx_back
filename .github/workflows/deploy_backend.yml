@@ -47,6 +47,7 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
+      # Étape 5 - Deploy PostgreSQL container
       - name: 5 - Deploy PostgreSQL container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
@@ -95,7 +96,6 @@ jobs:
             \"
           "
 
-
       # Étape 6 - Deploy Backend container
       - name: 6 - Deploy Backend container
         env:
@@ -122,7 +122,7 @@ jobs:
               $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
           "
 
-      # Étape 7 - Set Remote Git URL (si nécessaire) 
+      # Étape 7 - Set Remote Git URL (si nécessaire)
       - name: 7 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
