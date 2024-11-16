@@ -28,7 +28,7 @@ jobs:
       BACKEND_PORT: "${{ secrets.PORT }}"
 
     steps:
-      # Étape 1 - Checkout du dépôt Git
+      # Étape 1 - Checkout du dépôt Git 
       - name: 1 - Checkout repository
         uses: actions/checkout@v3
 
