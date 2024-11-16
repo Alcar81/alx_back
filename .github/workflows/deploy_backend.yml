@@ -80,7 +80,7 @@ jobs:
               $POSTGRES_IMAGE
           "
 
-     # Étape 6 - Deploy Backend container
+     # Étape 6 - Deploy Backend container 
       - name: 6 - Deploy Backend container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
