@@ -84,7 +84,7 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
-          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}"
+          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@postgres_dev:${{ secrets.DB_PORT }}/${{ secrets.DB_NAME }}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
           PORT: ${{ secrets.PORT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
