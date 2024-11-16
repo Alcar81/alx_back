@@ -47,7 +47,7 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-            - name: 5 - Deploy PostgreSQL container
+      - name: 5 - Deploy PostgreSQL container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
