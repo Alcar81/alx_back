@@ -24,7 +24,7 @@ jobs:
       POSTGRES_VOLUME: "${{ github.ref == 'refs/heads/master' && 'postgres_data_prod' || 'postgres_data_dev' }}"
       CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
       MOUNT_PATH: "${{ github.ref == 'refs/heads/master' && '/home/prod.alxmultimedia.com/backend' || '/home/dev.alxmultimedia.com/backend' }}"
-      DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@$DB_HOST:$DB_PORT_INT/$DB_NAME"
+      DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}:${DB_PORT_EXT}/${DB_NAME}"
       BACKEND_PORT: "${{ secrets.PORT }}"
 
     steps:
