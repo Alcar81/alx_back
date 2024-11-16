@@ -75,29 +75,22 @@ jobs:
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT:5432 \
               $POSTGRES_IMAGE &&
-            
-            # Créer un fichier temporaire SQL
-            echo \"DO \$\$ BEGIN
-                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
-                    CREATE ROLE \\\"$DB_USERNAME\\\" LOGIN PASSWORD '$DB_PASSWORD';
-                END IF;
-                IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
-                    CREATE DATABASE \\\"$DB_NAME\\\";
-                    GRANT ALL PRIVILEGES ON DATABASE \\\"$DB_NAME\\\" TO \\\"$DB_USERNAME\\\";
-                END IF;
-            END \$\$;\" > temp.sql &&
-
-            # Copier le fichier temporaire dans le conteneur
-            docker cp temp.sql $POSTGRES_CONTAINER_NAME:/temp.sql &&
-            
-            # Exécuter le fichier SQL dans le conteneur
-            docker exec $POSTGRES_CONTAINER_NAME psql -U postgres -f /temp.sql &&
-            
-            # Supprimer le fichier temporaire
-            rm temp.sql &&
-            docker exec $POSTGRES_CONTAINER_NAME rm /temp.sql
+            docker exec $POSTGRES_CONTAINER_NAME sh -c \"
+              echo 'DO \$\$ 
+              BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ''$DB_USERNAME'') THEN 
+                  CREATE ROLE \\\"$DB_USERNAME\\\" LOGIN PASSWORD ''$DB_PASSWORD''; 
+                END IF; 
+                IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = ''$DB_NAME'') THEN 
+                  CREATE DATABASE \\\"$DB_NAME\\\"; 
+                  GRANT ALL PRIVILEGES ON DATABASE \\\"$DB_NAME\\\" TO \\\"$DB_USERNAME\\\"; 
+                END IF; 
+              END 
+              \$\$;' > /temp.sql &&
+              psql -U postgres -f /temp.sql &&
+              rm /temp.sql
+            \"
           "
-
 
       # Étape 6 - Deploy Backend container
       - name: 6 - Deploy Backend container
@@ -108,7 +101,7 @@ jobs:
           CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
           DATABASE_HOST: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
           DATABASE_PORT: 5432
-          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DATABASE_HOST }}:${{ secrets.DATABASE_PORT }}/${{ secrets.DB_NAME }}"
+          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${DATABASE_HOST}:${DATABASE_PORT}/${{ secrets.DB_NAME }}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
           PORT: ${{ secrets.PORT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -127,7 +120,7 @@ jobs:
               $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
           "
 
-      # Étape 7 - Set Remote Git URL (si nécessaire) 
+      # Étape 7 - Set Remote Git URL (si nécessaire)
       - name: 7 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
