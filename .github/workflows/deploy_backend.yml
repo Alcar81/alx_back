@@ -61,7 +61,7 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
-          DB_PORT_INT: ${{ env.DB_PORT_INT }}
+          DB_PORT_INT: 5432
           DB_PORT_EXT: ${{ env.DB_PORT_EXT }}
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
         run: |
