@@ -1,4 +1,5 @@
-# Deploy Backend Workflow
+# \backend\.github\workflows\deploy_backend.yml
+
 name: Deploy Backend
 
 on:
@@ -34,6 +35,8 @@ jobs:
             echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u "$DOCKER_USERNAME" --password-stdin
             docker tag back_node:latest $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
             docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
+          else
+            echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
           fi
 
       # Étape 4 - Start SSH agent and add key
@@ -77,7 +80,7 @@ jobs:
               $POSTGRES_IMAGE
           "
 
-     # Étape 6 - Deploy Backend container 
+      # Étape 6 - Deploy Backend container
       - name: 6 - Deploy Backend container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
@@ -86,10 +89,10 @@ jobs:
           CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: ${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}
+          DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT_EXT: "${{ github.ref == 'refs/heads/master' && 5434 || 5433 }}"
           DB_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
-          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${DB_HOST}:${DB_PORT_EXT}/${DB_NAME}"
+          DATABASE_URL: "postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}:${DB_PORT_EXT}/${DB_NAME}"
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
           PORT: ${{ secrets.PORT }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -109,7 +112,7 @@ jobs:
               back_node:latest
           "
 
-      # Étape 7 - Set Remote Git URL
+      # Étape 7 - Set Remote Git URL (si nécessaire)
       - name: 7 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
@@ -117,7 +120,9 @@ jobs:
 
       # Étape 8 - Health Check
       - name: 8 - Health Check
+        env:
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
         run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker exec ${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }} curl http://localhost:7000/api/health || echo 'Health check failed'
-          "
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "curl http://localhost:7000/api/health"
