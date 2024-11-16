@@ -59,12 +59,11 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
-          DB_PORT_INT: 5432
+          DB_PORT_INT: ${{ env.DB_PORT_INT }}
           DB_PORT_EXT: ${{ env.DB_PORT_EXT }}
           NETWORK: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && 'prod_network' || 'dev_network' }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            # Créer le conteneur PostgreSQL
             docker volume create $POSTGRES_VOLUME || true &&
             docker pull $POSTGRES_IMAGE &&
             docker stop $POSTGRES_CONTAINER_NAME || true &&
@@ -79,14 +78,8 @@ jobs:
               $POSTGRES_IMAGE
           "
 
-      # Étape 6 - Debugging Environment Variables
-      - name: Debug Environment Variables
-        run: |
-          echo "DATABASE_HOST=${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
-          echo "DB_PORT_EXT=${{ env.DB_PORT_EXT }}"
-
-      # Étape 7 - Deploy Backend container
-      - name: 7 - Deploy Backend container
+      # Étape 6 - Deploy Backend container
+      - name: 6 - Deploy Backend container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -102,8 +95,8 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop $CONTAINER_NAME || true &&
-            docker rm $CONTAINER_NAME || true &&
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
               -e DATABASE_URL=$DATABASE_URL \
@@ -113,8 +106,14 @@ jobs:
               $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest || { echo 'Failed to start Backend container'; exit 1; }
           "
 
-      # Étape 8 - Set Remote Git URL (si nécessaire)
-      - name: 8 - Set Remote Git URL
+      # Étape 7 - Set Remote Git URL
+      - name: 7 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
         run: git remote set-url origin $GIT_REPO_URL
+
+      # Étape 8 - Debug Environment Variables (optionnel)
+      - name: 8 - Debug Environment Variables
+        run: |
+          echo "DATABASE_HOST=${DATABASE_HOST}"
+          echo "DB_PORT_EXT=${DB_PORT_EXT}"
