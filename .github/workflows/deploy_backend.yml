@@ -77,34 +77,16 @@ jobs:
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
               $POSTGRES_IMAGE
-
-            # Créer un fichier SQL temporaire avec des variables correctement injectées
-            cat <<EOF > /tmp/init.sql
-            DO \$\$
-            BEGIN
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
-                CREATE ROLE \"$DB_USERNAME\" LOGIN PASSWORD '$DB_PASSWORD';
-              END IF;
-              IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$DB_NAME') THEN
-                CREATE DATABASE \"$DB_NAME\";
-                GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USERNAME\";
-              END IF;
-            END
-            \$\$;
-            EOF
-
-            # Exécuter le script SQL sur le conteneur
-            docker cp /tmp/init.sql $POSTGRES_CONTAINER_NAME:/init.sql &&
-            docker exec $POSTGRES_CONTAINER_NAME psql -U postgres -f /init.sql &&
-            docker exec $POSTGRES_CONTAINER_NAME rm /init.sql
-
-            # Nettoyer le fichier temporaire
-            rm /tmp/init.sql
           "
 
+      # Étape 6 - Debugging Environment Variables
+      - name: Debug Environment Variables
+        run: |
+          echo "DATABASE_HOST=${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
+          echo "DB_PORT_EXT=${{ env.DB_PORT_EXT }}"
 
-      # Étape 6 - Deploy Backend container
-      - name: 6 - Deploy Backend container
+      # Étape 7 - Deploy Backend container
+      - name: 7 - Deploy Backend container
         env:
           SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
@@ -120,8 +102,8 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop $CONTAINER_NAME || true
-            docker rm $CONTAINER_NAME || true
+            docker stop $CONTAINER_NAME || true &&
+            docker rm $CONTAINER_NAME || true &&
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
               -e DATABASE_URL=$DATABASE_URL \
@@ -131,8 +113,8 @@ jobs:
               $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest || { echo 'Failed to start Backend container'; exit 1; }
           "
 
-      # Étape 7 - Set Remote Git URL (si nécessaire)
-      - name: 7 - Set Remote Git URL
+      # Étape 8 - Set Remote Git URL (si nécessaire)
+      - name: 8 - Set Remote Git URL
         env:
           GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
         run: git remote set-url origin $GIT_REPO_URL
