@@ -18,7 +18,7 @@ const DB_PORT = process.env.DB_PORT;
 const DB_NAME = process.env.DB_NAME;
 
 // Configurer DATABASE_URL pour Prisma
-process.env.DATABASE_URL = `${DATABASE_TYPE}://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
+console.log(process.env.DATABASE_URL) = `${DATABASE_TYPE}://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
 const prisma = new PrismaClient();
 
