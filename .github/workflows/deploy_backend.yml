@@ -99,38 +99,26 @@ jobs:
 
             echo 'Checking and creating database and user if not exists...' &&
 
-            # Générer le script SQL dans un fichier temporaire
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<EOF
-            -- Vérifier et créer l'utilisateur
-            DO \$$
+            DO $$
             BEGIN
                 IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
                     CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
                 END IF;
             END
-            \$$;
+            $$;
 
-            -- Vérifier et créer la base de données
-            DO \$$
+            DO $$
             BEGIN
                 IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
                     CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
                 END IF;
             END
-            \$$;
+            $$;
 
-            -- Accorder les permissions
             GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
             EOF
-
-            # Copier et exécuter le script SQL sur le conteneur
-            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
-
-            # Nettoyer le fichier temporaire
-            rm init_database.sql
           "
-
 
       # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
