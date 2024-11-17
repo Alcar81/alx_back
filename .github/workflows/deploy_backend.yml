@@ -81,25 +81,41 @@ jobs:
               postgres:13
           "
 
-      # Étape 6 - Création de la base de données et de l'utilisateur
+      # Étape 6 - Créer la base de données et l'utilisateur
       - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo 'DO \$\$ BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ''usr_db_dev'') THEN
-                CREATE ROLE usr_db_dev WITH LOGIN PASSWORD ''dw33kMyiQvNL62p3aCjd'';
-            END IF;
+            echo 'Checking and creating database and user if not exists...' &&
+            
+            # Générer le script SQL pour la création de l'utilisateur
+            echo \"DO \$\$
+            BEGIN
+              IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'usr_db_dev') THEN
+                CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd';
+              END IF;
+            END
+            \$\$;\" > /tmp/init_user.sql &&
 
-            IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = ''${DB_NAME}'') THEN
-                CREATE DATABASE ${DB_NAME} WITH OWNER = usr_db_dev;
-            END IF;
+            # Générer le script SQL pour la création de la base de données
+            echo \"DO \$\$
+            BEGIN
+              IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
+                CREATE DATABASE $DB_NAME WITH OWNER = 'usr_db_dev';
+              END IF;
+            END
+            \$\$;\" > /tmp/init_database.sql &&
 
-            GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO usr_db_dev;
-            END \$\$;' > /tmp/init_script.sql &&
-            docker cp /tmp/init_script.sql $POSTGRES_CONTAINER_NAME:/tmp/init_script.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_script.sql &&
-            rm /tmp/init_script.sql
+            # Exécuter les scripts SQL
+            docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
+
+            docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+
+            # Nettoyage des fichiers temporaires
+            rm /tmp/init_user.sql /tmp/init_database.sql 
           "
+
 
 
 
