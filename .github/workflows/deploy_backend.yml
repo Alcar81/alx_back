@@ -20,6 +20,8 @@ jobs:
       SERVER_IP: ${{ secrets.SERVER_IP }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
       SSH_USER: ${{ secrets.SSH_USER }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       POSTGRES_CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'postgres_prod' || 'postgres_dev' }}"
       POSTGRES_VOLUME: "${{ github.ref == 'refs/heads/master' && 'postgres_data_prod' || 'postgres_data_dev' }}"
       CONTAINER_NAME: "${{ github.ref == 'refs/heads/master' && 'back_node_prod' || 'back_node_dev' }}"
