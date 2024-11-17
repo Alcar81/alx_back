@@ -100,7 +100,7 @@ jobs:
           echo 'Checking and creating database and user if not exists...' &&
   
           # Vérification et création sécurisée
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<EOF
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<EOF
           DO \$\$
           BEGIN
             IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
