@@ -28,7 +28,7 @@ jobs:
       BACKEND_PORT: "${{ secrets.PORT }}"
 
     steps:
-      # Étape 1 - Checkout du dépôt Git  
+      # Étape 1 - Checkout du dépôt Git
       - name: 1 - Checkout repository
         uses: actions/checkout@v3
 
@@ -79,11 +79,14 @@ jobs:
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13 &&
-            sleep 10 && # Attendre que PostgreSQL soit prêt
+            
+            echo 'Waiting for PostgreSQL to be ready...' &&
+            until docker exec -i $POSTGRES_CONTAINER_NAME pg_isready -U ${{ secrets.DB_USERNAME }}; do
+              sleep 2
+            done &&
 
             echo \"CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd'; \
                   GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;\" > /tmp/init_user.sql &&
-            
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U ${{ secrets.DB_USERNAME }} -d $DB_NAME -f /tmp/init_user.sql &&
             rm /tmp/init_user.sql
