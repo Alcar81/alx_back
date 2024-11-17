@@ -38,7 +38,7 @@ jobs:
           DOCKER_NAME: "back_node:latest"
         run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
-      # Étape 3 : Push Docker image to registry (optionnel)
+      # Étape 3 : Push Docker image to registry (optionnel) 
       - name: 3 - Push Docker image to registry
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
