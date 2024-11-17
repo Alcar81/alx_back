@@ -89,10 +89,7 @@ jobs:
             echo \"CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd'; \
                   GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;\" > /tmp/init_user.sql &&
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
-            echo 'Displaying SQL content for verification:' &&
-            cat /tmp/init_user.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U ${{ secrets.DB_USERNAME }} -d $DB_NAME -f /tmp/init_user.sql &&
-            echo 'Cleaning up temporary SQL file...' &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME -f /tmp/init_user.sql &&
             rm /tmp/init_user.sql
           "
 
