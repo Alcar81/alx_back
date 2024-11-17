@@ -128,5 +128,5 @@ jobs:
       - name: 9 - Health Check
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            curl http://localhost:$BACKEND_PORT/api/health || exit 1
+            curl -f http://localhost:$BACKEND_PORT/ || exit 1
           "
