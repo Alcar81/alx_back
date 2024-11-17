@@ -78,14 +78,7 @@ jobs:
               -e POSTGRES_DB=$DB_NAME \
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
-              postgres:13 &&
-            echo 'Waiting for PostgreSQL to be ready...' &&
-            for i in {1..15}; do
-              docker exec $POSTGRES_CONTAINER_NAME pg_isready -U ${{ secrets.DB_USERNAME }} -d $DB_NAME && break || sleep 2;
-            done &&
-            if [ $? -ne 0 ]; then
-              echo 'PostgreSQL did not become ready in time'; exit 1;
-            fi
+              postgres:13 &&            
           "
 
       # Nouvelle Étape 6 - Création de l'utilisateur et configuration
