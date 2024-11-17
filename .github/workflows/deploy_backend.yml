@@ -110,7 +110,7 @@ jobs:
               -v $MOUNT_PATH:/app \
               -w /app \
               -p $BACKEND_PORT:7000 \
-              back_node:latest
+              back_node:latest 
           "
 
       # Étape 8 - Set Remote Git URL
