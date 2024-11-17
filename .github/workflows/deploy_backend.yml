@@ -98,7 +98,7 @@ jobs:
             END \$\$;' > /tmp/init_script.sql &&
             docker cp /tmp/init_script.sql $POSTGRES_CONTAINER_NAME:/tmp/init_script.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_script.sql &&
-            rm /tmp/init_script.sql
+            rm /tmp/init_script.sql 
           "
 
 
