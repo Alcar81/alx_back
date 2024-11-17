@@ -87,35 +87,46 @@ jobs:
       - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-          echo '*** DEBUGGING VARIABLES AND SECRETS ***' &&
-          echo 'DB_NAME: $DB_NAME' &&
-          echo 'POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME' &&
-          echo 'DB_HOST: $DB_HOST' &&
-          echo 'DB_PORT_INT: $DB_PORT_INT' &&
-          echo 'DB_PORT_EXT: $DB_PORT_EXT' &&
-          echo 'NETWORK: $NETWORK' &&
-          echo 'Secrets.DB_USERNAME: $DB_USERNAME' &&
-          echo 'Secrets.DB_PASSWORD: $DB_PASSWORD' &&
+            echo '*** DEBUGGING VARIABLES AND SECRETS ***' &&
+            echo 'DB_NAME: $DB_NAME' &&
+            echo 'POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME' &&
+            echo 'DB_HOST: $DB_HOST' &&
+            echo 'DB_PORT_INT: $DB_PORT_INT' &&
+            echo 'DB_PORT_EXT: $DB_PORT_EXT' &&
+            echo 'NETWORK: $NETWORK' &&
+            echo 'Secrets.DB_USERNAME: $DB_USERNAME' &&
+            echo 'Secrets.DB_PASSWORD: $DB_PASSWORD' &&
 
-          echo 'Checking and creating database and user if not exists...' &&
-  
-          # Vérification et création sécurisée
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<EOF
-          DO \$\$
-          BEGIN
-            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
-              CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
-            END IF;
-            IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
-              CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
-            END IF;
-          END
-          \$\$;
+            echo 'Checking and creating database and user if not exists...' &&
 
-          -- Accorder les permissions
-          GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
-          EOF
+            # Générer le script SQL dans un fichier temporaire
+            cat > init_database.sql <<EOF
+              DO
+              BEGIN
+                -- Vérifier et créer l'utilisateur
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
+                  CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
+                END IF;
+
+                -- Vérifier et créer la base de données
+                IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
+                  CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
+                END IF;
+              END
+              ;
+
+              -- Accorder les permissions
+              GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
+            EOF
+
+            # Copier et exécuter le script SQL sur le conteneur
+            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+
+            # Nettoyer le fichier temporaire
+            rm init_database.sql
           "
+
 
       # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
