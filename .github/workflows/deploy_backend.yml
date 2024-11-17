@@ -81,23 +81,16 @@ jobs:
               postgres:13
           "
 
-      # Étape d'inspection - Vérifier les bases de données et les utilisateurs existants
-      - name: Inspect PostgreSQL setup
+      # Nouvelle Étape 6 - Création de la base de données et de l'utilisateur
+      - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c '\l' &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c '\du'
-          "
-
-      # Nouvelle Étape 6 - Création de l'utilisateur et configuration
-      - name: 6 - Create database user and configure
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo 'Creating database user and granting privileges...' &&
-            echo \"CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd'; \
+            echo 'Creating database and user...' &&
+            echo \"CREATE DATABASE $DB_NAME WITH OWNER = ${{ secrets.DB_USERNAME }}; \
+                  CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd'; \
                   GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;\" > /tmp/init_user.sql &&
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME -f /tmp/init_user.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
             rm /tmp/init_user.sql
           "
 
