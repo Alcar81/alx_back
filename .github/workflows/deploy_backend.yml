@@ -81,6 +81,16 @@ jobs:
               postgres:13
           "
 
+      # Étape 5.1 - Supprimer les bases de données inutiles
+      - name: 5.1 - Clean up unnecessary databases
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            echo \"DROP DATABASE IF EXISTS postgresql;\" > /tmp/drop_database.sql &&
+            docker cp /tmp/drop_database.sql $POSTGRES_CONTAINER_NAME:/tmp/drop_database.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/drop_database.sql &&
+            rm /tmp/drop_database.sql
+          "
+
       # Étape 6 - Créer la base de données et l'utilisateur
       - name: 6 - Create database and user
         run: |
@@ -90,7 +100,7 @@ jobs:
             # Générer le script SQL pour la création de l'utilisateur
             echo \"DO \$\$
             BEGIN
-              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'usr_db_dev') THEN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'usr_db_dev') THEN
                 CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd';
               END IF;
             END
@@ -99,25 +109,22 @@ jobs:
             # Générer le script SQL pour la création de la base de données
             echo \"DO \$\$
             BEGIN
-              IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
+              IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$DB_NAME') THEN
                 CREATE DATABASE $DB_NAME WITH OWNER = 'usr_db_dev';
               END IF;
             END
             \$\$;\" > /tmp/init_database.sql &&
-
+  
             # Exécuter les scripts SQL
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
-            
+  
             docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
-            
+  
             # Nettoyage des fichiers temporaires
             rm /tmp/init_user.sql /tmp/init_database.sql 
           "
-
-
-
 
       # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
