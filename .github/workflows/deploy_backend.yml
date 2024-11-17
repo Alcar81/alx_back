@@ -83,17 +83,24 @@ jobs:
               postgres:13
           "
 
-      # Étape 6 - Créer la base de données et l'utilisateur
+      # Étape 6 - Créer la base de données et l'utilisateur (sans vérification)
       - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" > create_user.sql &&
-            echo \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" >> create_user.sql &&
-            echo \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" >> create_user.sql &&
-            docker cp create_user.sql $POSTGRES_CONTAINER_NAME:/tmp/create_user.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/create_user.sql &&
-            rm create_user.sql &&
-            docker exec $POSTGRES_CONTAINER_NAME rm /tmp/create_user.sql
+            # Créer un fichier SQL temporaire pour créer la base de données et l'utilisateur
+            echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" > init_database.sql &&
+            echo \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" >> init_database.sql &&
+            echo \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" >> init_database.sql &&
+            
+            # Copier le fichier SQL dans le conteneur PostgreSQL
+            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
+            
+            # Exécuter le script SQL dans le conteneur PostgreSQL
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+            
+            # Nettoyer les fichiers temporaires
+            rm init_database.sql &&
+            docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
           "
 
       # Étape 7 - Déployer le conteneur Backend
