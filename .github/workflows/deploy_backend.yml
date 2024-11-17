@@ -98,9 +98,9 @@ jobs:
             echo 'Secrets.DB_PASSWORD: $DB_PASSWORD' &&
 
             echo 'Checking and creating database and user if not exists...' &&
-            
+
             # Générer le script SQL pour la création de l'utilisateur
-            cat > /tmp/init_user.sql <<EOF
+            cat <<EOF > /tmp/init_user.sql
             DO \$\$
             BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
@@ -110,8 +110,8 @@ jobs:
             \$\$;
             EOF
 
-                        # Générer le script SQL pour la création de la base de données
-                        cat > /tmp/init_database.sql <<EOF
+            # Générer le script SQL pour la création de la base de données
+            cat <<EOF > /tmp/init_database.sql
             DO \$\$
             BEGIN
               IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
@@ -124,9 +124,10 @@ jobs:
             # Exécuter les scripts SQL
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
-            
+
             docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+
             
             # Nettoyage des fichiers temporaires
             rm /tmp/init_user.sql /tmp/init_database.sql
