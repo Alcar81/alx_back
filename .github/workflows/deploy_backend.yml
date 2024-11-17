@@ -102,6 +102,16 @@ jobs:
       - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            echo '*** DEBUGGING VARIABLES AND SECRETS ***' &&
+            echo 'DB_NAME: $DB_NAME' &&
+            echo 'POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME' &&
+            echo 'DB_HOST: $DB_HOST' &&
+            echo 'DB_PORT_INT: $DB_PORT_INT' &&
+            echo 'DB_PORT_EXT: $DB_PORT_EXT' &&
+            echo 'NETWORK: $NETWORK' &&
+            echo 'Secrets.DB_USERNAME: ${DB_USERNAME:-not set}' &&
+            echo 'Secrets.DB_PASSWORD: ${DB_PASSWORD:-not set}' &&
+
             echo 'Checking and creating database and user if not exists...' &&
             
             # Générer et copier le script SQL pour la création de l'utilisateur
@@ -125,20 +135,14 @@ jobs:
             # Exécuter les scripts SQL
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
-
+            
             docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
             
-            # Vérifications
-            echo 'Verifying user creation...' &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\du\" | grep usr_db_dev || echo 'Failed to create user!' &&
-
-            echo 'Verifying database creation...' &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\l\" | grep $DB_NAME || echo 'Failed to create database!' &&
-            
             # Nettoyage des fichiers temporaires
-            rm /tmp/init_user.sql /tmp/init_database.sql
+            rm /tmp/init_user.sql /tmp/init_database.sql 
           "
+
 
 
 
