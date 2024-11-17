@@ -96,7 +96,7 @@ jobs:
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo 'Checking and creating database and user if not exists...' &&
-            
+
             # Générer le script SQL pour la création de l'utilisateur
             echo \"DO \$\$
             BEGIN
@@ -105,7 +105,7 @@ jobs:
               END IF;
             END
             \$\$;\" > /tmp/init_user.sql &&
-            
+
             # Générer le script SQL pour la création de la base de données
             echo \"DO \$\$
             BEGIN
@@ -114,16 +114,16 @@ jobs:
               END IF;
             END
             \$\$;\" > /tmp/init_database.sql &&
-  
+
             # Exécuter les scripts SQL
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
-  
+
             docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
-  
+
             # Nettoyage des fichiers temporaires
-            rm /tmp/init_user.sql /tmp/init_database.sql 
+            rm /tmp/init_user.sql /tmp/init_database.sql
           "
 
       # Étape 7 - Déployer le conteneur Backend
