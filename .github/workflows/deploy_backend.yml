@@ -78,7 +78,7 @@ jobs:
               -e POSTGRES_DB=$DB_NAME \
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
-              postgres:13 &&            
+              postgres:13
           "
 
       # Nouvelle Étape 6 - Création de l'utilisateur et configuration
@@ -93,7 +93,7 @@ jobs:
             rm /tmp/init_user.sql
           "
 
-      # Étape 7 - Déployer le conteneur Backend (anciennement Étape 6)
+      # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
@@ -110,8 +110,7 @@ jobs:
               back_node:latest
           "
 
-        # Décaler les étapes restantes (Health Check, etc.)
-        # Étape 8 - Set Remote Git URL
+      # Étape 8 - Set Remote Git URL
       - name: 8 - Set Remote Git URL
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
 
