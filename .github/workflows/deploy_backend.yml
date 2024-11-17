@@ -78,7 +78,18 @@ jobs:
               -e POSTGRES_DB=$DB_NAME \
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
-              postgres:13
+              postgres:13 &&
+            sleep 10 && # Attendre que PostgreSQL soit prêt
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U ${{ secrets.DB_USERNAME }} -d $DB_NAME <<EOF
+            DO \$\$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'usr_db_dev') THEN
+                    CREATE USER usr_db_dev WITH PASSWORD 'dw33kMyiQvNL62p3aCjd';
+                END IF;
+            END
+            \$\$;
+            GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;
+            EOF
           "
 
       # Étape 6 - Deploy Backend container
