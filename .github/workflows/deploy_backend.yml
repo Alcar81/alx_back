@@ -82,20 +82,11 @@ jobs:
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13
           "
+
       # Étape 6 - Créer la base de données et l'utilisateur
       - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo '*** DEBUGGING VARIABLES AND SECRETS ***' &&
-            echo 'DB_NAME: $DB_NAME' &&
-            echo 'POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME' &&
-            echo 'DB_HOST: $DB_HOST' &&
-            echo 'DB_PORT_INT: $DB_PORT_INT' &&
-            echo 'DB_PORT_EXT: $DB_PORT_EXT' &&
-            echo 'NETWORK: $NETWORK' &&
-            echo 'Secrets.DB_USERNAME: $DB_USERNAME' &&
-            echo 'Secrets.DB_PASSWORD: $DB_PASSWORD' &&
-
             echo 'Waiting for PostgreSQL to be ready...' &&
             until docker exec $POSTGRES_CONTAINER_NAME pg_isready -U postgres > /dev/null 2>&1; do
               echo 'PostgreSQL is not ready. Waiting...';
@@ -103,7 +94,7 @@ jobs:
             done &&
             echo 'PostgreSQL is ready!' &&
 
-            echo 'Checking and creating database and user if not exists...' &&
+            echo 'Creating database and user...' &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres <<EOF
             DO $$
             BEGIN
@@ -124,9 +115,6 @@ jobs:
             GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
             EOF
           "
-
-
-      
 
       # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
