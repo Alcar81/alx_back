@@ -86,7 +86,7 @@ jobs:
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo 'Creating database and user...' &&
-            echo \"CREATE DATABASE $DB_NAME WITH OWNER = ${{ secrets.DB_USERNAME }}; \
+            echo \"CREATE DATABASE $DB_NAME WITH OWNER ${{ secrets.DB_USERNAME }}; \
                   CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd'; \
                   GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;\" > /tmp/init_user.sql &&
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
