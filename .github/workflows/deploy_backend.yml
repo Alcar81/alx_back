@@ -63,8 +63,8 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-      # Étape 5 - Deploy PostgreSQL container
-      - name: 5 - Deploy PostgreSQL container
+      # Étape 5 - Démarrage de PostgreSQL
+      - name: 5 - Start PostgreSQL container
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker volume create $POSTGRES_VOLUME || true &&
@@ -85,7 +85,13 @@ jobs:
             done &&
             if [ $? -ne 0 ]; then
               echo 'PostgreSQL did not become ready in time'; exit 1;
-            fi &&
+            fi
+          "
+
+      # Nouvelle Étape 6 - Création de l'utilisateur et configuration
+      - name: 6 - Create database user and configure
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo 'Creating database user...' &&
             echo \"CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd'; \
                   GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;\" > /tmp/init_user.sql &&
@@ -94,9 +100,8 @@ jobs:
             rm /tmp/init_user.sql
           "
 
-
-      # Étape 6 - Deploy Backend container
-      - name: 6 - Deploy Backend container
+      # Étape 7 - Déployer le conteneur Backend (anciennement Étape 6)
+      - name: 7 - Deploy Backend container
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker stop $CONTAINER_NAME || true &&
@@ -112,12 +117,13 @@ jobs:
               back_node:latest
           "
 
-      # Étape 7 - Set Remote Git URL (si nécessaire)
-      - name: 7 - Set Remote Git URL
+        # Décaler les étapes restantes (Health Check, etc.)
+        # Étape 8 - Set Remote Git URL
+      - name: 8 - Set Remote Git URL
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
 
-      # Étape 8 - Health Check
-      - name: 8 - Health Check
+      # Étape 9 - Health Check
+      - name: 9 - Health Check
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             curl http://localhost:$BACKEND_PORT/api/health || exit 1
