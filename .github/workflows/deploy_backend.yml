@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Déployer Backend
 
 on:
   push:
@@ -30,18 +30,18 @@ jobs:
       BACKEND_PORT: "${{ secrets.PORT }}"
 
     steps:
-      # Étape 1 - Checkout du dépôt Git
-      - name: 1 - Checkout repository
+      # Étape 1 - Récupérer le dépôt Git
+      - name: 1 - Récupérer le dépôt
         uses: actions/checkout@v3
 
-      # Étape 2 - Build Docker image for backend
-      - name: 2 - Build Docker image
+      # Étape 2 - Construire l'image Docker pour le backend
+      - name: 2 - Construire l'image Docker
         env:
           DOCKER_NAME: "back_node:latest"
         run: docker build -t $DOCKER_NAME -f Dockerfile.backend .
 
-      # Étape 3 - Push Docker image to registry (optionnel)
-      - name: 3 - Push Docker image to registry
+      # Étape 3 - Pousser l'image Docker vers le registre (optionnel)
+      - name: 3 - Pousser l'image Docker vers le registre
         env:
           DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -52,11 +52,11 @@ jobs:
             docker tag back_node:latest $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
             docker push $DOCKER_REGISTRY/$DOCKER_USERNAME/back_node:latest
           else
-            echo "DOCKER_REGISTRY is not defined. Skipping Docker push."
+            echo "DOCKER_REGISTRY n'est pas défini. Passage de cette étape."
           fi
 
-      # Étape 4 - Start SSH agent and add key
-      - name: 4 - Start SSH agent and add key
+      # Étape 4 - Démarrer l'agent SSH et ajouter la clé
+      - name: 4 - Démarrer l'agent SSH et ajouter la clé
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
@@ -65,8 +65,8 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-      # Étape 5 - Démarrage de PostgreSQL
-      - name: 5 - Start PostgreSQL container
+      # Étape 5 - Démarrer le conteneur PostgreSQL
+      - name: 5 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker volume create $POSTGRES_VOLUME || true &&
@@ -83,8 +83,8 @@ jobs:
               postgres:13
           "
 
-      # Étape 6 - Créer la base de données et l'utilisateur (sans vérification)
-      - name: 6 - Create database and user
+      # Étape 6 - Créer la base de données et l'utilisateur
+      - name: 6 - Créer la base de données et l'utilisateur
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" > init_database.sql &&
@@ -97,7 +97,7 @@ jobs:
           "
 
       # Étape 7 - Déployer le conteneur Backend
-      - name: 7 - Deploy Backend container
+      - name: 7 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker stop $CONTAINER_NAME || true &&
@@ -113,6 +113,6 @@ jobs:
               back_node:latest
           "
 
-      # Étape 8 - Set Remote Git URL
-      - name: 8 - Set Remote Git URL
+      # Étape 8 - Configurer l'URL Git distante
+      - name: 8 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
