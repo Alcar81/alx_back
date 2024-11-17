@@ -91,6 +91,13 @@ jobs:
             rm /tmp/drop_database.sql
           "
 
+      # Étape 5.2 - Installer l'extension dblink
+      - name: 5.2 - Install dblink extension
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c 'CREATE EXTENSION IF NOT EXISTS dblink';
+          "
+
       # Étape 6 - Créer la base de données et l'utilisateur
       - name: 6 - Create database and user
         run: |
@@ -110,7 +117,7 @@ jobs:
             echo \"DO \$\$
             BEGIN
               IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$DB_NAME') THEN
-                CREATE DATABASE $DB_NAME WITH OWNER = 'usr_db_dev';
+                PERFORM dblink_exec('dbname=postgres', 'CREATE DATABASE $DB_NAME WITH OWNER = \"usr_db_dev\"');
               END IF;
             END
             \$\$;\" > /tmp/init_database.sql &&
