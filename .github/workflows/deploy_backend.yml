@@ -104,16 +104,16 @@ jobs:
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo 'Checking and creating database and user if not exists...' &&
             
-            # Générer le script SQL pour la création de l'utilisateur
+            # Générer et copier le script SQL pour la création de l'utilisateur
             echo \"DO \$\$
             BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'usr_db_dev') THEN
-                CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd';
+                CREATE ROLE usr_db_dev WITH LOGIN PASSWORD '${{ secrets.DB_PASSWORD }}';
               END IF;
             END
             \$\$;\" > /tmp/init_user.sql &&
             
-            # Générer le script SQL pour la création de la base de données
+            # Générer et copier le script SQL pour la création de la base de données
             echo \"DO \$\$
             BEGIN
               IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
@@ -125,24 +125,21 @@ jobs:
             # Exécuter les scripts SQL
             docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
-            
+
             docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
             
-            # Vérifications après création
+            # Vérifications
             echo 'Verifying user creation...' &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\du\" | grep 'usr_db_dev' &&
-            echo 'User created successfully!' ||
-            echo 'Failed to create user!' &&
-            
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\du\" | grep usr_db_dev || echo 'Failed to create user!' &&
+
             echo 'Verifying database creation...' &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\l\" | grep '$DB_NAME' &&
-            echo 'Database created successfully!' ||
-            echo 'Failed to create database!' &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\l\" | grep $DB_NAME || echo 'Failed to create database!' &&
             
             # Nettoyage des fichiers temporaires
-            rm /tmp/init_user.sql /tmp/init_database.sql 
+            rm /tmp/init_user.sql /tmp/init_database.sql
           "
+
 
 
       # Étape 7 - Déployer le conteneur Backend
