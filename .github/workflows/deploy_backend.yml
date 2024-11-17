@@ -81,6 +81,14 @@ jobs:
               postgres:13
           "
 
+      # Étape d'inspection - Vérifier les bases de données et les utilisateurs existants
+      - name: Inspect PostgreSQL setup
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c '\l' &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c '\du'
+          "
+
       # Nouvelle Étape 6 - Création de l'utilisateur et configuration
       - name: 6 - Create database user and configure
         run: |
@@ -92,7 +100,6 @@ jobs:
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME -f /tmp/init_user.sql &&
             rm /tmp/init_user.sql
           "
-
 
       # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
