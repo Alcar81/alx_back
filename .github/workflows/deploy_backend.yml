@@ -81,47 +81,26 @@ jobs:
               postgres:13
           "
 
-      # Étape 6 - Création de la base de données et configuration
+      # Étape 6 - Création de la base de données et de l'utilisateur
       - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo 'Checking and creating database and user if not exists...' &&
-            echo \"DO
-            \$\$
-            BEGIN
-              -- Check if database exists
-              IF NOT EXISTS (
-                SELECT FROM pg_database WHERE datname = '$DB_NAME'
-              ) THEN
-                CREATE DATABASE $DB_NAME WITH OWNER = 'postgres';
-              END IF;
-            END
-            \$\$;\" > /tmp/init_database.sql &&
-            
-            echo \"DO
-            \$\$
-            BEGIN
-              -- Check if user exists
-              IF NOT EXISTS (
-                SELECT FROM pg_roles WHERE rolname = 'usr_db_dev'
-              ) THEN
-                CREATE ROLE usr_db_dev WITH LOGIN PASSWORD 'dw33kMyiQvNL62p3aCjd';
-              END IF;
-            END
-            \$\$;\" > /tmp/init_user.sql &&
-            
-            echo \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO usr_db_dev;\" > /tmp/grant_privileges.sql &&
-            
-            docker cp /tmp/init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
-            docker cp /tmp/init_user.sql $POSTGRES_CONTAINER_NAME:/tmp/init_user.sql &&
-            docker cp /tmp/grant_privileges.sql $POSTGRES_CONTAINER_NAME:/tmp/grant_privileges.sql &&
-            
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_user.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/grant_privileges.sql &&
-            
-            rm /tmp/init_database.sql /tmp/init_user.sql /tmp/grant_privileges.sql
+            echo 'DO \$\$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ''usr_db_dev'') THEN
+                CREATE ROLE usr_db_dev WITH LOGIN PASSWORD ''dw33kMyiQvNL62p3aCjd'';
+            END IF;
+
+            IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = ''${DB_NAME}'') THEN
+                CREATE DATABASE ${DB_NAME} WITH OWNER = usr_db_dev;
+            END IF;
+
+            GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO usr_db_dev;
+            END \$\$;' > /tmp/init_script.sql &&
+            docker cp /tmp/init_script.sql $POSTGRES_CONTAINER_NAME:/tmp/init_script.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_script.sql &&
+            rm /tmp/init_script.sql
           "
+
 
       # Étape 7 - Déployer le conteneur Backend
       - name: 7 - Deploy Backend container
