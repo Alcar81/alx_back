@@ -83,46 +83,13 @@ jobs:
               postgres:13
           "
 
-      # Étape 6.1 - Créer la base de données
-      - name: 6.1 - Create database
+      # Étape 6 - Créer la base de données et l'utilisateur
+      - name: 6 - Create database and user
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo 'Waiting for PostgreSQL to be ready...' &&
-            until docker exec $POSTGRES_CONTAINER_NAME pg_isready -U postgres > /dev/null 2>&1; do
-              echo 'PostgreSQL is not ready. Waiting...';
-              sleep 5;
-            done &&
-            echo 'PostgreSQL is ready!' &&
-
-            echo \"DO \$$
-            BEGIN
-                IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') THEN
-                    CREATE DATABASE $DB_NAME;
-                END IF;
-            END
-            $$;\" > create_database.sql &&
-
-            docker cp create_database.sql $POSTGRES_CONTAINER_NAME:/tmp/create_database.sql &&
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/create_database.sql &&
-            rm create_database.sql &&
-            docker exec $POSTGRES_CONTAINER_NAME rm /tmp/create_database.sql
-          "
-
-      # Étape 6.2 - Créer l’utilisateur et accorder les permissions
-      - name: 6.2 - Create user and grant privileges
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo \"DO \$$
-            BEGIN
-                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
-                    CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
-                END IF;
-            END
-            $$;
-
-            GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
-            \" > create_user.sql &&
-
+            echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" > create_user.sql &&
+            echo \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" >> create_user.sql &&
+            echo \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" >> create_user.sql &&
             docker cp create_user.sql $POSTGRES_CONTAINER_NAME:/tmp/create_user.sql &&
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/create_user.sql &&
             rm create_user.sql &&
