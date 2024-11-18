@@ -22,19 +22,19 @@ jobs:
       ENV: ${{ vars.ENV }}
       DB_PORT_INT: ${{ secrets.DB_PORT_INT }}
       DB_PORT_EXT: ${{ secrets.DB_PORT_EXT }}
-      DB_NAME: ${{ secrets.DB_POST }}_${{ vars.ENV }}
-      DB_HOST: ${{ secrets.DB_POST }}_${{ vars.ENV }}
-      NETWORK: ${{ secrets.NET }}_${{ vars.ENV }}
+      DB_NAME: ${{ vars.DB_POST }}_${{ vars.ENV }}
+      DB_HOST: ${{ vars.DB_POST }}_${{ vars.ENV }}
+      NETWORK: ${{ vars.NET }}_${{ vars.ENV }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
       SSH_USER: ${{ secrets.SSH_USER }}
-      DB_USERNAME: ${{ secrets.USR_DB }}_${{ vars.ENV }}
+      DB_USERNAME: ${{ vars.USR_DB }}_${{ vars.ENV }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      POSTGRES_CONTAINER_NAME: ${{ secrets.DB_POST }}_${{ vars.ENV }}
-      POSTGRES_VOLUME: ${{ secrets.DB_POST }}_${{ secrets.DATA }}_${{ vars.ENV }}
-      CONTAINER_NAME: ${{ secrets.BACK }}_${{ secrets.NODE }}_${{ vars.ENV }}
+      POSTGRES_CONTAINER_NAME: ${{ vars.DB_POST }}_${{ vars.ENV }}
+      POSTGRES_VOLUME: ${{ vars.DB_POST }}_${{ vars.DATA }}_${{ vars.ENV }}
+      CONTAINER_NAME: ${{ vars.BACK }}_${{ vars.NODE }}_${{ vars.ENV }}
       MOUNT_PATH: ${{ secrets.MOUNT_PATH }}
-      DATABASE_URL: "postgresql://${{ secrets.USR_DB }}_${{ vars.ENV }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_POST }}_${{ vars.ENV }}:${{ secrets.DB_PORT_INT }}/${{ secrets.DB_POST }}_${{ vars.ENV }}"
+      DATABASE_URL: "postgresql://${{ vars.USR_DB }}_${{ vars.ENV }}:${{ secrets.DB_PASSWORD }}@${{ vars.DB_POST }}_${{ vars.ENV }}:${{ secrets.DB_PORT_INT }}/${{ vars.DB_POST }}_${{ vars.ENV }}"
       BACKEND_PORT: ${{ secrets.PORT }}
 
     steps:
@@ -86,7 +86,13 @@ jobs:
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            # Créer le réseau Docker s'il n'existe pas déjà
+            docker network create $NETWORK || true &&
+
+            # Créer le volume pour PostgreSQL (si nécessaire)
             docker volume create $POSTGRES_VOLUME || true &&
+
+            # Démarrer le conteneur PostgreSQL
             docker pull postgres:13 &&
             docker stop $POSTGRES_CONTAINER_NAME || true &&
             docker rm $POSTGRES_CONTAINER_NAME || true &&
