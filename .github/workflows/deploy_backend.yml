@@ -86,16 +86,14 @@ jobs:
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            # Créer le réseau Docker s'il n'existe pas déjà
             docker network create $NETWORK || true &&
-
-            # Créer le volume pour PostgreSQL (si nécessaire)
             docker volume create $POSTGRES_VOLUME || true &&
-
-            # Démarrer le conteneur PostgreSQL
+            echo 'Vérification de l'existence du conteneur PostgreSQL...' &&
+            docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME && \
+              docker stop $POSTGRES_CONTAINER_NAME || echo 'Conteneur PostgreSQL non trouvé, aucune action nécessaire.' &&
+            docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME && \
+              docker rm $POSTGRES_CONTAINER_NAME || echo 'Conteneur PostgreSQL non trouvé, aucune suppression nécessaire.' &&
             docker pull postgres:13 &&
-            docker stop $POSTGRES_CONTAINER_NAME || true &&
-            docker rm $POSTGRES_CONTAINER_NAME || true &&
             docker run -d --name $POSTGRES_CONTAINER_NAME \
               --network $NETWORK \
               -e POSTGRES_USER=$DB_USERNAME \
@@ -123,8 +121,11 @@ jobs:
       - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker stop $CONTAINER_NAME || true &&
-            docker rm $CONTAINER_NAME || true &&
+            echo 'Vérification de l'existence du conteneur Backend...' &&
+            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && \
+              docker stop $CONTAINER_NAME || echo 'Conteneur Backend non trouvé, aucune action nécessaire.' &&
+            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && \
+              docker rm $CONTAINER_NAME || echo 'Conteneur Backend non trouvé, aucune suppression nécessaire.' &&
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
               -e DATABASE_URL=\"$DATABASE_URL\" \
