@@ -82,17 +82,19 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa
 
-      # Étape 6 - Démarrer le conteneur PostgreSQL
+      # Étape 6 - Démarrer le conteneur PostgreSQL          
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker network create $NETWORK || true &&
             docker volume create $POSTGRES_VOLUME || true &&
-            echo 'Vérification de l'existence du conteneur PostgreSQL...' &&
-            docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME && \
-              docker stop $POSTGRES_CONTAINER_NAME || echo 'Conteneur PostgreSQL non trouvé, aucune action nécessaire.' &&
-            docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME && \
-              docker rm $POSTGRES_CONTAINER_NAME || echo 'Conteneur PostgreSQL non trouvé, aucune suppression nécessaire.' &&
+            echo 'Vérification de l\'existence du conteneur PostgreSQL...' &&
+            if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
+              docker stop $POSTGRES_CONTAINER_NAME &&
+              docker rm $POSTGRES_CONTAINER_NAME;
+            else
+              echo 'Conteneur PostgreSQL non trouvé, aucune action nécessaire.';
+            fi &&
             docker pull postgres:13 &&
             docker run -d --name $POSTGRES_CONTAINER_NAME \
               --network $NETWORK \
@@ -103,6 +105,7 @@ jobs:
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13
           "
+        
 
       # Étape 7 - Créer la base de données et l'utilisateur
       - name: 7 - Créer la base de données et l'utilisateur
