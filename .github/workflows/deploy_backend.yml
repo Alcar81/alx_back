@@ -22,21 +22,19 @@ jobs:
       ENV: ${{ secrets.ENV }}
       DB_PORT_INT: ${{ secrets.DB_PORT_INT }}
       DB_PORT_EXT: ${{ secrets.DB_PORT_EXT }}
-      DB_NAME: ${{ secrets.DB_POST }}_$ENV
-      DB_HOST: ${{ secrets.DB_POST }}_$ENV
-      NETWORK: ${{ secrets.NET }}_$ENV
+      DB_NAME: ${{ secrets.DB_POST }}_${{ secrets.ENV }}
+      DB_HOST: ${{ secrets.DB_POST }}_${{ secrets.ENV }}
+      NETWORK: ${{ secrets.NET }}_${{ secrets.ENV }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
       SSH_USER: ${{ secrets.SSH_USER }}
-      DB_USERNAME: ${{ secrets.USR_DB }}_$ENV
+      DB_USERNAME: ${{ secrets.USR_DB }}_${{ secrets.ENV }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      POSTGRES_CONTAINER_NAME: ${{ secrets.DB_POST }}_$ENV
-      POSTGRES_VOLUME: ${{ secrets.DB_POST }}_${{ secrets.DATA }}_$ENV
-      CONTAINER_NAME: ${{ secrets.BACK }}_${{ secrets.NODE }}_$ENV
+      POSTGRES_CONTAINER_NAME: ${{ secrets.DB_POST }}_${{ secrets.ENV }}
+      POSTGRES_VOLUME: ${{ secrets.DB_POST }}_${{ secrets.DATA }}_${{ secrets.ENV }}
+      CONTAINER_NAME: ${{ secrets.BACK }}_${{ secrets.NODE }}_${{ secrets.ENV }}
       MOUNT_PATH: ${{ secrets.MOUNT_PATH }}
-      USR_DB: ${{ secrets.USR_DB }}
-      DB_POST: ${{ secrets.DB_POST }}
-      DATABASE_URL: "postgresql://${USR_DB}_$ENV:${DB_PASSWORD}@${DB_POST}_$ENV:${DB_PORT_INT}/${DB_POST}_$ENV"
+      DATABASE_URL: "postgresql://${{ secrets.USR_DB }}_${{ secrets.ENV }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_POST }}_${{ secrets.ENV }}:${{ secrets.DB_PORT_INT }}/${{ secrets.DB_POST }}_${{ secrets.ENV }}"
       BACKEND_PORT: ${{ secrets.PORT }}
 
     steps:
@@ -124,7 +122,7 @@ jobs:
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
               -e DATABASE_URL=\"$DATABASE_URL\" \
-              -e NODE_ENV=$ENV \
+              -e NODE_ENV=${{ secrets.ENV }} \
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               -v $MOUNT_PATH:/app \
               -w /app \
