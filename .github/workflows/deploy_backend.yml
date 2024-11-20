@@ -4,6 +4,7 @@ on:
   push:
     branches:      
       - dev
+      - master
       # Ajoutez ici de nouvelles branches pour de nouveaux environnements (par exemple staging, uat)
 
 jobs:
