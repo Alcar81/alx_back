@@ -1,9 +1,9 @@
+# dev.alxmultimedia.com/.github/workflows/deploy_backend.yml
 name: Déployer Backend
 
 on:
   push:
-    branches:
-      - master
+    branches:      
       - dev
       # Ajoutez ici de nouvelles branches pour de nouveaux environnements (par exemple staging, uat)
 
