@@ -23,5 +23,5 @@ certificates/
 *.pem
 *.key
 
-# Ignorer les fichiers de clé ssh test
+# Ignorer les fichiers de clé ssh tests
 known_hosts
