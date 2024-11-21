@@ -25,3 +25,4 @@ certificates/
 
 # Ignorer les fichiers de clé ssh tests
 known_hosts
+script/
