@@ -35,7 +35,7 @@ jobs:
       CONTAINER_NAME: ${{ vars.BACK }}_${{ vars.NODE }}_${{ vars.ENV }}
       MOUNT_PATH: ${{ secrets.MOUNT_PATH }}
       DATABASE_URL: "postgresql://${{ vars.USR_DB }}_${{ vars.ENV }}:${{ secrets.DB_PASSWORD }}@${{ vars.DB_POST }}_${{ vars.ENV }}:${{ secrets.DB_PORT_INT }}/${{ vars.DB_POST }}_${{ vars.ENV }}"
-      BACKEND_PORT: ${{ secrets.PORT }}
+      BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
 
     steps:
       # Étape 1 - Afficher les variables générées
@@ -183,7 +183,7 @@ jobs:
               --network $NETWORK \
               -e DATABASE_URL=\"$DATABASE_URL\" \
               -e NODE_ENV=$ENV \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e JWT_SECRET=$JWT_SECRET \
               -v $MOUNT_PATH:/app \
               -w /app \
               -p $BACKEND_PORT:7000 \
