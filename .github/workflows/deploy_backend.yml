@@ -51,6 +51,12 @@ jobs:
       - name: 2 - Récupérer le dépôt
         uses: actions/checkout@v3
 
+      # Étape 2.5 - Configurer la version de Node.js
+      - name: Configurer Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
       # Étape 3 - Install dependencies
       - name: 3 - Install dependencies
         run: npm install
