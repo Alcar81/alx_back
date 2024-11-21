@@ -110,7 +110,7 @@ jobs:
           "
 
       # Étape 7.1 Nouvelle étape - Sauvegarder la base de données
-      - name: Backup PostgreSQL Database
+      - name: 7.1 - Backup PostgreSQL Database
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > /root/prod_backup_$(date +%Y%m%d%H%M%S).sql
