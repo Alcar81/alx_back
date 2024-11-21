@@ -97,14 +97,14 @@ jobs:
           "
 
       # Étape 6.1 - Nettoyer les anciens backups
-      - name: Cleanup old backups (Prod Only)        
+      - name: 6.1 - Cleanup old backups (Prod Only)        
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/prod/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \;
           "
 
       # Étape 6.2 - Sauvegarder la base de données
-      - name: Backup PostgreSQL Database (Prod Only)
+      - name: 6.2 - Backup PostgreSQL Database (Prod Only)
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/prod/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > /root/prod_backup_$(date +%Y%m%d%H%M%S).sql
@@ -113,7 +113,7 @@ jobs:
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/$ENV/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "        
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "        
             echo \"DROP ROLE IF EXISTS $DB_USERNAME;\" > init_database.sql &&            
             echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" >> init_database.sql &&
             echo \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" >> init_database.sql &&
