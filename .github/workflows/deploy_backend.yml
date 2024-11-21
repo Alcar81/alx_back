@@ -96,6 +96,22 @@ jobs:
               postgres:13
           "
 
+      # Étape 6.1 - Nettoyer les anciens backups
+      - name: Cleanup old backups (Prod Only)
+        if: ${{ env.ENV == 'prod' }}
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \;
+          "
+
+      # Étape 6.2 - Sauvegarder la base de données
+      - name: Backup PostgreSQL Database (Prod Only)
+        if: ${{ env.ENV == 'prod' }}
+        run: |
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > /root/prod_backup_$(date +%Y%m%d%H%M%S).sql
+          "
+
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
@@ -107,13 +123,6 @@ jobs:
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
             rm init_database.sql &&
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
-          "
-
-      # Étape 7.1 Nouvelle étape - Sauvegarder la base de données
-      - name: 7.1 - Backup PostgreSQL Database
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > /root/prod_backup_$(date +%Y%m%d%H%M%S).sql
           "
 
       # Étape 8 - Déployer le conteneur Backend
