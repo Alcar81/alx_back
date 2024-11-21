@@ -113,16 +113,65 @@ jobs:
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "        
-            echo \"DROP ROLE IF EXISTS $DB_USERNAME;\" > init_database.sql &&            
-            echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" >> init_database.sql &&
+          # Affichage des informations de diagnostic
+          echo "Environnement : $ENV"
+          echo "Nom de la base de données : $DB_NAME"
+          echo "Hôte de la base de données : $DB_HOST"
+          echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
+          echo "URL de connexion à la base : $DATABASE_URL"
+          echo "Nom utilisateur : $DB_USERNAME"
+          echo "Mot de passe de la base : $DB_PASSWORD"
+
+          # Vérification de l'état du conteneur PostgreSQL avant de tenter la connexion
+          echo "Vérification de l'état du conteneur PostgreSQL..."
+          docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
+
+          # Ajout d'une pause pour attendre que le conteneur PostgreSQL soit prêt
+          echo "Attente de 10 secondes pour vérifier que le conteneur est bien prêt..."
+          sleep 10
+
+          # Connexion SSH et exécution des commandes pour créer la base et les rôles
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+            # Création et vérification des bases de données et rôles
+            echo 'Connexion réussie'
+
+            echo 'Création des rôles et bases de données...'
+            echo \"DROP DATABASE IF EXISTS $DB_NAME WITH OWNER $DB_USERNAME;\" > init_database.sql &&
+            echo 'Vérification de la suppression de la base de données' &&
             echo \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" >> init_database.sql &&
-            echo \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" >> init_database.sql &&            
-            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&            
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&            
+            echo 'Création de la base de données' &&
+
+            echo \"DROP ROLE IF EXISTS postgres;\" >> init_database.sql &&
+            echo 'Vérification de la suppression du rôle postgres' &&
+            echo \"DROP ROLE IF EXISTS $DB_USERNAME;\" >> init_database.sql &&
+            echo 'Vérification de la suppression du rôle $DB_USERNAME' &&
+
+            echo \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" >> init_database.sql &&
+            echo 'Création du rôle $DB_USERNAME avec mot de passe' &&
+
+            echo \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" >> init_database.sql &&
+            echo 'Attribution des privilèges' &&
+
+            # Copie du fichier de commandes SQL dans le conteneur PostgreSQL
+            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
+
+            # Exécution des commandes SQL dans PostgreSQL
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+
+            # Nettoyage
             rm init_database.sql &&
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
+
+            echo 'Base de données et utilisateur créés avec succès.'
+
+            # Si c'est l'environnement de production, restaurer la base de données depuis le backup
+            if [ "$ENV" == "prod" ]; then
+              echo 'Restauration de la base de données à partir du fichier de backup...'
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /root/prod_backup_latest.sql
+              echo 'Restauration terminée.'
+            fi
           "
+
 
       # Étape 8 - Déployer le conteneur Backend
       - name: 8 - Déployer le conteneur Backend
