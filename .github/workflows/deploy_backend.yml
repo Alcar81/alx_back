@@ -203,9 +203,15 @@ jobs:
           echo \"MOUNT_PATH=$MOUNT_PATH\"
           echo \"BACKEND_PORT=$BACKEND_PORT\"
 
-          # Vérification des logs
-          echo '[INFO] Création du répertoire backend/logs si inexistant...' | tee -a $LOG_FILE
-          mkdir -p backend/logs || (echo '[ERROR] Impossible de créer le répertoire backend/logs' && exit 1)
+          # Créer le fichier .env avec les variables d'environnement
+          echo '[INFO] Création du fichier .env pour le backend...' | tee -a $LOG_FILE
+          echo \"DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME\" > .env
+          echo \"NODE_ENV=$ENV\" >> .env
+          echo \"JWT_SECRET=$JWT_SECRET\" >> .env
+          echo \"BACKEND_PORT=$BACKEND_PORT\" >> .env
+
+          # Copier le fichier .env dans le conteneur
+          docker cp .env $CONTAINER_NAME:/app/.env || (echo '[ERROR] Échec de la copie du fichier .env dans le conteneur.' && exit 1)
 
           # Arrêter et supprimer l'ancien conteneur
           docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker stop $CONTAINER_NAME || true
@@ -214,7 +220,6 @@ jobs:
           # Déployer le nouveau conteneur Backend
           docker run -d --name $CONTAINER_NAME \
             --network $NETWORK \
-            -e DATABASE_URL=\"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME\" \
             -e NODE_ENV=\"$ENV\" \
             -e JWT_SECRET=\"$JWT_SECRET\" \
             -v $MOUNT_PATH:/app \
@@ -239,6 +244,7 @@ jobs:
             exit 1
           fi
           " | tee -a $LOG_FILE
+
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
