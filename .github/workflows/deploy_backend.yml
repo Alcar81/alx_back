@@ -197,9 +197,9 @@ jobs:
             # Déployer le nouveau conteneur Backend
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
-              -e DATABASE_URL=\"$DATABASE_URL\" \
-              -e NODE_ENV=$ENV \
-              -e JWT_SECRET=$JWT_SECRET \
+              -e DATABASE_URL='$DATABASE_URL' \
+              -e NODE_ENV='$ENV' \
+              -e JWT_SECRET='$JWT_SECRET' \
               -v $MOUNT_PATH:/app \
               -w /app \
               -p $BACKEND_PORT:7000 \
@@ -214,7 +214,7 @@ jobs:
             sleep 10
 
             # Tester l'endpoint /health
-            echo '[INFO] Test de l'\"'endpoint /health...' | tee -a $LOG_FILE
+            echo '[INFO] Test de l'endpoint /health...' | tee -a $LOG_FILE
             if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
               echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
             else
