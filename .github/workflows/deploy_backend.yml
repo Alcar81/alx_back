@@ -232,7 +232,7 @@ jobs:
 
           # Tester l'endpoint /health
           echo '[INFO] Test endpoint /health...' | tee -a $LOG_FILE
-          if curl -s http://localhost:$BACKEND_PORT /health | grep 'OK'; then
+          if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
             echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
           else
             echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
