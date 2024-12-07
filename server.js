@@ -8,7 +8,7 @@ const { PrismaClient } = require('@prisma/client');
 // Charger les variables d'environnement (injectées depuis GitHub)
 require('dotenv').config();
 const app = express();
-const PORT = process.env.BACKEND_PORT || 7001; // Valeur par défaut si la variable n'existe pas
+const PORT = process.env.BACKEND_PORT || 7000; // Valeur par défaut si la variable n'existe pas
 
 // Initialisation de Prisma avec la configuration centralisée
 const prisma = new PrismaClient({
