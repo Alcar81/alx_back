@@ -62,6 +62,7 @@ jobs:
       # Étape 3 - Installer les dépendances et corriger les vulnérabilités
       - name: 3 - Installer les dépendances et corriger les vulnérabilités
         run: |
+          mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
           npm install --production | tee -a backend/logs/backend_deploy.log || exit 1
           npm audit fix | tee -a backend/logs/backend_deploy.log || exit 1
 
