@@ -163,14 +163,28 @@ jobs:
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"
-              DROP DATABASE IF EXISTS $DB_NAME;
-              CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
-              DROP ROLE IF EXISTS $DB_USERNAME;
-              CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
-              GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
-            \" || (echo 'Erreur : Impossible de créer la base de données ou l’utilisateur' && exit 1)
-          " | tee -a backend/logs/backend_deploy.log
+            # Supprimer la base de données si elle existe
+            echo '[INFO - Étape 7] Suppression de la base de données si elle existe...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP DATABASE IF EXISTS $DB_NAME;\" || (echo 'Erreur : Impossible de supprimer la base de données.' && exit 1)
+
+            # Supprimer le rôle si nécessaire
+            echo '[INFO - Étape 7] Suppression du rôle si nécessaire...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP ROLE IF EXISTS $DB_USERNAME;\" || (echo 'Erreur : Impossible de supprimer le rôle.' && exit 1)
+
+            # Créer le rôle
+            echo '[INFO - Étape 7] Création du rôle...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" || (echo 'Erreur : Impossible de créer le rôle.' && exit 1)
+
+            # Créer la base de données
+            echo '[INFO - Étape 7] Création de la base de données...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" || (echo 'Erreur : Impossible de créer la base de données.' && exit 1)
+
+            # Accorder des privilèges
+            echo '[INFO - Étape 7] Attribution des privilèges...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || (echo 'Erreur : Impossible d’attribuer les privilèges.' && exit 1)
+
+            echo '[SUCCESS - Étape 7] Base de données et utilisateur créés avec succès.' | tee -a $LOG_FILE
+          " | tee -a $LOG_FILE
 
       - name: 8 - Déployer le conteneur Backend
         run: |
