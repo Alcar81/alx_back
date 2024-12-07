@@ -13,6 +13,7 @@ jobs:
 
     env:
       ENV: ${{ vars.ENV }}
+      LOG_FILE: backend/logs/backend_deploy_${{ vars.ENV }}.log
       DB_PORT_INT: ${{ vars.DB_PORT_INT }}
       DB_PORT_EXT: ${{ vars.DB_PORT_EXT }}
       BACKEND_PORT: ${{ vars.BACKEND_PORT }}
@@ -31,19 +32,22 @@ jobs:
       DATABASE_URL: "postgresql://$DB_USERNAME:${{ secrets.DB_PASSWORD }}@$DB_HOST:$DB_PORT_INT/$DB_NAME"
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       DOCKER_NAME: back_node:latest
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     steps:
-      # Étape 1 - Afficher les variables générées
-      - name: 1 - Afficher les variables générées
+      # Étape 1 - Préparation des logs
+      - name: Préparer les logs
         run: |
-          mkdir -p backend/logs
-          echo "=== Déploiement Backend : $(date) ===" | tee backend/logs/backend_deploy.log
-          echo "Environnement : $ENV" | tee -a backend/logs/backend_deploy.log
-          echo "Nom de la base de données : $DB_NAME" | tee -a backend/logs/backend_deploy.log
-          echo "Hôte de la base de données : $DB_HOST" | tee -a backend/logs/backend_deploy.log
-          echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME" | tee -a backend/logs/backend_deploy.log
-          echo "Nom de l'utilisateur : $DB_USERNAME" | tee -a backend/logs/backend_deploy.log
-          echo "URL de connexion à la base : $DATABASE_URL" | tee -a backend/logs/backend_deploy.log
+          mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
+          chmod -R 777 backend/logs
+          echo "=== Déploiement Backend : $(date) ===" > $LOG_FILE   
+
+      # Étape 1 - Afficher les variables générées
+      - name: 1.1 - Afficher les variables générées
+        run: |
+          echo "Environnement : $ENV" | tee -a $LOG_FILE
+          echo "Nom de la base de données : $DB_NAME" | tee -a $LOG_FILE
+          echo "Hôte de la base de données : $DB_HOST" | tee -a $LOG_FILE
 
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
@@ -58,45 +62,59 @@ jobs:
       # Étape 3 - Installer les dépendances et corriger les vulnérabilités
       - name: 3 - Installer les dépendances et corriger les vulnérabilités
         run: |
-          mkdir -p backend/logs
-          npm install --production | tee -a backend/logs/backend_deploy.log
-          npm audit fix | tee -a backend/logs/backend_deploy.log
+          npm install --production | tee -a backend/logs/backend_deploy.log || exit 1
+          npm audit fix | tee -a backend/logs/backend_deploy.log || exit 1
 
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
         run: |
+          docker image prune -f || (echo "Erreur : Impossible de nettoyer les images Docker." && exit 1)
           docker build -t $DOCKER_NAME -f Dockerfile.backend . | tee -a backend/logs/backend_deploy.log
-
+      
       # Étape 5 - Démarrer l'agent SSH et ajouter la clé
       - name: 5 - Démarrer l'agent SSH et ajouter la clé
         run: |
           echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
           chmod 600 /tmp/git_id_rsa
           eval $(ssh-agent -s)
-          ssh-add /tmp/git_id_rsa
+          ssh-add /tmp/git_id_rsa || (echo "Erreur : Clé SSH invalide." && exit 1)
+        
 
       # Étape 6 - Démarrer le conteneur PostgreSQL
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            # Vérifier et créer le réseau si nécessaire
+            echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE
+            
+            # Vérification et création du réseau Docker
             if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
+              echo '[INFO - Étape 6] Création du réseau Docker : $NETWORK' | tee -a $LOG_FILE
               docker network create $NETWORK
+            else
+              echo '[INFO - Étape 6] Réseau Docker déjà existant : $NETWORK' | tee -a $LOG_FILE
             fi
 
-            # Vérifier et créer le volume si nécessaire
+            # Vérification et création du volume Docker
             if ! docker volume ls --filter \"name=^$POSTGRES_VOLUME\$\" --format '{{.Name}}' | grep -w $POSTGRES_VOLUME; then
+              echo '[INFO - Étape 6] Création du volume Docker : $POSTGRES_VOLUME' | tee -a $LOG_FILE
               docker volume create $POSTGRES_VOLUME
+            else
+              echo '[INFO - Étape 6] Volume Docker déjà existant : $POSTGRES_VOLUME' | tee -a $LOG_FILE
             fi
 
-            # Arrêter et supprimer le conteneur existant, si nécessaire
-            docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME && docker stop $POSTGRES_CONTAINER_NAME || true
-            docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME && docker rm $POSTGRES_CONTAINER_NAME || true
+            # Arrêt et suppression de l'ancien conteneur PostgreSQL
+            if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
+              echo '[INFO - Étape 6] Arrêt et suppression de l’ancien conteneur : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
+              docker stop $POSTGRES_CONTAINER_NAME
+              docker rm $POSTGRES_CONTAINER_NAME
+            fi
 
-            # Mettre à jour l'image PostgreSQL
+            # Téléchargement de l'image PostgreSQL la plus récente
+            echo '[INFO - Étape 6] Mise à jour de l’image PostgreSQL...' | tee -a $LOG_FILE
             docker pull postgres:13
 
-            # Lancer un nouveau conteneur PostgreSQL
+            # Lancement d’un nouveau conteneur PostgreSQL
+            echo '[INFO - Étape 6] Démarrage du nouveau conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
             docker run -d --name $POSTGRES_CONTAINER_NAME \
               --network $NETWORK \
               -e POSTGRES_USER=$DB_USERNAME \
@@ -106,10 +124,23 @@ jobs:
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13
 
-            # Vérifier l'état du conteneur
-            echo 'Vérification de l\'état du conteneur PostgreSQL :'
-            docker ps --filter \"name=$POSTGRES_CONTAINER_NAME\"
-          " | tee -a backend/logs/backend_deploy.log
+            # Vérification de l’état du conteneur PostgreSQL
+            echo '[INFO - Étape 6] Vérification de l’état du conteneur...' | tee -a $LOG_FILE
+            docker ps --filter \"name=$POSTGRES_CONTAINER_NAME\" | tee -a $LOG_FILE
+
+            # Pause pour s’assurer que PostgreSQL démarre correctement
+            echo '[INFO - Étape 6] Attente de 10 secondes pour la disponibilité de PostgreSQL...' | tee -a $LOG_FILE
+            sleep 10
+
+            # Vérification finale de l'état de PostgreSQL
+            if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
+              echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
+            else
+              echo '[ERROR - Étape 6] PostgreSQL n’est pas prêt après le délai d’attente.' | tee -a $LOG_FILE
+              exit 1
+            fi
+          " | tee -a $LOG_FILE
+
 
       # Étape 6.1 - Nettoyer les anciens backups
       - name: 6.1 - Nettoyer les anciens backups (Prod uniquement)
@@ -137,15 +168,17 @@ jobs:
               DROP ROLE IF EXISTS $DB_USERNAME;
               CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
               GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
-            \"
+            \" || (echo 'Erreur : Impossible de créer la base de données ou l’utilisateur' && exit 1)
           " | tee -a backend/logs/backend_deploy.log
 
-      # Étape 8 - Déployer le conteneur Backend
       - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker stop $CONTAINER_NAME || true &&
-            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker rm $CONTAINER_NAME || true &&
+            # Arrêter et supprimer l'ancien conteneur
+            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker stop $CONTAINER_NAME || true
+            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker rm $CONTAINER_NAME || true
+
+            # Déployer le nouveau conteneur Backend
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
               -e DATABASE_URL=\"$DATABASE_URL\" \
@@ -155,8 +188,24 @@ jobs:
               -w /app \
               -p $BACKEND_PORT:7000 \
               back_node:latest
-          " | tee -a backend/logs/backend_deploy.log
+
+            # Vérification du conteneur Backend
+            echo 'Vérification de l\'état du conteneur Backend...'
+            docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
+
+            # Vérifier si le Backend est en ligne
+            echo 'Attente de 5 secondes pour vérifier le démarrage du conteneur Backend...'
+            sleep 5
+            if ! curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
+              echo 'Erreur : Le Backend n\'est pas opérationnel.' | tee -a $LOG_FILE
+              exit 1
+            fi
+          " | tee -a $LOG_FILE
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
+
+      # Étape 10 - Nettoyage des fichiers temporaires
+      - name: Nettoyer les fichiers temporaires
+        run: rm -f /tmp/git_id_rsa
