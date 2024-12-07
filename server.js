@@ -4,31 +4,29 @@ const cors = require('cors');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const { PrismaClient } = require('@prisma/client');
-const config = require('./config/config'); // Importer la configuration centralisée
 
-// Charger les variables d'environnement
+// Charger les variables d'environnement (injectées depuis GitHub)
 require('dotenv').config();
 const app = express();
-const PORT = config.port;
+const PORT = process.env.BACKEND_PORT || 7001; // Valeur par défaut si la variable n'existe pas
 
 // Initialisation de Prisma avec la configuration centralisée
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: config.database.url,
+      url: process.env.DATABASE_URL, // Utilisation directe de DATABASE_URL injectée
     },
   },
 });
 
 // Middleware
-app.use(cors(config.cors.options)); // Utilisation de la configuration CORS centralisée
+app.use(cors()); // Ajoutez une configuration ici si nécessaire
 app.use(express.json());
 
 // Endpoint de santé
 app.get('/health', async (req, res) => {
   try {
-    // Vérifier la connexion à la base de données
-    await prisma.$queryRaw`SELECT 1`; // Simple requête pour valider la connexion
+    await prisma.$queryRaw`SELECT 1`; // Vérification rapide de la connexion à la base de données
     res.status(200).send('OK');
   } catch (error) {
     console.error('Erreur de santé :', error);
@@ -44,17 +42,3 @@ app.use('/api/auth', authRoutes);
 app.listen(PORT, () => {
   console.log(`Le serveur est en cours d'exécution sur le port ${PORT}`);
 });
-
-// Tester la connexion avec Prisma
-async function testDatabaseConnection() {
-  try {
-    await prisma.$connect();
-    console.log('Connexion à la base de données réussie avec Prisma.');
-  } catch (error) {
-    console.error('Impossible de se connecter à la base de données :', error);
-  } finally {
-    await prisma.$disconnect(); // Se déconnecter après le test
-  }
-}
-
-testDatabaseConnection();

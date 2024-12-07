@@ -201,6 +201,7 @@ jobs:
           echo 'CONTAINER_NAME='$CONTAINER_NAME
           echo 'DOCKER_NAME='$DOCKER_NAME
           echo 'MOUNT_PATH='$MOUNT_PATH
+          echo 'BACKEND_PORT='$BACKEND_PORT
 
           # Vérification des logs
           echo '[INFO] Création du répertoire backend/logs si inexistant...' | tee -a $LOG_FILE
