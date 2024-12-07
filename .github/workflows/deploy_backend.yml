@@ -211,7 +211,7 @@ jobs:
             $DOCKER_NAME || (echo '[ERROR] Échec du démarrage du conteneur backend.' && exit 1)
 
             # Vérification de l'état du conteneur Backend
-            echo '[INFO] Vérification de l\'état du conteneur Backend...' | tee -a $LOG_FILE
+            echo '[INFO] Vérification état du conteneur Backend...' | tee -a $LOG_FILE
             docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
 
             # Attente pour s’assurer que le backend démarre correctement
@@ -219,7 +219,7 @@ jobs:
             sleep 10
 
             # Tester l'endpoint /health
-            echo '[INFO] Test de l\'endpoint /health...' | tee -a $LOG_FILE
+            echo '[INFO] Test endpoint /health...' | tee -a $LOG_FILE
             if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
               echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
             else
