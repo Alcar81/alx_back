@@ -186,7 +186,7 @@ jobs:
             echo '[SUCCESS - Étape 7] Base de données et utilisateur créés avec succès.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
 
-      # Étape 8 - Déployer le conteneur Backend 
+      # Étape 8 - Déployer le conteneur Backend
       - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
