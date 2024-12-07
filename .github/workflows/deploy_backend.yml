@@ -192,7 +192,18 @@ jobs:
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
           echo '[INFO] Préparation du backend...' | tee -a $LOG_FILE
 
-          # Créer le répertoire de logs s'il n'existe pas
+          # Valider les variables
+          echo '[INFO] Validation des variables d'environnement :'
+          echo 'DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME'
+          echo 'NODE_ENV='$ENV
+          echo 'JWT_SECRET='$JWT_SECRET
+          echo 'NETWORK='$NETWORK
+          echo 'CONTAINER_NAME='$CONTAINER_NAME
+          echo 'DOCKER_NAME='$DOCKER_NAME
+          echo 'MOUNT_PATH='$MOUNT_PATH
+
+          # Vérification des logs
+          echo '[INFO] Création du répertoire backend/logs si inexistant...' | tee -a $LOG_FILE
           mkdir -p backend/logs || (echo '[ERROR] Impossible de créer le répertoire backend/logs' && exit 1)
 
           # Arrêter et supprimer l'ancien conteneur
