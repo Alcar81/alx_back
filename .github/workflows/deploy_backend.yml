@@ -206,7 +206,7 @@ jobs:
               $DOCKER_NAME
 
             # Vérification du conteneur Backend
-            echo '[INFO] Vérification de l\'état du conteneur Backend...' | tee -a $LOG_FILE
+            echo '[INFO] Vérification de état du conteneur Backend...' | tee -a $LOG_FILE
             docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
 
             # Attente pour s’assurer que le backend démarre correctement
