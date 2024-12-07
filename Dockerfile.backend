@@ -1,25 +1,25 @@
 # dockerfile.backend
 
-# Utiliser une image légère Node.js Alpine comme base
-FROM node:18-alpine
+# Utiliser une image Node.js 20 Alpine
+FROM node:20-alpine
 
-# Installer les dépendances système nécessaires pour certains modules Node.js et bash
+# Installer les dépendances système nécessaires
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
     libpq \
-    file \
-    bash
+    bash \
+    file
 
-# Définir le répertoire de travail dans le conteneur
+# Définir le répertoire de travail
 WORKDIR /app
 
-# Copier le fichier package.json et package-lock.json dans le conteneur
+# Copier les fichiers package.json pour installer les dépendances
 COPY package*.json ./
 
-# Installer les dépendances du backend
-RUN npm install --production
+# Installer les dépendances avec correction des vulnérabilités
+RUN npm install --production && npm audit fix
 
 # Installer Prisma et générer le client
 RUN npm install prisma @prisma/client pg
@@ -29,14 +29,17 @@ RUN npx prisma generate
 # Recompiler bcrypt pour l'environnement Docker
 RUN npm rebuild bcrypt
 
-# Copier tout le code source dans le répertoire de travail
+# Copier tout le code source
 COPY . .
 
-# Vérifier si server.js existe et est exécutable
+# Vérifier si server.js existe
 RUN ls -l /app/server.js && file /app/server.js
 
-# Exposer le port sur lequel le backend va écouter
+# Nettoyer le cache npm pour réduire la taille de l'image
+RUN npm cache clean --force
+
+# Exposer le port sur lequel le backend écoute
 EXPOSE 7000
 
-# Lancer l'application (ici on utilise server.js directement)
+# Lancer le backend
 CMD ["node", "server.js"]
