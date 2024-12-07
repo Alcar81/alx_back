@@ -227,8 +227,8 @@ jobs:
           docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
 
           # Attente pour s’assurer que le backend démarre correctement
-          echo '[INFO] Attente de 30 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
-          sleep 30
+          echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
+          sleep 10
 
           # Tester l'endpoint /health
           echo '[INFO] Test endpoint /health...' | tee -a $LOG_FILE
