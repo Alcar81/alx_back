@@ -33,8 +33,8 @@ jobs:
       POSTGRES_CONTAINER_NAME: ${{ vars.DB_POST }}_${{ vars.ENV }}
       POSTGRES_VOLUME: ${{ vars.DB_POST }}_${{ vars.DATA }}_${{ vars.ENV }}
       CONTAINER_NAME: ${{ vars.BACK }}_${{ vars.NODE }}_${{ vars.ENV }}
-      MOUNT_PATH: ${{ secrets.MOUNT_PATH }}
-      DATABASE_URL: "postgresql://${{ vars.USR_DB }}_${{ vars.ENV }}:${{ secrets.DB_PASSWORD }}@${{ vars.DB_POST }}_${{ vars.ENV }}:${{ secrets.DB_PORT_INT }}/${{ vars.DB_POST }}_${{ vars.ENV }}"
+      MOUNT_PATH: ${{ secrets.MOUNT_PATH }}      
+      DATABASE_URL: "postgresql://$DB_USERNAME:${{ secrets.DB_PASSWORD }}@$DB_USERNAME:$DB_PORT_INT/$DB_USERNAME"
       BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
 
     steps:
@@ -45,6 +45,7 @@ jobs:
           echo "Nom de la base de données : $DB_NAME"
           echo "Hôte de la base de données : $DB_HOST"
           echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
+          echo "Nom de l'utilisateur : $DB_USERNAME"
           echo "URL de connexion à la base : $DATABASE_URL"
 
       # Étape 2 - Récupérer le dépôt Git
