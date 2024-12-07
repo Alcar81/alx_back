@@ -59,9 +59,11 @@ jobs:
         with:
           node-version: 20
 
-      # Étape 3 - Install dependencies
-      - name: 3 - Install dependencies
-        run: npm install
+      # Étape 3 - Installer les dépendances et corriger les vulnérabilités
+      - name: Installer les dépendances et corriger les vulnérabilités
+        run: |
+          npm install --production
+          npm audit fix
 
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
