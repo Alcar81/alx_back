@@ -228,7 +228,7 @@ jobs:
 
           # Attente pour s’assurer que le backend démarre correctement
           echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
-          sleep 10
+          sleep 30
 
           # Tester l'endpoint /health
           echo '[INFO] Test endpoint /health...' | tee -a $LOG_FILE
