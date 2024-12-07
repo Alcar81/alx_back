@@ -20,8 +20,9 @@ jobs:
 
     env:
       ENV: ${{ vars.ENV }}
-      DB_PORT_INT: ${{ secrets.DB_PORT_INT }}
-      DB_PORT_EXT: ${{ secrets.DB_PORT_EXT }}
+      DB_PORT_INT: ${{ vars.DB_PORT_INT }}
+      DB_PORT_EXT: ${{ vars.DB_PORT_EXT }}
+      BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
       DB_NAME: ${{ vars.DB_POST }}_${{ vars.ENV }}
       DB_HOST: ${{ vars.DB_POST }}_${{ vars.ENV }}
       NETWORK: ${{ vars.NET }}_${{ vars.ENV }}
@@ -34,8 +35,8 @@ jobs:
       POSTGRES_VOLUME: ${{ vars.DB_POST }}_${{ vars.DATA }}_${{ vars.ENV }}
       CONTAINER_NAME: ${{ vars.BACK }}_${{ vars.NODE }}_${{ vars.ENV }}
       MOUNT_PATH: ${{ secrets.MOUNT_PATH }}      
-      DATABASE_URL: "postgresql://$DB_USERNAME:${{ secrets.DB_PASSWORD }}@$DB_USERNAME:$DB_PORT_INT/$DB_USERNAME"
-      BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
+      DATABASE_URL: "postgresql://$DB_USERNAME:${{ secrets.DB_PASSWORD }}@$DB_HOST:$DB_PORT_INT/$DB_NAME"
+      
 
     steps:
       # Étape 1 - Afficher les variables générées
