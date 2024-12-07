@@ -210,23 +210,23 @@ jobs:
             -p $BACKEND_PORT:7000 \
             $DOCKER_NAME || (echo '[ERROR] Échec du démarrage du conteneur backend.' && exit 1)
 
-          # Vérification de l'état du conteneur Backend
-          echo '[INFO] Vérification de l\'état du conteneur Backend...' | tee -a $LOG_FILE
-          docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
+            # Vérification de l'état du conteneur Backend
+            echo '[INFO] Vérification de l\'état du conteneur Backend...' | tee -a $LOG_FILE
+            docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
 
-          # Attente pour s’assurer que le backend démarre correctement
-          echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
-          sleep 10
+            # Attente pour s’assurer que le backend démarre correctement
+            echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
+            sleep 10
 
-          # Tester l'endpoint /health
-          echo '[INFO] Test de l\'endpoint /health...' | tee -a $LOG_FILE
-          if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
-            echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
-          else
-            echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
-            exit 1
-          fi
-        " | tee -a $LOG_FILE
+            # Tester l'endpoint /health
+            echo '[INFO] Test de l\'endpoint /health...' | tee -a $LOG_FILE
+            if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
+              echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
+            else
+              echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
+              exit 1
+            fi
+          " | tee -a $LOG_FILE
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
