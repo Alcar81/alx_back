@@ -24,7 +24,19 @@ const prisma = new PrismaClient({
 app.use(cors(config.cors.options)); // Utilisation de la configuration CORS centralisée
 app.use(express.json());
 
-// Routes
+// Endpoint de santé
+app.get('/health', async (req, res) => {
+  try {
+    // Vérifier la connexion à la base de données
+    await prisma.$queryRaw`SELECT 1`; // Simple requête pour valider la connexion
+    res.status(200).send('OK');
+  } catch (error) {
+    console.error('Erreur de santé :', error);
+    res.status(500).send('Erreur interne');
+  }
+});
+
+// Routes principales
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 
