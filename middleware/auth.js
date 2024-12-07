@@ -1,4 +1,4 @@
-// C:\projetChatGPT\backend\middleware\auth.js
+// \backend\middleware\auth.js
 
 const jwt = require('jsonwebtoken');
 

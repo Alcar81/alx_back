@@ -1,4 +1,4 @@
-// C:\projetChatGPT\backend\models\index.js
+// backend\models\index.js
 
 'use strict';
 const fs = require('fs');

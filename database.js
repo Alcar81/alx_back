@@ -1,4 +1,4 @@
-// c:\projetChatGPT\backend\database.js
+// \backend\database.js
 
 const { PrismaClient } = require('@prisma/client');
 

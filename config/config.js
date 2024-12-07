@@ -1,3 +1,4 @@
+// backend/config/config.js
 require('dotenv').config(); // Charger les variables depuis .env
 
 const config = {

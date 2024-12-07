@@ -3,13 +3,14 @@
 # Utiliser une image légère Node.js Alpine comme base
 FROM node:18-alpine
 
-# Installer les dépendances système nécessaires pour certains modules Node.js
+# Installer les dépendances système nécessaires pour certains modules Node.js et bash
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
     libpq \
-    file
+    file \
+    bash
 
 # Définir le répertoire de travail dans le conteneur
 WORKDIR /app

@@ -1,4 +1,4 @@
-// C:\projetChatGPT\backend\models\User.js
+// backend\models\User.js
 
 'use strict';
 const { Model } = require('sequelize');
