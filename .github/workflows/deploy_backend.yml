@@ -22,7 +22,7 @@ jobs:
       ENV: ${{ vars.ENV }}
       DB_PORT_INT: ${{ vars.DB_PORT_INT }}
       DB_PORT_EXT: ${{ vars.DB_PORT_EXT }}
-      BACKEND_PORT: ${{ secrets.BACKEND_PORT }}
+      BACKEND_PORT: ${{ vars.BACKEND_PORT }}
       DB_NAME: ${{ vars.DB_POST }}_${{ vars.ENV }}
       DB_HOST: ${{ vars.DB_POST }}_${{ vars.ENV }}
       NETWORK: ${{ vars.NET }}_${{ vars.ENV }}
