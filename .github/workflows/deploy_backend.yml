@@ -188,40 +188,40 @@ jobs:
 
       # Étape 8 - Déployer le conteneur Backend
       - name: 8 - Déployer le conteneur Backend
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            # Arrêter et supprimer l'ancien conteneur
-            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker stop $CONTAINER_NAME || true
-            docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker rm $CONTAINER_NAME || true
+      run: |
+        ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+          # Arrêter et supprimer l'ancien conteneur
+          docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker stop $CONTAINER_NAME || true
+          docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME && docker rm $CONTAINER_NAME || true
 
-            # Déployer le nouveau conteneur Backend
-            docker run -d --name $CONTAINER_NAME \
-              --network $NETWORK \
-              -e DATABASE_URL=\"$DATABASE_URL\" \
-              -e NODE_ENV=$ENV \
-              -e JWT_SECRET=$JWT_SECRET \
-              -v $MOUNT_PATH:/app \
-              -w /app \
-              -p $BACKEND_PORT:7000 \
-              $DOCKER_NAME
+          # Déployer le nouveau conteneur Backend
+          docker run -d --name $CONTAINER_NAME \
+            --network $NETWORK \
+            -e DATABASE_URL=\"$DATABASE_URL\" \
+            -e NODE_ENV=$ENV \
+            -e JWT_SECRET=$JWT_SECRET \
+            -v $MOUNT_PATH:/app \
+            -w /app \
+            -p $BACKEND_PORT:7000 \
+            $DOCKER_NAME
 
-            # Vérification du conteneur Backend
-            echo '[INFO] Vérification de l'état du conteneur Backend...' | tee -a $LOG_FILE
-            docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
+          # Vérification du conteneur Backend
+          echo '[INFO] Vérification de l'état du conteneur Backend...' | tee -a $LOG_FILE
+          docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
 
-            # Attente pour s’assurer que le backend démarre correctement
-            echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
-            sleep 10
+          # Attente pour s’assurer que le backend démarre correctement
+          echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
+          sleep 10
 
-            # Tester l'endpoint /health
-            echo '[INFO] Test de l'\"'endpoint /health...' | tee -a $LOG_FILE
-            if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
-              echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
-            else
-              echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
-              exit 1
-            fi
-          " | tee -a $LOG_FILE
+          # Tester l'endpoint /health
+          echo '[INFO] Test de l'\"'endpoint /health...' | tee -a $LOG_FILE
+          if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
+            echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
+          else
+            echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
+            exit 1
+          fi
+        " | tee -a $LOG_FILE
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
