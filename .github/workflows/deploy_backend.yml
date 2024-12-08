@@ -243,9 +243,10 @@ jobs:
             echo \"POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME\"
 
             # 7.4.2 - Vérification de l'état initial de PostgreSQL
-            echo \"[INFO - 7.4.2] Vérification de l'état initial de PostgreSQL...\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
+            echo "[INFO - 7.4.2] Vérification de l'état initial de PostgreSQL..."
+            echo "[DEBUG] DB_USERNAME: $DB_USERNAME"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -c "\l"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -c "\du"
 
             # 7.4.3 - Création du fichier SQL pour initialiser la base de données
             echo \"[INFO - 7.4.3] Création du fichier SQL init_database.sql...\"
