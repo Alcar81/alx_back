@@ -261,19 +261,19 @@ jobs:
 
               # 7.4.2 - Vérification de l'état initial de PostgreSQL
               echo "[INFO - 7.4.2] Vérification de l'état initial de PostgreSQL..."
-              docker exec -i \$POSTGRES_CONTAINER_NAME psql -U \$DB_USERNAME -c "\l" || {
+              echo "[DEBUG] DB_USERNAME: $DB_USERNAME"
+
+              # Lister les bases de données
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d $DB_NAME -c "\l" || {
                 echo "[ERROR] Impossible de lister les bases de données. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
               }
 
-              docker exec -i \$POSTGRES_CONTAINER_NAME psql -U \$DB_USERNAME -c "\du" || {
+              # Lister les rôles
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d $DB_NAME -c "\du" || {
                 echo "[ERROR] Impossible de lister les rôles. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
               }
-            EOF
-
-            # Étape finale - Confirmation de la réussite
-            echo "[SUCCESS] Étape 7 terminée avec succès."
     
       - name: 8 - Déployer le conteneur Backend
         run: |
