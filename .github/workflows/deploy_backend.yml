@@ -29,7 +29,7 @@ jobs:
       POSTGRES_VOLUME: ${{ vars.DB_POST }}_${{ vars.DATA }}_${{ vars.ENV }}
       CONTAINER_NAME: ${{ vars.BACK }}_${{ vars.NODE }}_${{ vars.ENV }}
       MOUNT_PATH: ${{ secrets.MOUNT_PATH }}
-      DATABASE_URL: "postgresql://$DB_USERNAME:${{ secrets.DB_PASSWORD }}@$DB_HOST:$DB_PORT_INT/$DB_NAME"
+      DATABASE_URL: "postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME"
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       DOCKER_NAME: back_node:latest
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -42,22 +42,18 @@ jobs:
           chmod -R 777 backend/logs
           echo "=== Déploiement Backend : $(date) ===" > $LOG_FILE   
 
-      # Étape 1 - Afficher les variables générées
+      # Étape 1.1 - Afficher les variables générées et valider leur présence
       - name: 1.1 - Afficher les variables générées
         run: |
-          echo "Environnement : $ENV" | tee -a $LOG_FILE
-          echo "Nom de la base de données : $DB_NAME" | tee -a $LOG_FILE
-          echo "Nom de l'usager BD' : $DB_USERNAME" | tee -a $LOG_FILE
-          echo "Vérification du mot de passe : $DB_PASSWORD" | tee -a $LOG_FILE
-          echo "Hôte de la base de données : $DB_HOST" | tee -a $LOG_FILE
-          echo "Nom de l'url de la base de données : $DATABASE_URL" | tee -a $LOG_FILE
-          echo "Nom du répertoire :$MOUNT_PATH" | tee -a $LOG_FILE
-          echo "Nom du container :$CONTAINER_NAME" | tee -a $LOG_FILE
-          echo "Port interne :$DB_PORT_INT" | tee -a $LOG_FILE
-          echo "Port externe :$DB_PORT_EXT" | tee -a $LOG_FILE
-          echo "Port backend :$BACKEND_PORT" | tee -a $LOG_FILE
-          echo "Réseau du container :$NETWORK" | tee -a $LOG_FILE
-          echo "JWT Secret :$JWT_SECRET" | tee -a $LOG_FILE
+          echo "[INFO] Affichage des variables générées : " | tee -a $LOG_FILE
+          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
+          for VAR in "${MANDATORY_VARS[@]}"; do
+            if [ -z "${!VAR}" ]; then
+              echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
+              exit 1
+            fi
+            echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
+          done
 
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
@@ -175,28 +171,40 @@ jobs:
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
           echo '[INFO - Étape 7] Configuration de la base de données PostgreSQL...' | tee -a $LOG_FILE
 
-          # Vérifier si le conteneur PostgreSQL est dans le bon réseau
+          # 7.1 - Vérification de la connexion réseau du conteneur PostgreSQL
+          echo '[INFO - Étape 7.1] Vérification de la connexion réseau du conteneur PostgreSQL...' | tee -a $LOG_FILE
           if ! docker network inspect $NETWORK | grep -q $POSTGRES_CONTAINER_NAME; then
             echo '[ERROR] Le conteneur PostgreSQL n’est pas connecté au réseau $NETWORK.' | tee -a $LOG_FILE
             exit 1
           fi
+          echo '[INFO] Le conteneur PostgreSQL est connecté au réseau $NETWORK.' | tee -a $LOG_FILE
 
-          # Suppression de la base de données si elle existe
-          echo '[INFO] Suppression de la base de données existante...' | tee -a $LOG_FILE
+          # 7.2 - Vérification du rôle 'postgres'
+          echo '[INFO - Étape 7.2] Vérification de l’existence du rôle "postgres"...' | tee -a $LOG_FILE
+          if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" | grep -q \"postgres\"; then
+            echo '[ERROR] Le rôle "postgres" n’existe pas dans PostgreSQL.' | tee -a $LOG_FILE
+            exit 1
+          fi
+          echo '[INFO] Le rôle "postgres" existe.' | tee -a $LOG_FILE
+
+          # 7.3 - Suppression de la base de données existante
+          echo '[INFO - Étape 7.3] Suppression de la base de données existante...' | tee -a $LOG_FILE
           docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP DATABASE IF EXISTS $DB_NAME;\" || {
             echo '[ERROR] Impossible de supprimer la base de données.' | tee -a $LOG_FILE
             exit 1
           }
+          echo '[INFO] La base de données $DB_NAME a été supprimée avec succès.' | tee -a $LOG_FILE
 
-          # Suppression du rôle si nécessaire
-          echo '[INFO] Suppression du rôle existant...' | tee -a $LOG_FILE
+          # 7.4 - Suppression du rôle existant
+          echo '[INFO - Étape 7.4] Suppression du rôle existant...' | tee -a $LOG_FILE
           docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP ROLE IF EXISTS $DB_USERNAME;\" || {
             echo '[ERROR] Impossible de supprimer le rôle.' | tee -a $LOG_FILE
             exit 1
           }
+          echo '[INFO] Le rôle $DB_USERNAME a été supprimé avec succès.' | tee -a $LOG_FILE
 
-          # Création du rôle et de la base de données
-          echo '[INFO] Création du rôle et de la base de données...' | tee -a $LOG_FILE
+          # 7.5 - Création du rôle et de la base de données
+          echo '[INFO - Étape 7.5] Création du rôle et de la base de données...' | tee -a $LOG_FILE
           docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" || {
             echo '[ERROR] Impossible de créer le rôle.' | tee -a $LOG_FILE
             exit 1
@@ -205,16 +213,19 @@ jobs:
             echo '[ERROR] Impossible de créer la base de données.' | tee -a $LOG_FILE
             exit 1
           }
+          echo '[INFO] Le rôle $DB_USERNAME et la base de données $DB_NAME ont été créés avec succès.' | tee -a $LOG_FILE
 
-          # Attribution des privilèges
-          echo '[INFO] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
+          # 7.6 - Attribution des privilèges
+          echo '[INFO - Étape 7.6] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
           docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || {
             echo '[ERROR] Impossible d’attribuer les privilèges.' | tee -a $LOG_FILE
             exit 1
           }
+          echo '[INFO] Les privilèges ont été attribués avec succès.' | tee -a $LOG_FILE
 
+          # Fin de l'étape
           echo '[SUCCESS - Étape 7] Base de données et utilisateur configurés avec succès.' | tee -a $LOG_FILE
-           " | tee -a $LOG_FILE     
+          " | tee -a $LOG_FILE 
        
     
       # Étape 8 - Déployer le conteneur Backend
@@ -228,13 +239,13 @@ jobs:
           # 8.2 - Vérification des variables d'environnement
           echo '[INFO - Étape 8.2] Vérification des variables d'environnement...' | tee -a $LOG_FILE
 
-          MANDATORY_VARS=(DB_USERNAME DB_PASSWORD DB_NAME DB_HOST DB_PORT_INT DB_PORT_EXT JWT_SECRET NODE_ENV BACKEND_PORT NETWORK MOUNT_PATH)
-          for VAR in \"${MANDATORY_VARS[@]}\"; do
-            if [ -z \"\${!VAR}\" ]; then
-              echo \"[ERROR] La variable $VAR est manquante ou vide.\" | tee -a $LOG_FILE
+          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
+          for VAR in "${MANDATORY_VARS[@]}"; do
+            if [ -z "${!VAR}" ]; then
+              echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
               exit 1
             fi
-            echo \"[INFO] $VAR=\${!VAR}\" | tee -a $LOG_FILE
+            echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
           done
 
           # Étape 8.3 - Vérification et gestion stricte du fichier .env
@@ -249,14 +260,9 @@ jobs:
 
           echo '[INFO] Création d’un nouveau fichier .env avec les valeurs mises à jour...' | tee -a $LOG_FILE
           cat <<EOF > $MOUNT_PATH/.env
-          DB_USERNAME=$DB_USERNAME
-          DB_PASSWORD=$DB_PASSWORD
-          DB_NAME=$DB_NAME
-          DB_HOST=$DB_HOST
-          DB_PORT_INT=$DB_PORT_INT
-          DB_PORT_EXT=$DB_PORT_EXT
-          JWT_SECRET=$JWT_SECRET
+          DATABASE_URL=$DATABASE_URL
           NODE_ENV=$NODE_ENV
+          JWT_SECRET=$JWT_SECRET
           SERVER_PORT=$BACKEND_PORT
           EOF
 
