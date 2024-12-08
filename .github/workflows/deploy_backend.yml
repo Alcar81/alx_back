@@ -189,13 +189,13 @@ jobs:
 
           # 7.3 - Pause pour attendre que le conteneur PostgreSQL soit prêt
           echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
-          sleep 10
+          sleep 20
 
           # 7.4 - Connexion SSH et exécution des commandes pour configurer la base et les rôles
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             set -e
             echo '==================================='
-            echo '[INFO] Connexion SSH réussie.'
+            echo '[INFO] 7.4 Connexion SSH réussie.'
 
             # 7.4.1 - Création d'un fichier SQL contenant toutes les commandes nécessaires
             echo '[INFO - 7.4.1] Création du fichier SQL init_database.sql...'
