@@ -163,37 +163,58 @@ jobs:
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            # Supprimer la base de données si elle existe
-            echo '[INFO - Étape 7] Suppression de la base de données si elle existe...' | tee -a $LOG_FILE
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP DATABASE IF EXISTS $DB_NAME;\" || (echo 'Erreur : Impossible de supprimer la base de données.' && exit 1)
+          echo '[INFO - Étape 7] Configuration de la base de données PostgreSQL...' | tee -a $LOG_FILE
 
-            # Supprimer le rôle si nécessaire
-            echo '[INFO - Étape 7] Suppression du rôle si nécessaire...' | tee -a $LOG_FILE
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP ROLE IF EXISTS $DB_USERNAME;\" || (echo 'Erreur : Impossible de supprimer le rôle.' && exit 1)
+          # Vérifier si le conteneur PostgreSQL est dans le bon réseau
+          if ! docker network inspect $NETWORK | grep -q $POSTGRES_CONTAINER_NAME; then
+            echo '[ERROR] Le conteneur PostgreSQL n’est pas connecté au réseau $NETWORK.' | tee -a $LOG_FILE
+            exit 1
+          fi
 
-            # Créer le rôle
-            echo '[INFO - Étape 7] Création du rôle...' | tee -a $LOG_FILE
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" || (echo 'Erreur : Impossible de créer le rôle.' && exit 1)
+          # Suppression de la base de données si elle existe
+          echo '[INFO] Suppression de la base de données existante...' | tee -a $LOG_FILE
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP DATABASE IF EXISTS $DB_NAME;\" || {
+            echo '[ERROR] Impossible de supprimer la base de données.' | tee -a $LOG_FILE
+            exit 1
+          }
 
-            # Créer la base de données
-            echo '[INFO - Étape 7] Création de la base de données...' | tee -a $LOG_FILE
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" || (echo 'Erreur : Impossible de créer la base de données.' && exit 1)
+          # Suppression du rôle si nécessaire
+          echo '[INFO] Suppression du rôle existant...' | tee -a $LOG_FILE
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP ROLE IF EXISTS $DB_USERNAME;\" || {
+            echo '[ERROR] Impossible de supprimer le rôle.' | tee -a $LOG_FILE
+            exit 1
+          }
 
-            # Accorder des privilèges
-            echo '[INFO - Étape 7] Attribution des privilèges...' | tee -a $LOG_FILE
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || (echo 'Erreur : Impossible d’attribuer les privilèges.' && exit 1)
+          # Création du rôle et de la base de données
+          echo '[INFO] Création du rôle et de la base de données...' | tee -a $LOG_FILE
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" || {
+            echo '[ERROR] Impossible de créer le rôle.' | tee -a $LOG_FILE
+            exit 1
+          }
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" || {
+            echo '[ERROR] Impossible de créer la base de données.' | tee -a $LOG_FILE
+            exit 1
+          }
 
-            echo '[SUCCESS - Étape 7] Base de données et utilisateur créés avec succès.' | tee -a $LOG_FILE
-          " | tee -a $LOG_FILE      
+          # Attribution des privilèges
+          echo '[INFO] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || {
+            echo '[ERROR] Impossible d’attribuer les privilèges.' | tee -a $LOG_FILE
+            exit 1
+          }
+
+          echo '[SUCCESS - Étape 7] Base de données et utilisateur configurés avec succès.' | tee -a $LOG_FILE
+           " | tee -a $LOG_FILE     
        
     
       # Étape 8 - Déployer le conteneur Backend
       - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-          echo '[INFO - Étape 8.1] Début de la préparation du backend...' | tee -a $LOG_FILE
+          # 8.1 - Début du déploiement
+          echo '[INFO - Étape 8.1] Début du déploiement du backend...' | tee -a $LOG_FILE
 
-          # Validation des variables d'environnement
+          # 8.2 - Validation des variables d'environnement
           echo '[INFO - Étape 8.2] Validation des variables d'environnement :' | tee -a $LOG_FILE
           echo \"DATABASE_URL=***$DB_HOST:$DB_PORT_INT/$DB_NAME\" | tee -a $LOG_FILE
           echo \"NODE_ENV=$ENV\" | tee -a $LOG_FILE
@@ -204,23 +225,38 @@ jobs:
           echo \"MOUNT_PATH=$MOUNT_PATH\" | tee -a $LOG_FILE
           echo \"BACKEND_PORT=$BACKEND_PORT\" | tee -a $LOG_FILE
 
-          # Vérifier et gérer le fichier .env dans le volume monté
-          echo '[INFO - Étape 8.3] Vérification du fichier .env dans le volume monté...' | tee -a $LOG_FILE
-          if [ ! -f $MOUNT_PATH/.env ]; then
-            echo '[INFO] Aucun fichier .env trouvé. Création...' | tee -a $LOG_FILE
-            cat <<EOF > $MOUNT_PATH/.env
-            DATABASE_URL=***$DB_HOST:$DB_PORT_INT/$DB_NAME
-            NODE_ENV=$ENV
-            JWT_SECRET=$JWT_SECRET
-            BACKEND_PORT=$BACKEND_PORT
-            EOF
-            echo '[INFO] Fichier .env créé avec succès.' | tee -a $LOG_FILE
-          else
-            echo '[INFO] Fichier .env trouvé. Contenu :' | tee -a $LOG_FILE
-            cat $MOUNT_PATH/.env | tee -a $LOG_FILE
+          # Étape 8.3 - Vérification et gestion stricte du fichier .env
+          echo '[INFO - Étape 8.3] Vérification et gestion du fichier .env...' | tee -a $LOG_FILE
+          if [ -f \"$MOUNT_PATH/.env\" ]; then
+            echo '[INFO] Fichier .env existant détecté. Suppression pour éviter les conflits...' | tee -a $LOG_FILE
+            rm -f \"$MOUNT_PATH/.env\" || {
+              echo '[ERROR] Impossible de supprimer le fichier .env existant.' | tee -a $LOG_FILE
+              exit 1
+            }
           fi
 
-          # Arrêter et supprimer l'ancien conteneur si nécessaire
+          echo '[INFO] Création d’un nouveau fichier .env avec les valeurs mises à jour...' | tee -a $LOG_FILE
+          cat <<EOF > $MOUNT_PATH/.env
+          DB_USERNAME=$DB_USERNAME
+          DB_PASSWORD=$DB_PASSWORD
+          DB_NAME=$DB_NAME
+          DB_HOST=$DB_HOST
+          DB_PORT_INT=$DB_PORT_INT
+          DB_PORT_EXT=$DB_PORT_EXT
+          JWT_SECRET=$JWT_SECRET
+          NODE_ENV=$ENV
+          SERVER_PORT=$BACKEND_PORT
+          EOF
+
+          if [ -f \"$MOUNT_PATH/.env\" ]; then
+            echo '[INFO] Nouveau fichier .env créé avec succès. Contenu :' | tee -a $LOG_FILE
+            cat \"$MOUNT_PATH/.env\" | tee -a $LOG_FILE
+          else
+            echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
+            exit 1
+          fi
+
+          # Étape 8.4 - Arrêter et supprimer l'ancien conteneur si nécessaire
           echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur (si existant)...' | tee -a $LOG_FILE
           if docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME; then
             echo '[INFO] Arrêt et suppression de l’ancien conteneur : $CONTAINER_NAME' | tee -a $LOG_FILE
@@ -230,7 +266,7 @@ jobs:
             echo '[INFO] Aucun conteneur existant à arrêter pour : $CONTAINER_NAME' | tee -a $LOG_FILE
           fi
 
-          # Lancer un nouveau conteneur backend
+          # Étape 8.5 - Lancer un nouveau conteneur backend
           echo '[INFO - Étape 8.5] Lancement du nouveau conteneur backend...' | tee -a $LOG_FILE
           docker run -d --name $CONTAINER_NAME \
             --network $NETWORK \
@@ -239,11 +275,11 @@ jobs:
             -p $BACKEND_PORT:$BACKEND_PORT \
             $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
 
-          # Pause pour permettre au conteneur de démarrer
+          # 8.6 - Pause pour permettre au conteneur de démarrer
           echo '[INFO - Étape 8.6] Attente de 20 secondes avant le test de santé...' | tee -a $LOG_FILE
           sleep 20
 
-          # Test de santé sur /health
+          # Étape 8.7 - Test de santé sur /health
           echo '[INFO - Étape 8.7] Test endpoint /health...' | tee -a $LOG_FILE
           if curl -s -o /dev/null -w \"%{http_code}\" http://localhost:$BACKEND_PORT/health | grep -q \"200\"; then
             echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
@@ -253,6 +289,7 @@ jobs:
             exit 1
           fi
 
+          # 8.8 - Fin du déploiement
           echo '[INFO - Étape 8.8] Déploiement du backend terminé avec succès.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
 
