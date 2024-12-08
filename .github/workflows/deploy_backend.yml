@@ -275,6 +275,9 @@ jobs:
                 exit 1
               }
     
+            # Étape finale - Confirmation de la réussite
+            echo "[SUCCESS] Étape 7 terminée avec succès."
+
       - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
