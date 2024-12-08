@@ -42,11 +42,16 @@ if [ "$(git status --porcelain)" ]; then
   exit 1
 fi
 
-# Passer à master, faire un pull et une réinitialisation de dev
-git checkout master || exit 1
-git pull origin master || exit 1
-git reset --hard origin/dev || exit 1
-git push origin master --force || exit 1
+# Passer à master, réinitialiser et écraser avec dev
+echo '[INFO] Déploiement : Passage à la branche master...' | tee -a $LOG_FILE
+git checkout master || { echo '[ERROR] Échec du checkout master.' | tee -a $LOG_FILE; exit 1; }
+
+echo '[INFO] Réinitialisation de master avec dev...' | tee -a $LOG_FILE
+git reset --hard origin/dev || { echo '[ERROR] Échec de la réinitialisation de master avec dev.' | tee -a $LOG_FILE; exit 1; }
+
+echo '[INFO] Poussée forcée vers la branche master...' | tee -a $LOG_FILE
+git push origin master --force || { echo '[ERROR] Échec de la poussée forcée vers master.' | tee -a $LOG_FILE; exit 1; }
+
 
 # Revenir sur dev pour continuer les travaux de développement
 git checkout dev || exit 1

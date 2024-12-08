@@ -247,26 +247,17 @@ jobs:
             echo \"[INFO] $VAR=\${!VAR}\" | tee -a $LOG_FILE
           done
 
-          # Étape 8.3 - Vérification stricte du fichier .env
-          echo '[INFO - Étape 8.3] Vérification et gestion du fichier .env...' | tee -a $LOG_FILE
-          if [ -f \"$MOUNT_PATH/.env\" ]; then
-            echo '[INFO] Fichier .env existant détecté. Suppression...' | tee -a $LOG_FILE
-            rm -f \"$MOUNT_PATH/.env\" || {
-              echo '[ERROR] Impossible de supprimer le fichier .env existant.' | tee -a $LOG_FILE
-              exit 1
-            }
-          fi
-
-          echo '[INFO] Création d’un nouveau fichier .env avec les valeurs mises à jour...' | tee -a $LOG_FILE
+          # Étape 8.3 - Création dynamique du fichier .env
+          echo '[INFO - Étape 8.3] Création dynamique du fichier .env...' | tee -a $LOG_FILE
           cat <<EOF > $MOUNT_PATH/.env
           DATABASE_URL=$DATABASE_URL
-          NODE_ENV=$NODE_ENV
+          NODE_ENV=$ENV
           JWT_SECRET=$JWT_SECRET
           SERVER_PORT=$BACKEND_PORT
           EOF
 
           if [ -f \"$MOUNT_PATH/.env\" ]; then
-            echo '[INFO] Nouveau fichier .env créé avec succès.' | tee -a $LOG_FILE
+            echo '[INFO] Fichier .env créé avec succès.' | tee -a $LOG_FILE
           else
             echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
             exit 1
