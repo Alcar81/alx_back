@@ -106,7 +106,7 @@ jobs:
               echo '[INFO] Sauvegarde effectuée : \$BACKUP_FILE' | tee -a $LOG_FILE
 
               # Nettoyage des anciens backups (plus de 7 jours)
-              echo '[INFO - Étape 6.1] Nettoyage des anciens backups...' | tee -a $LOG_FILE
+              echo '[INFO - Étape 6.2] Nettoyage des anciens backups...' | tee -a $LOG_FILE
               find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \; || {
                 echo '[WARNING] Échec du nettoyage des anciens backups.' | tee -a $LOG_FILE
               }
@@ -114,36 +114,36 @@ jobs:
               echo '[INFO] Pas de sauvegarde nécessaire pour cet environnement.' | tee -a $LOG_FILE
             fi
 
-            # 6.2 - Vérification et création du réseau Docker
+            # 6.3 - Vérification et création du réseau Docker
             if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
-              echo '[INFO - Étape 6.2] Création du réseau Docker : $NETWORK' | tee -a $LOG_FILE
+              echo '[INFO - Étape 6.3] Création du réseau Docker : $NETWORK' | tee -a $LOG_FILE
               docker network create $NETWORK
             else
               echo '[INFO] Réseau Docker déjà existant : $NETWORK' | tee -a $LOG_FILE
             fi
 
-            # 6.3 - Vérification et création du volume Docker
+            # 6.4 - Vérification et création du volume Docker
             if ! docker volume ls --filter \"name=^$POSTGRES_VOLUME\$\" --format '{{.Name}}' | grep -w $POSTGRES_VOLUME; then
-              echo '[INFO - Étape 6.3] Création du volume Docker : $POSTGRES_VOLUME' | tee -a $LOG_FILE
+              echo '[INFO - Étape 6.4] Création du volume Docker : $POSTGRES_VOLUME' | tee -a $LOG_FILE
               docker volume create $POSTGRES_VOLUME
             else
               echo '[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME' | tee -a $LOG_FILE
             fi
 
-            # 6.4 - Arrêt et suppression de l’ancien conteneur PostgreSQL
+            # 6.5 - Arrêt et suppression de l’ancien conteneur PostgreSQL
             if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
-              echo '[INFO - Étape 6.4] Suppression de l’ancien conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
+              echo '[INFO - Étape 6.5] Suppression de l’ancien conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
               docker stop $POSTGRES_CONTAINER_NAME
               docker rm $POSTGRES_CONTAINER_NAME
             else
               echo '[INFO] Aucun conteneur PostgreSQL existant à supprimer.' | tee -a $LOG_FILE
             fi
 
-            # 6.5 - Téléchargement de l’image PostgreSQL
-            echo '[INFO - Étape 6.5] Téléchargement de l’image PostgreSQL...' | tee -a $LOG_FILE
+            # 6.6 - Téléchargement de l’image PostgreSQL
+            echo '[INFO - Étape 6.6] Téléchargement de l’image PostgreSQL...' | tee -a $LOG_FILE
             docker pull postgres:13
 
-            # 6.6 - Démarrage du nouveau conteneur PostgreSQL
+            # 6.7 - Démarrage du nouveau conteneur PostgreSQL
             docker run -d --name $POSTGRES_CONTAINER_NAME \
               --network $NETWORK \
               -e POSTGRES_USER=$DB_USERNAME \
@@ -153,11 +153,11 @@ jobs:
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13
 
-            # 6.7 - Pause pour garantir le démarrage
-            echo '[INFO - Étape 6.7] Attente de 10 secondes pour PostgreSQL...' | tee -a $LOG_FILE
+            # 6.8 - Pause pour garantir le démarrage
+            echo '[INFO - Étape 6.8] Attente de 10 secondes pour PostgreSQL...' | tee -a $LOG_FILE
             sleep 10
 
-            # 6.8 - Vérification finale de PostgreSQL
+            # 6.9 - Vérification finale de PostgreSQL
             if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
               echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
             else
@@ -167,7 +167,7 @@ jobs:
           " | tee -a $LOG_FILE
 
 
-      # Étape 7 - Configuration de la base de données
+      # Étape 7 - Configurer la base de données PostgreSQL
       - name: 7 - Configurer la base de données PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
