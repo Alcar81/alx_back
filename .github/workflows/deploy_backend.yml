@@ -91,68 +91,6 @@ jobs:
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE
-            
-            # Vérification et création du réseau Docker
-            if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
-              echo '[INFO - Étape 6] Création du réseau Docker : $NETWORK' | tee -a $LOG_FILE
-              docker network create $NETWORK
-            else
-              echo '[INFO - Étape 6] Réseau Docker déjà existant : $NETWORK' | tee -a $LOG_FILE
-            fi
-
-            # Vérification et création du volume Docker
-            if ! docker volume ls --filter \"name=^$POSTGRES_VOLUME\$\" --format '{{.Name}}' | grep -w $POSTGRES_VOLUME; then
-              echo '[INFO - Étape 6] Création du volume Docker : $POSTGRES_VOLUME' | tee -a $LOG_FILE
-              docker volume create $POSTGRES_VOLUME
-            else
-              echo '[INFO - Étape 6] Volume Docker déjà existant : $POSTGRES_VOLUME' | tee -a $LOG_FILE
-            fi
-
-            # Arrêt et suppression de l'ancien conteneur PostgreSQL
-            if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
-              echo '[INFO - Étape 6] Arrêt et suppression de l’ancien conteneur : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
-              docker stop $POSTGRES_CONTAINER_NAME
-              docker rm $POSTGRES_CONTAINER_NAME
-            fi
-
-            # Téléchargement de l'image PostgreSQL la plus récente
-            echo '[INFO - Étape 6] Mise à jour de l’image PostgreSQL...' | tee -a $LOG_FILE
-            docker pull postgres:13
-
-            # Lancement d’un nouveau conteneur PostgreSQL
-            echo '[INFO - Étape 6] Démarrage du nouveau conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
-            docker run -d --name $POSTGRES_CONTAINER_NAME \
-              --network $NETWORK \
-              -e POSTGRES_USER=$DB_USERNAME \
-              -e POSTGRES_PASSWORD=$DB_PASSWORD \
-              -e POSTGRES_DB=$DB_NAME \
-              -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
-              -p $DB_PORT_EXT:$DB_PORT_INT \
-              postgres:13
-
-            # Vérification de l’état du conteneur PostgreSQL
-            echo '[INFO - Étape 6] Vérification de l’état du conteneur...' | tee -a $LOG_FILE
-            docker ps --filter \"name=$POSTGRES_CONTAINER_NAME\" | tee -a $LOG_FILE
-
-            # Pause pour s’assurer que PostgreSQL démarre correctement
-            echo '[INFO - Étape 6] Attente de 10 secondes pour la disponibilité de PostgreSQL...' | tee -a $LOG_FILE
-            sleep 10
-
-            # Vérification finale de l'état de PostgreSQL
-            if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
-              echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
-            else
-              echo '[ERROR - Étape 6] PostgreSQL n’est pas prêt après le délai d’attente.' | tee -a $LOG_FILE
-              exit 1
-            fi
-          " | tee -a $LOG_FILE
-
-
-      # Étape 6 - Démarrer le conteneur PostgreSQL
-      - name: 6 - Démarrer le conteneur PostgreSQL
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             set -e
             echo '===================================' | tee -a $LOG_FILE
             echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE
@@ -227,6 +165,7 @@ jobs:
               exit 1
             fi
           " | tee -a $LOG_FILE
+
 
       # Étape 7 - Configuration de la base de données
       - name: 7 - Configurer la base de données PostgreSQL
