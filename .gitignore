@@ -6,6 +6,7 @@ node_modules/
 
 # Ignorer les logs
 *.log
+logs/deployment_back.log
 
 # Ignorer les fichiers de configuration de l'éditeur (ex: VS Code)
 .vscode/

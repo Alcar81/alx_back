@@ -35,8 +35,10 @@ fi
 # Vérifier les modifications non validées
 if [ "$(git status --porcelain)" ]; then
   echo "Erreur : Des modifications locales non validées ont été détectées."
-  echo "Veuillez exécuter 'git status' pour identifier les fichiers modifiés."
-  echo "Ajoutez-les à votre environnement de développement avec 'git add' et 'git commit'."
+  echo "Les fichiers suivants ont été modifiés et doivent être validés ou ignorés :"
+  git status --porcelain | awk '{print $2}' # Afficher uniquement les noms de fichiers
+  echo "Veuillez exécuter 'git status' pour plus de détails."
+  echo "Ajoutez les fichiers avec 'git add', validez-les avec 'git commit', ou stash-les avec 'git stash'."
   exit 1
 fi
 

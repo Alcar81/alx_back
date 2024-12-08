@@ -7,3 +7,7 @@ error: Your local changes to the following files would be overwritten by checkou
 	deploy_back.sh
 Please commit your changes or stash them before you switch branches.
 Aborting
+=== Déploiement Niveau 2 commencé : Sun Dec  8 07:44:29 AM EST 2024 ===
+Erreur : Des modifications locales non validées ont été détectées.
+Veuillez exécuter 'git status' pour identifier les fichiers modifiés.
+Ajoutez-les à votre environnement de développement avec 'git add' et 'git commit'.
