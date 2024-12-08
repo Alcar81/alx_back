@@ -86,29 +86,23 @@ jobs:
           else
             npm install --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
           fi
-          
-          echo "[INFO - 3.3] Vérification et correction des vulnérabilités..."
+
+          echo "[INFO - 3.3] Vérification des vulnérabilités..."
           npm audit fix --loglevel=warn | tee -a logs/backend_deploy.log || {
-            echo "[WARNING - 3.3] L'audit automatique a échoué. Vérifiez manuellement les résultats."
+            echo "[WARNING - 3.3] npm audit fix a échoué, veuillez vérifier manuellement."
           }
-          
-          echo "[INFO - 3.4] Vérification de l'arbre de dépendances..."
-          if grep -q 'Invalid package tree' logs/backend_deploy.log; then
-            echo "[WARNING - 3.4] Arbre de dépendances invalide détecté. Régénération en cours..."
-            rm -rf node_modules package-lock.json
-            npm install --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
-          else
-            echo "[INFO - 3.4] Arbre de dépendances valide."
-          fi
-          
+
+          echo "[INFO - 3.4] Validation de l'arbre des dépendances..."
+          rm -rf node_modules package-lock.json
+          npm install --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
           echo "[SUCCESS - 3.5] Étape 3 terminée avec succès pour l'environnement $ENV."
 
-      # Étape 4 - Construire l'image Docker pour le backend
+      # Étape 4 - Construire l'image Docker
       - name: 4 - Construire l'image Docker
         run: |
           docker image prune -f || (echo "Erreur : Impossible de nettoyer les images Docker." && exit 1)
           docker build -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log
-      
+        
       # Étape 5 - Démarrer l'agent SSH et ajouter la clé 
       - name: 5 - Démarrer l'agent SSH et ajouter la clé
         run: |
