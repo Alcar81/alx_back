@@ -200,9 +200,9 @@ jobs:
           echo \"JWT_SECRET=********\" | tee -a $LOG_FILE
           echo \"BACKEND_PORT=$BACKEND_PORT\" | tee -a $LOG_FILE
 
-          # 8.3 - Créer le fichier .env dans un répertoire persistant
+          # 8.3 - Créer le fichier .env dans /tmp
           echo '[INFO - Étape 8.3] Création du fichier .env pour le backend...' | tee -a $LOG_FILE
-          cat <<EOF > /home/$USER/.env
+          cat <<EOF > /tmp/.env
           DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME
           NODE_ENV=$ENV
           JWT_SECRET=$JWT_SECRET
@@ -211,9 +211,9 @@ jobs:
 
           # 8.4 - Vérification que le fichier .env est bien créé
           echo '[INFO - Étape 8.4] Vérification du fichier .env...' | tee -a $LOG_FILE
-          if [ -f /home/$USER/.env ]; then
+          if [ -f /tmp/.env ]; then
             echo '[INFO] Fichier .env créé avec succès :' | tee -a $LOG_FILE
-            cat /home/$USER/.env | tee -a $LOG_FILE
+            cat /tmp/.env | tee -a $LOG_FILE
           else
             echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
             exit 1
@@ -240,7 +240,7 @@ jobs:
 
           # 8.7 - Copier le fichier .env dans le conteneur
           echo '[INFO - Étape 8.7] Copie du fichier .env dans le conteneur...' | tee -a $LOG_FILE
-          if docker cp /home/$USER/.env $CONTAINER_NAME:/app/.env; then
+          if docker cp /tmp/.env $CONTAINER_NAME:/app/.env; then
             echo '[INFO] Fichier .env copié avec succès.' | tee -a $LOG_FILE
           else
             echo '[ERROR] Échec de la copie du fichier .env.' | tee -a $LOG_FILE
