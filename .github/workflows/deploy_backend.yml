@@ -149,89 +149,133 @@ jobs:
           " | tee -a $LOG_FILE
 
 
-      # Étape 6.1 - Nettoyer les anciens backups
-      - name: 6.1 - Nettoyer les anciens backups (Prod uniquement)
-        if: ${{ github.ref == 'refs/heads/master' }}
+      # Étape 6 - Démarrer le conteneur PostgreSQL
+      - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \;
-          " | tee -a backend/logs/backend_deploy.log
+            set -e
+            echo '===================================' | tee -a $LOG_FILE
+            echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE
 
-      # Étape 6.2 - Sauvegarder la base de données
-      - name: 6.2 - Sauvegarder la base de données (Prod uniquement)
-        if: ${{ github.ref == 'refs/heads/master' }}
-        run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-            docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > /root/prod_backup_$(date +%Y%m%d%H%M%S).sql
-          " | tee -a backend/logs/backend_deploy.log
+            # 6.1 - Sauvegarde conditionnelle de la base de données (production uniquement)
+            if [ \"$ENV\" = \"prod\" ]; then
+              echo '[INFO - Étape 6.1] Sauvegarde de la base de données en production...' | tee -a $LOG_FILE
+              BACKUP_FILE=\"/root/prod_backup_\$(date +%Y%m%d%H%M%S).sql\"
+              docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > \$BACKUP_FILE || {
+                echo '[ERROR] Échec de la sauvegarde de la base de données.' | tee -a $LOG_FILE
+                exit 1
+              }
+              echo '[INFO] Sauvegarde effectuée : \$BACKUP_FILE' | tee -a $LOG_FILE
 
+              # Nettoyage des backups anciens (plus de 7 jours)
+              echo '[INFO - Étape 6.1] Nettoyage des anciens backups (plus de 7 jours)...' | tee -a $LOG_FILE
+              find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \; || {
+                echo '[WARNING] Échec du nettoyage des anciens backups. Cela n’affecte pas le déploiement.' | tee -a $LOG_FILE
+              }
+            else
+              echo '[INFO] Pas de sauvegarde nécessaire pour l’environnement non-production.' | tee -a $LOG_FILE
+            fi
+
+            # 6.2 - Vérification et création du réseau Docker
+            echo '[INFO - Étape 6.2] Vérification du réseau Docker...' | tee -a $LOG_FILE
+            if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
+              echo '[INFO] Création du réseau Docker : $NETWORK' | tee -a $LOG_FILE
+              docker network create $NETWORK
+            else
+              echo '[INFO] Réseau Docker déjà existant : $NETWORK' | tee -a $LOG_FILE
+            fi
+
+            # 6.3 - Vérification et création du volume Docker
+            echo '[INFO - Étape 6.3] Vérification du volume Docker...' | tee -a $LOG_FILE
+            if ! docker volume ls --filter \"name=^$POSTGRES_VOLUME\$\" --format '{{.Name}}' | grep -w $POSTGRES_VOLUME; then
+              echo '[INFO] Création du volume Docker : $POSTGRES_VOLUME' | tee -a $LOG_FILE
+              docker volume create $POSTGRES_VOLUME
+            else
+              echo '[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME' | tee -a $LOG_FILE
+            fi
+
+            # 6.4 - Arrêt et suppression du conteneur PostgreSQL si nécessaire
+            echo '[INFO - Étape 6.4] Vérification et suppression de l’ancien conteneur PostgreSQL...' | tee -a $LOG_FILE
+            if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
+              echo '[INFO] Suppression de l’ancien conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
+              docker stop $POSTGRES_CONTAINER_NAME
+              docker rm $POSTGRES_CONTAINER_NAME
+            else
+              echo '[INFO] Aucun conteneur PostgreSQL existant à supprimer.' | tee -a $LOG_FILE
+            fi
+
+            # 6.5 - Téléchargement de l'image PostgreSQL la plus récente
+            echo '[INFO - Étape 6.5] Téléchargement de l’image PostgreSQL...' | tee -a $LOG_FILE
+            docker pull postgres:13
+
+            # 6.6 - Lancement d’un nouveau conteneur PostgreSQL
+            echo '[INFO - Étape 6.6] Démarrage du nouveau conteneur PostgreSQL...' | tee -a $LOG_FILE
+            docker run -d --name $POSTGRES_CONTAINER_NAME \
+              --network $NETWORK \
+              -e POSTGRES_USER=$DB_USERNAME \
+              -e POSTGRES_PASSWORD=$DB_PASSWORD \
+              -e POSTGRES_DB=$DB_NAME \
+              -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
+              -p $DB_PORT_EXT:$DB_PORT_INT \
+              postgres:13
+
+            # 6.7 - Vérification de l’état du conteneur PostgreSQL
+            echo '[INFO - Étape 6.7] Vérification de l’état du conteneur PostgreSQL...' | tee -a $LOG_FILE
+            docker ps --filter \"name=$POSTGRES_CONTAINER_NAME\" | tee -a $LOG_FILE
+
+            # 6.8 - Pause pour garantir que PostgreSQL démarre correctement
+            echo '[INFO - Étape 6.8] Attente de 10 secondes pour la disponibilité de PostgreSQL...' | tee -a $LOG_FILE
+            sleep 10
+
+            # 6.9 - Vérification finale de PostgreSQL
+            echo '[INFO - Étape 6.9] Vérification de la disponibilité de PostgreSQL...' | tee -a $LOG_FILE
+            if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
+              echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
+            else
+              echo '[ERROR - Étape 6] PostgreSQL n’est pas prêt après le délai d’attente.' | tee -a $LOG_FILE
+              exit 1
+            fi
+          " | tee -a $LOG_FILE
+
+      # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-          set -e
-          echo '===================================' | tee -a $LOG_FILE
-          echo '[INFO - Étape 7] Configuration de la base de données PostgreSQL...' | tee -a $LOG_FILE
+            set -e
+            echo '===================================' | tee -a $LOG_FILE
+            echo '[INFO - Étape 7] Configuration de la base de données PostgreSQL...' | tee -a $LOG_FILE
 
-          # 7.1 - Vérification de la connexion réseau du conteneur PostgreSQL
-          echo '[INFO - Étape 7.1] Vérification de la connexion réseau du conteneur PostgreSQL...' | tee -a $LOG_FILE
-          if ! docker network inspect $NETWORK | grep -q $POSTGRES_CONTAINER_NAME; then
-            echo '[ERROR] Le conteneur PostgreSQL n’est pas connecté au réseau $NETWORK.' | tee -a $LOG_FILE
-            exit 1
-          fi
-          echo '[INFO] Le conteneur PostgreSQL est connecté au réseau $NETWORK.' | tee -a $LOG_FILE
+            # 7.1 - Vérification de la connexion réseau du conteneur PostgreSQL
+            echo '[INFO - Étape 7.1] Vérification du réseau PostgreSQL...' | tee -a $LOG_FILE
+            if ! docker network inspect $NETWORK | grep -q $POSTGRES_CONTAINER_NAME; then
+              echo '[ERROR] Le conteneur PostgreSQL n’est pas connecté au réseau $NETWORK.' | tee -a $LOG_FILE
+              exit 1
+            fi
+            echo '[INFO] Le conteneur PostgreSQL est connecté au réseau $NETWORK.' | tee -a $LOG_FILE
 
-          # 7.2 - Vérification et création du rôle 'postgres' si nécessaire
-          echo '[INFO - Étape 7.2] Vérification de l’existence du rôle "postgres"...' | tee -a $LOG_FILE
-          if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "\du" | grep -q "postgres"; then
-            echo '[WARN] Le rôle "postgres" n’existe pas. Création en cours...' | tee -a $LOG_FILE
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "CREATE ROLE postgres WITH SUPERUSER LOGIN;" || {
-              echo '[ERROR] Impossible de créer le rôle "postgres".' | tee -a $LOG_FILE
+            # 7.2 - Suppression et recréation de la base de données
+            echo '[INFO - Étape 7.2] Suppression de la base de données existante...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP DATABASE IF EXISTS $DB_NAME;\" || {
+              echo '[ERROR] Impossible de supprimer la base de données.' | tee -a $LOG_FILE
               exit 1
             }
-            echo '[INFO] Le rôle "postgres" a été créé avec succès.' | tee -a $LOG_FILE
-          else
-            echo '[INFO] Le rôle "postgres" existe déjà.' | tee -a $LOG_FILE
-          fi
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" || {
+              echo '[ERROR] Impossible de créer la base de données.' | tee -a $LOG_FILE
+              exit 1
+            }
+            echo '[INFO] La base de données $DB_NAME a été recréée avec succès.' | tee -a $LOG_FILE
 
-          # 7.3 - Suppression de la base de données existante
-          echo '[INFO - Étape 7.3] Suppression de la base de données existante...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" || {
-            echo '[ERROR] Impossible de supprimer la base de données.' | tee -a $LOG_FILE
-            exit 1
-          }
-          echo '[INFO] La base de données $DB_NAME a été supprimée avec succès.' | tee -a $LOG_FILE
+            # 7.3 - Attribution des privilèges
+            echo '[INFO - Étape 7.3] Attribution des privilèges à l’utilisateur...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || {
+              echo '[ERROR] Impossible d’attribuer les privilèges.' | tee -a $LOG_FILE
+              exit 1
+            }
+            echo '[INFO] Les privilèges ont été attribués avec succès.' | tee -a $LOG_FILE
 
-          # 7.4 - Suppression du rôle existant
-          echo '[INFO - Étape 7.4] Suppression du rôle existant...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "DROP ROLE IF EXISTS $DB_USERNAME;" || {
-            echo '[ERROR] Impossible de supprimer le rôle.' | tee -a $LOG_FILE
-            exit 1
-          }
-          echo '[INFO] Le rôle $DB_USERNAME a été supprimé avec succès.' | tee -a $LOG_FILE
-
-          # 7.5 - Création du rôle et de la base de données
-          echo '[INFO - Étape 7.5] Création du rôle et de la base de données...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';" || {
-            echo '[ERROR] Impossible de créer le rôle.' | tee -a $LOG_FILE
-            exit 1
-          }
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;" || {
-            echo '[ERROR] Impossible de créer la base de données.' | tee -a $LOG_FILE
-            exit 1
-          }
-          echo '[INFO] Le rôle $DB_USERNAME et la base de données $DB_NAME ont été créés avec succès.' | tee -a $LOG_FILE
-
-          # 7.6 - Attribution des privilèges
-          echo '[INFO - Étape 7.6] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;" || {
-            echo '[ERROR] Impossible d’attribuer les privilèges.' | tee -a $LOG_FILE
-            exit 1
-          }
-          echo '[INFO] Les privilèges ont été attribués avec succès.' | tee -a $LOG_FILE
-
-          echo '[SUCCESS - Étape 7] Base de données et utilisateur configurés avec succès.' | tee -a $LOG_FILE
+            echo '[SUCCESS - Étape 7] Configuration de la base de données terminée avec succès.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
-       
+        
     
       - name: 8 - Déployer le conteneur Backend
         run: |
