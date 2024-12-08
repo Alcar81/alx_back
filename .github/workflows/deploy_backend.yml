@@ -227,8 +227,8 @@ jobs:
           docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
 
           # 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
-          sleep 10
+          echo "=== 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
+          sleep 20
 
           # 7.4 - Connexion SSH et configuration de PostgreSQL
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
