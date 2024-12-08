@@ -180,17 +180,22 @@ jobs:
           fi
           echo '[INFO] Le conteneur PostgreSQL est connecté au réseau $NETWORK.' | tee -a $LOG_FILE
 
-          # 7.2 - Vérification du rôle 'postgres'
+          # 7.2 - Vérification et création du rôle 'postgres' si nécessaire
           echo '[INFO - Étape 7.2] Vérification de l’existence du rôle "postgres"...' | tee -a $LOG_FILE
-          if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" | grep -q \"postgres\"; then
-            echo '[ERROR] Le rôle "postgres" n’existe pas dans PostgreSQL.' | tee -a $LOG_FILE
-            exit 1
+          if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "\du" | grep -q "postgres"; then
+            echo '[WARN] Le rôle "postgres" n’existe pas. Création en cours...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "CREATE ROLE postgres WITH SUPERUSER LOGIN;" || {
+              echo '[ERROR] Impossible de créer le rôle "postgres".' | tee -a $LOG_FILE
+              exit 1
+            }
+            echo '[INFO] Le rôle "postgres" a été créé avec succès.' | tee -a $LOG_FILE
+          else
+            echo '[INFO] Le rôle "postgres" existe déjà.' | tee -a $LOG_FILE
           fi
-          echo '[INFO] Le rôle "postgres" existe.' | tee -a $LOG_FILE
 
           # 7.3 - Suppression de la base de données existante
           echo '[INFO - Étape 7.3] Suppression de la base de données existante...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP DATABASE IF EXISTS $DB_NAME;\" || {
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "DROP DATABASE IF EXISTS $DB_NAME;" || {
             echo '[ERROR] Impossible de supprimer la base de données.' | tee -a $LOG_FILE
             exit 1
           }
@@ -198,7 +203,7 @@ jobs:
 
           # 7.4 - Suppression du rôle existant
           echo '[INFO - Étape 7.4] Suppression du rôle existant...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP ROLE IF EXISTS $DB_USERNAME;\" || {
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "DROP ROLE IF EXISTS $DB_USERNAME;" || {
             echo '[ERROR] Impossible de supprimer le rôle.' | tee -a $LOG_FILE
             exit 1
           }
@@ -206,11 +211,11 @@ jobs:
 
           # 7.5 - Création du rôle et de la base de données
           echo '[INFO - Étape 7.5] Création du rôle et de la base de données...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" || {
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';" || {
             echo '[ERROR] Impossible de créer le rôle.' | tee -a $LOG_FILE
             exit 1
           }
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" || {
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;" || {
             echo '[ERROR] Impossible de créer la base de données.' | tee -a $LOG_FILE
             exit 1
           }
@@ -218,7 +223,7 @@ jobs:
 
           # 7.6 - Attribution des privilèges
           echo '[INFO - Étape 7.6] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
-          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || {
+          docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;" || {
             echo '[ERROR] Impossible d’attribuer les privilèges.' | tee -a $LOG_FILE
             exit 1
           }
