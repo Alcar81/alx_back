@@ -23,18 +23,20 @@ echo "=== Déploiement Niveau 2 commencé : $(date) ==="
 
 # Vérifier si les branches existent
 if ! git show-ref --quiet refs/heads/master; then
-  echo "Erreur : La branche 'master' n'existe pas."
+  echo "Erreur : La branche 'master' n'existe pas. Vérifiez votre dépôt."
   exit 1
 fi
 
 if ! git show-ref --quiet refs/heads/dev; then
-  echo "Erreur : La branche 'dev' n'existe pas."
+  echo "Erreur : La branche 'dev' n'existe pas. Vérifiez votre dépôt."
   exit 1
 fi
 
 # Vérifier les modifications non validées
 if [ "$(git status --porcelain)" ]; then
-  echo "Erreur : Il y a des modifications non validées."
+  echo "Erreur : Des modifications locales non validées ont été détectées."
+  echo "Veuillez exécuter 'git status' pour identifier les fichiers modifiés."
+  echo "Ajoutez-les à votre environnement de développement avec 'git add' et 'git commit'."
   exit 1
 fi
 

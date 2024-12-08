@@ -1,0 +1,9 @@
+=== Déploiement Niveau 2 commencé : Sun Dec  8 07:21:55 AM EST 2024 ===
+Erreur : Il y a des modifications non validées.
+=== Déploiement Niveau 2 commencé : Sun Dec  8 07:26:34 AM EST 2024 ===
+Erreur : Il y a des modifications non validées.
+=== Déploiement Niveau 2 commencé : Sun Dec  8 07:34:14 AM EST 2024 ===
+error: Your local changes to the following files would be overwritten by checkout:
+	deploy_back.sh
+Please commit your changes or stash them before you switch branches.
+Aborting
