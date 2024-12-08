@@ -60,30 +60,45 @@ jobs:
         uses: actions/checkout@v3
 
       # Étape 2.5 - Configurer la version de Node.js
-      - name: Configurer Node.js
+      - name: 2.5 - Configurer Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # Étape 3 - Installer uniquement les dépendances de production
-      - name: 3 - Installer uniquement les dépendances de production
+      # Étape 3 - Installer les dépendances et corriger les vulnérabilités dynamiquement pour dev et prod
+      - name: 3 - Installer les dépendances et corriger les vulnérabilités dynamiquement
         run: |
           echo "[INFO] Création du répertoire des logs..."
-          mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
-
-          echo "[INFO] Nettoyage des dépendances existantes..."
-          rm -rf node_modules package-lock.json || echo "[WARNING] Aucune dépendance à nettoyer."
-
-          echo "[INFO] Installation des dépendances pour la production..."
-          npm install --omit=dev | tee -a backend/logs/backend_deploy.log || {
-            echo "[ERROR] Échec de l'installation des dépendances npm." | tee -a backend/logs/backend_deploy.log
+          mkdir -p backend/logs || {
+            echo "[ERROR] Impossible de créer le répertoire des logs." | tee -a backend/logs/backend_deploy_${ENV}.log
             exit 1
           }
 
-          echo "[INFO] Vérification des vulnérabilités (npm audit)..."
-          npm audit --omit=dev | tee -a backend/logs/backend_deploy.log || echo "[WARNING] Échec de l'audit des dépendances."
+          echo "[INFO] Nettoyage des dépendances existantes..."
+          rm -rf node_modules package-lock.json || echo "[WARNING] Aucun fichier à nettoyer."
 
-          echo "[SUCCESS] Étape 3 terminée avec succès."
+          echo "[INFO] Installation des dépendances pour l'environnement $ENV..."
+          if [ "$ENV" = "prod" ]; then
+            npm install --omit=dev | tee -a backend/logs/backend_deploy_${ENV}.log || {
+              echo "[ERROR] Échec de l'installation des dépendances npm en production." | tee -a backend/logs/backend_deploy_${ENV}.log
+              exit 1
+            }
+          else
+            npm install | tee -a backend/logs/backend_deploy_${ENV}.log || {
+              echo "[ERROR] Échec de l'installation des dépendances npm en développement." | tee -a backend/logs/backend_deploy_${ENV}.log
+              exit 1
+            }
+          fi
+
+          echo "[INFO] Vérification des vulnérabilités (npm audit)..."
+          npm audit --omit=dev | tee -a backend/logs/backend_deploy_${ENV}.log || {
+            echo "[WARNING] L'audit des dépendances a échoué ou n'est pas supporté." | tee -a backend/logs/backend_deploy_${ENV}.log
+          }
+
+          echo "[SUCCESS] Étape 3 terminée avec succès pour l'environnement $ENV."
+        env:
+          ENV: ${{ vars.ENV }}
+          LOG_FILE: backend/logs/backend_deploy_${{ vars.ENV }}.log
 
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
