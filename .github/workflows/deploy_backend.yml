@@ -192,8 +192,8 @@ jobs:
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             echo '[INFO - Étape 8.1] Début de la préparation du backend...' | tee -a $LOG_FILE
-            
-            # 8.2 - Valider et afficher les variables pour diagnostic
+
+            # Étape 8.2 - Validation et affichage des variables
             echo '[INFO - Étape 8.2] Validation des variables d'environnement :' | tee -a $LOG_FILE
             echo \"DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME\" | tee -a $LOG_FILE
             echo \"NODE_ENV=$ENV\" | tee -a $LOG_FILE
@@ -204,7 +204,7 @@ jobs:
             echo \"MOUNT_PATH=$MOUNT_PATH\" | tee -a $LOG_FILE
             echo \"BACKEND_PORT=$BACKEND_PORT\" | tee -a $LOG_FILE
 
-            # 8.3 - Vérifier et gérer le fichier .env dans le volume monté
+            # Étape 8.3 - Vérifier et gérer le fichier .env dans le volume monté
             echo '[INFO - Étape 8.3] Vérification du fichier .env dans le volume monté...' | tee -a $LOG_FILE
             if [ ! -f $MOUNT_PATH/.env ]; then
               echo '[INFO] Aucun fichier .env trouvé. Création...' | tee -a $LOG_FILE
@@ -220,7 +220,7 @@ jobs:
               cat $MOUNT_PATH/.env | tee -a $LOG_FILE
             fi
 
-            # 8.4 - Arrêter et supprimer l'ancien conteneur si nécessaire
+            # Étape 8.4 - Arrêter et supprimer l'ancien conteneur si nécessaire
             echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur (si existant)...' | tee -a $LOG_FILE
             if docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME; then
               echo '[INFO] Arrêt et suppression de l’ancien conteneur : $CONTAINER_NAME' | tee -a $LOG_FILE
@@ -230,7 +230,7 @@ jobs:
               echo '[INFO] Aucun conteneur existant à arrêter pour : $CONTAINER_NAME' | tee -a $LOG_FILE
             fi
 
-            # 8.5 - Lancer un nouveau conteneur avec le volume monté
+            # Étape 8.5 - Lancer un nouveau conteneur
             echo '[INFO - Étape 8.5] Lancement du nouveau conteneur backend...' | tee -a $LOG_FILE
             docker run -d --name $CONTAINER_NAME \
               --network $NETWORK \
@@ -239,16 +239,18 @@ jobs:
               -p $BACKEND_PORT:$BACKEND_PORT \
               $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
 
-            # 8.6 - Vérification de l'état du conteneur
-            echo '[INFO - Étape 8.6] Vérification état du conteneur backend...' | tee -a $LOG_FILE
-            docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
+            # Étape 8.6 - Pause avant le test de santé
+            echo '[INFO - Étape 8.6] Attente de 10 secondes avant le test de santé...' | tee -a $LOG_FILE
+            sleep 10
 
-            # 8.7 - Test de santé sur /health
+            # Étape 8.7 - Test de santé sur /health
             echo '[INFO - Étape 8.7] Test endpoint /health...' | tee -a $LOG_FILE
             if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
               echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
             else
               echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
+              echo '[INFO] Logs du conteneur :' | tee -a $LOG_FILE
+              docker logs $CONTAINER_NAME | tee -a $LOG_FILE
               exit 1
             fi
 
