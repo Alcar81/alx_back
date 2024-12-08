@@ -47,7 +47,17 @@ jobs:
         run: |
           echo "Environnement : $ENV" | tee -a $LOG_FILE
           echo "Nom de la base de données : $DB_NAME" | tee -a $LOG_FILE
+          echo "Nom de l'usager BD' : $DB_USERNAME" | tee -a $LOG_FILE
+          echo "Vérification du mot de passe : $DB_PASSWORD" | tee -a $LOG_FILE
           echo "Hôte de la base de données : $DB_HOST" | tee -a $LOG_FILE
+          echo "Nom de l'url de la base de données : $DATABASE_URL" | tee -a $LOG_FILE
+          echo "Nom du répertoire :$MOUNT_PATH" | tee -a $LOG_FILE
+          echo "Nom du container :$CONTAINER_NAME" | tee -a $LOG_FILE
+          echo "Port interne :$DB_PORT_INT" | tee -a $LOG_FILE
+          echo "Port externe :$DB_PORT_EXT" | tee -a $LOG_FILE
+          echo "Port backend :$BACKEND_PORT" | tee -a $LOG_FILE
+          echo "Réseau du container :$NETWORK" | tee -a $LOG_FILE
+          echo "JWT Secret :$JWT_SECRET" | tee -a $LOG_FILE
 
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
