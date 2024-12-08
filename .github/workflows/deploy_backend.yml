@@ -58,13 +58,12 @@ jobs:
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
         uses: actions/checkout@v3  
-        
+
       # Étape 2.1 - Vérification après checkout  
       - name: 2.1 - Vérification après checkout
         run: |
           echo "[INFO] Vérification après le checkout..."
           ls -la
-          ls -la backend/
 
       # Étape 2.2 - Configurer la version de Node.js
       - name: 2.2 - Configurer Node.js
@@ -76,17 +75,17 @@ jobs:
       - name: 3 - Installer les dépendances et corriger les vulnérabilités
         run: |
           echo "[INFO - 3.1] Création du répertoire des logs..."
-          mkdir -p backend/logs || (echo "[ERROR - 3.1] Impossible de créer le répertoire des logs." && exit 1)
+          mkdir -p logs || (echo "[ERROR - 3.1] Impossible de créer le répertoire des logs." && exit 1)
           
           echo "[INFO - 3.2] Installation des dépendances pour l'environnement $ENV..."
           if [ "$ENV" = "prod" ]; then
-            npm install --omit=dev --prefix backend | tee -a backend/logs/backend_deploy.log || exit 1
+            npm install --omit=dev | tee -a logs/backend_deploy.log || exit 1
           else
-            npm install --prefix backend | tee -a backend/logs/backend_deploy.log || exit 1
+            npm install | tee -a logs/backend_deploy.log || exit 1
           fi
 
           echo "[INFO - 3.3] Correction des vulnérabilités..."
-          npm audit fix --prefix backend | tee -a backend/logs/backend_deploy.log || {
+          npm audit fix | tee -a logs/backend_deploy.log || {
             echo "[WARNING - 3.3] L'audit automatique a échoué. Vérifiez manuellement les résultats."
           }
 
