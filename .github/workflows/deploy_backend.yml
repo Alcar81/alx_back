@@ -200,22 +200,21 @@ jobs:
           echo \"JWT_SECRET=********\" | tee -a $LOG_FILE
           echo \"BACKEND_PORT=$BACKEND_PORT\" | tee -a $LOG_FILE
 
-          # 8.3 - Créer le fichier .env sur le serveur
-          echo '[INFO - Étape 8.3] Création du fichier .env pour le backend...' | tee -a $LOG_FILE
-          cat <<EOF > /home/$USER/backend.env
+          # 8.3 - Vérification et gestion du fichier .env dans $MOUNT_PATH
+          echo '[INFO - Étape 8.3] Vérification du fichier .env dans le volume monté...' | tee -a $LOG_FILE
+          if [ -f $MOUNT_PATH/.env ]; then
+            echo '[INFO] Fichier .env trouvé dans le volume monté. Contenu :' | tee -a $LOG_FILE
+            cat $MOUNT_PATH/.env | tee -a $LOG_FILE
+          else
+            echo '[INFO] Aucun fichier .env trouvé. Création...' | tee -a $LOG_FILE
+            cat <<EOF > $MOUNT_PATH/.env
           DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME
           NODE_ENV=$ENV
           JWT_SECRET=$JWT_SECRET
           BACKEND_PORT=$BACKEND_PORT
           EOF
-
-          if [ -f /home/$USER/backend.env ]; then
-            echo '[INFO] Fichier .env créé avec succès :' | tee -a $LOG_FILE
-            cat /home/$USER/backend.env | tee -a $LOG_FILE
-          else
-            echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
-            exit 1
-          fi
+              echo '[INFO] Fichier .env créé avec succès dans le volume monté.' | tee -a $LOG_FILE
+            fi
 
           # 8.4 - Arrêter et supprimer l'ancien conteneur si nécessaire
           echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur (si existant)...' | tee -a $LOG_FILE
@@ -227,14 +226,13 @@ jobs:
             echo '[INFO] Aucun conteneur existant à arrêter pour : $CONTAINER_NAME' | tee -a $LOG_FILE
           fi
 
-          # 8.5 - Création et démarrage du nouveau conteneur backend avec --env-file
+          # 8.5 - Lancer un nouveau conteneur
           echo '[INFO - Étape 8.5] Création et démarrage du nouveau conteneur backend...' | tee -a $LOG_FILE
           docker run -d --name $CONTAINER_NAME \
             --network $NETWORK \
             -v $MOUNT_PATH:/app \
             -w /app \
             -p $BACKEND_PORT:$BACKEND_PORT \
-            --env-file=/home/runner/backend.env \
             $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
 
           # 8.6 - Vérification de l'état du conteneur
@@ -251,7 +249,7 @@ jobs:
           fi
 
           echo '[INFO - Étape 8.8] Déploiement du backend terminé avec succès.' | tee -a $LOG_FILE
-          " | tee -a $LOG_FILE
+          "
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
