@@ -89,7 +89,7 @@ jobs:
 
           echo "[INFO - 3.3] Vérification et correction des vulnérabilités..."
           npm audit fix --loglevel=warn | tee -a logs/backend_deploy.log || {
-            echo "[WARNING - 3.3] L'audit automatique a échoué. Vérifiez manuellement les résultats." | tee -a logs/backend_deploy.log
+            echo "[WARNING - 3.3] L'audit automatique a échoué. Vérifiez manuellement les résultats."
           }
 
           echo "[INFO - 3.4] Vérification de l'arbre de dépendances..."
