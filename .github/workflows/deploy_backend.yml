@@ -188,7 +188,7 @@ jobs:
        
     
       # Étape 8 - Déployer le conteneur Backend
-        - name: 8 - Déployer le conteneur Backend
+      - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
           echo '[INFO - Étape 8.1] Début de la préparation du backend...' | tee -a $LOG_FILE
