@@ -65,43 +65,37 @@ jobs:
         with:
           node-version: 20
 
-      # Étape 3 - Installer les dépendances et corriger les vulnérabilités dynamiquement
+      # Étape 3 - Installation dynamique des dépendances selon l'environnement
       - name: 3 - Installer les dépendances et corriger les vulnérabilités
         run: |
-          # 3.1 - Création du répertoire des logs
           echo "[INFO - 3.1] Création du répertoire des logs..."
-          mkdir -p backend/logs || {
-            echo "[ERROR - 3.1] Impossible de créer le répertoire des logs."
-            exit 1
-          }
+          mkdir -p backend/logs || (echo "[ERROR - 3.1] Impossible de créer le répertoire des logs." && exit 1)
 
-          # 3.2 - Nettoyage des dépendances existantes
           echo "[INFO - 3.2] Nettoyage des dépendances existantes..."
-          rm -rf node_modules package-lock.json || echo "[INFO - 3.2] Aucun fichier à nettoyer."
+          rm -rf backend/node_modules package-lock.json || echo "[WARNING - 3.2] Aucune dépendance existante à nettoyer."
 
-          # 3.3 - Installation des dépendances en fonction de l'environnement
           echo "[INFO - 3.3] Installation des dépendances pour l'environnement $ENV..."
           if [ "$ENV" = "prod" ]; then
-            npm install --omit=dev | tee -a backend/logs/backend_deploy_${ENV}.log || {
-              echo "[ERROR - 3.3] Échec de l'installation des dépendances npm en production."
-              exit 1
-            }
+            npm install --omit=dev --prefix backend | tee -a backend/logs/backend_deploy.log || exit 1
           else
-            npm install | tee -a backend/logs/backend_deploy_${ENV}.log || {
-              echo "[ERROR - 3.3] Échec de l'installation des dépendances npm en développement."
-              exit 1
-            }
+            npm install --prefix backend | tee -a backend/logs/backend_deploy.log || exit 1
           fi
 
-          # 3.4 - Vérification des vulnérabilités avec npm audit
           echo "[INFO - 3.4] Vérification des vulnérabilités (npm audit)..."
-          npm audit --omit=dev || echo "[WARNING - 3.4] L'audit des dépendances a échoué. Vérifiez le fichier package-lock.json."
+          npm audit --prefix backend | tee -a backend/logs/backend_deploy.log || {
+            echo "[WARNING - 3.4] L'audit des dépendances a échoué. Vérifiez le fichier package-lock.json."
+          }
 
-          # 3.5 - Finalisation de l'étape
-          echo "[SUCCESS - 3.5] Étape 3 terminée avec succès pour l'environnement $ENV."
-        env:
-          ENV: ${{ vars.ENV }}
-          LOG_FILE: backend/logs/backend_deploy_${{ vars.ENV }}.log
+          echo "[INFO - 3.5] Régénération du fichier package-lock.json si nécessaire..."
+          if grep -q 'Invalid package tree' backend/logs/backend_deploy.log; then
+            echo "[WARNING - 3.5] Arbre de dépendances invalide détecté. Régénération en cours..."
+            rm -rf backend/node_modules backend/package-lock.json
+            npm install --prefix backend | tee -a backend/logs/backend_deploy.log || exit 1
+          else
+            echo "[INFO - 3.5] Arbre de dépendances valide."
+          fi
+
+          echo "[SUCCESS - 3.6] Étape 3 terminée avec succès pour l'environnement $ENV."
 
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
