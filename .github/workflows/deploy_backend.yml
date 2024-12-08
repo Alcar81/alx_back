@@ -166,7 +166,6 @@ jobs:
             fi
           " | tee -a $LOG_FILE
 
-
       # Étape 7 - Configurer la base de données PostgreSQL
       - name: 7 - Configurer la base de données PostgreSQL
         run: |
@@ -177,7 +176,7 @@ jobs:
 
             # 7.1 - Vérification du rôle "postgres"
             echo '[INFO - Étape 7.1] Vérification du rôle postgres...' | tee -a $LOG_FILE
-            if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" | grep -q \"postgres\"; then
+            if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\\du\" | grep -q \"postgres\"; then
               echo '[ERROR] Le rôle postgres n’existe pas. Création en cours...' | tee -a $LOG_FILE
               docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE postgres SUPERUSER;\" || {
                 echo '[ERROR] Impossible de créer le rôle postgres.' | tee -a $LOG_FILE
