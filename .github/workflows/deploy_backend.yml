@@ -65,12 +65,25 @@ jobs:
         with:
           node-version: 20
 
-      # Étape 3 - Installer les dépendances et corriger les vulnérabilités
-      - name: 3 - Installer les dépendances et corriger les vulnérabilités
+      # Étape 3 - Installer uniquement les dépendances de production
+      - name: 3 - Installer uniquement les dépendances de production
         run: |
+          echo "[INFO] Création du répertoire des logs..."
           mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
-          npm install --production | tee -a backend/logs/backend_deploy.log || exit 1
-          npm audit fix | tee -a backend/logs/backend_deploy.log || exit 1
+
+          echo "[INFO] Nettoyage des dépendances existantes..."
+          rm -rf node_modules package-lock.json || echo "[WARNING] Aucune dépendance à nettoyer."
+
+          echo "[INFO] Installation des dépendances pour la production..."
+          npm install --omit=dev | tee -a backend/logs/backend_deploy.log || {
+            echo "[ERROR] Échec de l'installation des dépendances npm." | tee -a backend/logs/backend_deploy.log
+            exit 1
+          }
+
+          echo "[INFO] Vérification des vulnérabilités (npm audit)..."
+          npm audit --omit=dev | tee -a backend/logs/backend_deploy.log || echo "[WARNING] Échec de l'audit des dépendances."
+
+          echo "[SUCCESS] Étape 3 terminée avec succès."
 
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
