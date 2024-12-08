@@ -107,7 +107,7 @@ jobs:
           docker image prune -f || (echo "Erreur : Impossible de nettoyer les images Docker." && exit 1)
           docker build -t $DOCKER_NAME -f Dockerfile.backend . | tee -a backend/logs/backend_deploy.log
       
-      # Étape 5 - Démarrer l'agent SSH et ajouter la clé
+      # Étape 5 - Démarrer l'agent SSH et ajouter la clé 
       - name: 5 - Démarrer l'agent SSH et ajouter la clé
         run: |
           echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
