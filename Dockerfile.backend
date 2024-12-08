@@ -1,5 +1,3 @@
-# dockerfile.backend
-
 # Utiliser une image Node.js 20 Alpine
 FROM node:20-alpine
 
@@ -15,19 +13,16 @@ RUN apk add --no-cache \
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers package.json pour installer les dépendances
+# Copier les fichiers package.json et package-lock.json pour installer les dépendances
 COPY package*.json ./
 
-# Installer les dépendances avec correction des vulnérabilités
-RUN npm install --production && npm audit fix
+# Installer les dépendances
+RUN npm install --production --loglevel=warn
 
 # Installer Prisma et générer le client
-RUN npm install prisma @prisma/client pg
+RUN npm install prisma @prisma/client pg argon2
 COPY prisma ./prisma
 RUN npx prisma generate
-
-# Recompiler bcrypt pour l'environnement Docker
-RUN npm rebuild bcrypt
 
 # Copier tout le code source
 COPY . .

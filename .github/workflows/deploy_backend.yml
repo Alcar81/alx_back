@@ -74,29 +74,48 @@ jobs:
         with:
           node-version: 20
 
-      # Étape 3 - Installer les dépendances et corriger les vulnérabilités
-      - name: 3 - Préparer les dépendances
+      # Étape 3 - Installer les dépendances et valider l'arbre de dépendances
+      - name: 3 - Installer les dépendances et valider l'arbre de dépendances
         run: |
           echo "[INFO - 3.1] Création du répertoire des logs..."
           mkdir -p logs || (echo "[ERROR - 3.1] Impossible de créer le répertoire des logs." && exit 1)
 
-          echo "[INFO - 3.2] Installation des dépendances..."
-          npm install --omit=dev --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
+          echo "[INFO - 3.2] Installation des dépendances pour l'environnement $ENV..."
+          if [ "$ENV" = "prod" ]; then
+            npm install --omit=dev --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
+          else
+            npm install --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
+          fi
 
-          echo "[INFO - 3.3] Validation des dépendances..."
-          npm audit fix --loglevel=warn || echo "[WARNING] Audit automatique échoué, veuillez vérifier manuellement."
+          echo "[INFO - 3.3] Validation des vulnérabilités..."
+          npm audit --loglevel=warn | tee -a logs/backend_deploy.log || {
+            echo "[WARNING - 3.3] Audit automatique échoué. À vérifier manuellement."
+          }
 
           echo "[INFO - 3.4] Validation de l'arbre des dépendances..."
-          rm -rf node_modules package-lock.json
-          npm install --omit=dev --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
+          if grep -q 'Invalid package tree' logs/backend_deploy.log; then
+            echo "[WARNING - 3.4] Arbre de dépendances invalide détecté. Régénération en cours..."
+            rm -rf node_modules package-lock.json
+            npm install --loglevel=warn | tee -a logs/backend_deploy.log || exit 1
+          else
+            echo "[INFO - 3.4] Arbre de dépendances valide."
+          fi
 
           echo "[SUCCESS - 3.5] Dépendances prêtes pour le build Docker."
 
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
         run: |
-          docker image prune -f || (echo "Erreur : Impossible de nettoyer les images Docker." && exit 1)
-          docker build -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log
+          echo "[INFO - 4.1] Nettoyage des images Docker inutilisées..."
+          docker image prune -f || (echo "[ERROR - 4.1] Impossible de nettoyer les images Docker." && exit 1)
+
+          echo "[INFO - 4.2] Construction de l'image Docker pour le backend..."
+          docker build -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log || exit 1
+
+          echo "[INFO - 4.3] Validation du build Docker..."
+          docker images $DOCKER_NAME || (echo "[ERROR - 4.3] L'image Docker $DOCKER_NAME n'a pas été construite avec succès." && exit 1)
+
+          echo "[SUCCESS - 4.4] Image Docker construite avec succès : $DOCKER_NAME."
         
       # Étape 5 - Démarrer l'agent SSH et ajouter la clé 
       - name: 5 - Démarrer l'agent SSH et ajouter la clé
