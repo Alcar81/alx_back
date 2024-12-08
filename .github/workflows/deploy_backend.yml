@@ -57,10 +57,17 @@ jobs:
 
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
-        uses: actions/checkout@v3        
+        uses: actions/checkout@v3  
+        
+      # Étape 2.1 - Vérification après checkout  
+      - name: Vérification après checkout
+        run: |
+          echo "[INFO] Vérification après le checkout..."
+          ls -la
+          ls -la backend/
 
-      # Étape 2.5 - Configurer la version de Node.js
-      - name: 2.5 - Configurer Node.js
+      # Étape 2.2 - Configurer la version de Node.js
+      - name: 2.2 - Configurer Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
