@@ -235,7 +235,7 @@ jobs:
             sleep 20
 
             # 7.4 - Connexion SSH et configuration de PostgreSQL
-            ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP << 'EOF'
+            ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP << EOF
               set -e
 
               # Exporter les variables nécessaires
@@ -280,10 +280,10 @@ jobs:
                 exit 1
               }
 
-            EOF
+              EOF
 
-            # Étape finale - Confirmation de la réussite
-            echo "[SUCCESS] Étape 7 terminée avec succès."
+              # Étape finale - Confirmation de la réussite
+              echo "[SUCCESS] Étape 7 terminée avec succès."
 
       - name: 8 - Déployer le conteneur Backend
         run: |
