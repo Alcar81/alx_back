@@ -202,7 +202,7 @@ jobs:
 
           # 8.2 - Créer le fichier .env sur le serveur distant
           echo '[INFO] Création du fichier .env pour le backend...' | tee -a $LOG_FILE
-            cat <<EOF > /tmp/.env
+          cat <<EOF > /tmp/.env
           DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME
           NODE_ENV=$ENV
           JWT_SECRET=$JWT_SECRET
@@ -227,12 +227,14 @@ jobs:
             echo '[INFO] Aucun conteneur existant à arrêter pour : $CONTAINER_NAME' | tee -a $LOG_FILE
           fi
 
-          # 8.5 - Copier le fichier .env dans le conteneur AVANT de le démarrer
-          echo '[INFO] Copie du fichier .env dans le conteneur...' | tee -a $LOG_FILE
-          docker cp /tmp/.env $CONTAINER_NAME:/app/.env || {
+          # 8.5 - Démarrer un conteneur temporaire pour copier le fichier (si nécessaire)
+          docker create --name temp_copy_container -v $MOUNT_PATH:/app $DOCKER_NAME || exit 1
+          docker cp /tmp/.env temp_copy_container:/app/.env || {
             echo '[ERROR] Échec de la copie du fichier .env.' | tee -a $LOG_FILE
+            docker rm -f temp_copy_container
             exit 1
           }
+          docker rm -f temp_copy_container
 
           # 8.6 - Déployer le nouveau conteneur Backend
           echo '[INFO] Lancement du nouveau conteneur backend...' | tee -a $LOG_FILE
