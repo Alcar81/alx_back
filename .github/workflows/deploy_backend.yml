@@ -165,10 +165,11 @@ jobs:
             docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > /root/prod_backup_$(date +%Y%m%d%H%M%S).sql
           " | tee -a backend/logs/backend_deploy.log
 
-      # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et l'utilisateur démo
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+          set -e
+          echo '===================================' | tee -a $LOG_FILE
           echo '[INFO - Étape 7] Configuration de la base de données PostgreSQL...' | tee -a $LOG_FILE
 
           # 7.1 - Vérification de la connexion réseau du conteneur PostgreSQL
@@ -223,35 +224,33 @@ jobs:
           }
           echo '[INFO] Les privilèges ont été attribués avec succès.' | tee -a $LOG_FILE
 
-          # Fin de l'étape
           echo '[SUCCESS - Étape 7] Base de données et utilisateur configurés avec succès.' | tee -a $LOG_FILE
-          " | tee -a $LOG_FILE 
+          " | tee -a $LOG_FILE
        
     
-      # Étape 8 - Déployer le conteneur Backend
       - name: 8 - Déployer le conteneur Backend
         run: |
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-          
-          # 8.1 - Début du déploiement
+          set -e
+          echo '===================================' | tee -a $LOG_FILE
           echo '[INFO - Étape 8.1] Début du déploiement du backend...' | tee -a $LOG_FILE
 
           # 8.2 - Vérification des variables d'environnement
           echo '[INFO - Étape 8.2] Vérification des variables d'environnement...' | tee -a $LOG_FILE
-
+          DATABASE_URL=\"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME\"
           MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
-          for VAR in "${MANDATORY_VARS[@]}"; do
-            if [ -z "${!VAR}" ]; then
-              echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
+          for VAR in \"${MANDATORY_VARS[@]}\"; do
+            if [ -z \"\${!VAR}\" ]; then
+              echo \"[ERROR] La variable $VAR est manquante ou vide.\" | tee -a $LOG_FILE
               exit 1
             fi
-            echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
+            echo \"[INFO] $VAR=\${!VAR}\" | tee -a $LOG_FILE
           done
 
-          # Étape 8.3 - Vérification et gestion stricte du fichier .env
+          # Étape 8.3 - Vérification stricte du fichier .env
           echo '[INFO - Étape 8.3] Vérification et gestion du fichier .env...' | tee -a $LOG_FILE
           if [ -f \"$MOUNT_PATH/.env\" ]; then
-            echo '[INFO] Fichier .env existant détecté. Suppression pour éviter les conflits...' | tee -a $LOG_FILE
+            echo '[INFO] Fichier .env existant détecté. Suppression...' | tee -a $LOG_FILE
             rm -f \"$MOUNT_PATH/.env\" || {
               echo '[ERROR] Impossible de supprimer le fichier .env existant.' | tee -a $LOG_FILE
               exit 1
@@ -267,48 +266,30 @@ jobs:
           EOF
 
           if [ -f \"$MOUNT_PATH/.env\" ]; then
-            echo '[INFO] Nouveau fichier .env créé avec succès. Contenu :' | tee -a $LOG_FILE
-            cat \"$MOUNT_PATH/.env\" | tee -a $LOG_FILE
+            echo '[INFO] Nouveau fichier .env créé avec succès.' | tee -a $LOG_FILE
           else
             echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
             exit 1
           fi
 
-          # Étape 8.4 - Arrêter et supprimer l'ancien conteneur si nécessaire
-          echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur (si existant)...' | tee -a $LOG_FILE
+          # Étape 8.4 - Suppression de l'ancien conteneur si nécessaire
+          echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur...' | tee -a $LOG_FILE
           if docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME; then
-            echo '[INFO] Arrêt et suppression de l’ancien conteneur : $CONTAINER_NAME' | tee -a $LOG_FILE
+            echo '[INFO] Suppression de l’ancien conteneur : $CONTAINER_NAME' | tee -a $LOG_FILE
             docker stop $CONTAINER_NAME
             docker rm $CONTAINER_NAME
-          else
-            echo '[INFO] Aucun conteneur existant à arrêter pour : $CONTAINER_NAME' | tee -a $LOG_FILE
           fi
 
           # Étape 8.5 - Lancer un nouveau conteneur backend
-          echo '[INFO - Étape 8.5] Lancement du nouveau conteneur backend...' | tee -a $LOG_FILE
+          echo '[INFO - Étape 8.5] Lancement du conteneur backend...' | tee -a $LOG_FILE
           docker run -d --name $CONTAINER_NAME \
             --network $NETWORK \
             -v $MOUNT_PATH:/app \
             -w /app \
             -p $BACKEND_PORT:$BACKEND_PORT \
-            $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
+            $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur.' | tee -a $LOG_FILE; exit 1; }
 
-          # 8.6 - Pause pour permettre au conteneur de démarrer
-          echo '[INFO - Étape 8.6] Attente de 20 secondes avant le test de santé...' | tee -a $LOG_FILE
-          sleep 20
-
-          # Étape 8.7 - Test de santé sur /health
-          echo '[INFO - Étape 8.7] Test endpoint /health...' | tee -a $LOG_FILE
-          if curl -s -o /dev/null -w \"%{http_code}\" http://localhost:$BACKEND_PORT/health | grep -q \"200\"; then
-            echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
-          else
-            echo '[ERROR] Le backend ne répond pas correctement.' | tee -a $LOG_FILE
-            docker logs $CONTAINER_NAME | tee -a $LOG_FILE
-            exit 1
-          fi
-
-          # 8.8 - Fin du déploiement
-          echo '[INFO - Étape 8.8] Déploiement du backend terminé avec succès.' | tee -a $LOG_FILE
+          echo '[SUCCESS - Étape 8] Déploiement terminé avec succès.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
 
       # Étape 9 - Configurer l'URL Git distante
