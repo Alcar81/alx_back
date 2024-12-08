@@ -200,27 +200,26 @@ jobs:
           echo \"JWT_SECRET=********\" | tee -a $LOG_FILE
           echo \"BACKEND_PORT=$BACKEND_PORT\" | tee -a $LOG_FILE
 
-          # 8.3 - Créer le fichier .env dans /tmp
-          echo '[INFO - Étape 8.3] Création du fichier .env pour le backend...' | tee -a $LOG_FILE
-          cat <<EOF > /tmp/.env
+          # 8.3 - Créer un fichier .env temporaire pour --env-file
+          echo '[INFO - Étape 8.3] Création du fichier .env temporaire...' | tee -a $LOG_FILE
+          cat <<EOF > /tmp/backend.env
           DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME
           NODE_ENV=$ENV
           JWT_SECRET=$JWT_SECRET
           BACKEND_PORT=$BACKEND_PORT
           EOF
 
-          # 8.4 - Vérification que le fichier .env est bien créé
-          echo '[INFO - Étape 8.4] Vérification du fichier .env...' | tee -a $LOG_FILE
-          if [ -f /tmp/.env ]; then
-            echo '[INFO] Fichier .env créé avec succès :' | tee -a $LOG_FILE
-            cat /tmp/.env | tee -a $LOG_FILE
+          # Vérification du fichier .env
+          if [ -f /tmp/backend.env ]; then
+            echo '[INFO] Fichier .env temporaire créé avec succès :' | tee -a $LOG_FILE
+            cat /tmp/backend.env | tee -a $LOG_FILE
           else
-            echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
+            echo '[ERROR] Échec de la création du fichier .env temporaire.' | tee -a $LOG_FILE
             exit 1
           fi
 
-          # 8.5 - Arrêter et supprimer l'ancien conteneur si nécessaire
-          echo '[INFO - Étape 8.5] Vérification et suppression de l’ancien conteneur (si existant)...' | tee -a $LOG_FILE
+          # 8.4 - Arrêter et supprimer l'ancien conteneur si nécessaire
+          echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur (si existant)...' | tee -a $LOG_FILE
           if docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME; then
             echo '[INFO] Arrêt et suppression de l’ancien conteneur : $CONTAINER_NAME' | tee -a $LOG_FILE
             docker stop $CONTAINER_NAME
@@ -229,35 +228,22 @@ jobs:
             echo '[INFO] Aucun conteneur existant à arrêter pour : $CONTAINER_NAME' | tee -a $LOG_FILE
           fi
 
-          # 8.6 - Créer un nouveau conteneur (arrêté)
-          echo '[INFO - Étape 8.6] Création d’un nouveau conteneur arrêté...' | tee -a $LOG_FILE
-          docker create --name $CONTAINER_NAME \
+          # 8.5 - Démarrer un nouveau conteneur avec --env-file
+          echo '[INFO - Étape 8.5] Lancement du nouveau conteneur backend...' | tee -a $LOG_FILE
+          docker run -d --name $CONTAINER_NAME \
             --network $NETWORK \
             -v $MOUNT_PATH:/app \
             -w /app \
             -p $BACKEND_PORT:$BACKEND_PORT \
-            $DOCKER_NAME || { echo '[ERROR] Échec de la création du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
+            --env-file=/tmp/backend.env \
+            $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
 
-          # 8.7 - Copier le fichier .env dans le conteneur
-          echo '[INFO - Étape 8.7] Copie du fichier .env dans le conteneur...' | tee -a $LOG_FILE
-          if docker cp /tmp/.env $CONTAINER_NAME:/app/.env; then
-            echo '[INFO] Fichier .env copié avec succès.' | tee -a $LOG_FILE
-          else
-            echo '[ERROR] Échec de la copie du fichier .env.' | tee -a $LOG_FILE
-            docker rm -f $CONTAINER_NAME
-            exit 1
-          fi
-
-          # 8.8 - Démarrer le nouveau conteneur Backend
-          echo '[INFO - Étape 8.8] Démarrage du nouveau conteneur backend...' | tee -a $LOG_FILE
-          docker start $CONTAINER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
-
-          # 8.9 - Vérification de l'état du conteneur
-          echo '[INFO - Étape 8.9] Vérification état du conteneur backend...' | tee -a $LOG_FILE
+          # 8.6 - Vérification de l'état du conteneur
+          echo '[INFO - Étape 8.6] Vérification état du conteneur backend...' | tee -a $LOG_FILE
           docker ps --filter \"name=$CONTAINER_NAME\" | tee -a $LOG_FILE
 
-          # 8.10 - Test de santé sur /health
-          echo '[INFO - Étape 8.10] Test endpoint /health...' | tee -a $LOG_FILE
+          # 8.7 - Test de santé sur /health
+          echo '[INFO - Étape 8.7] Test endpoint /health...' | tee -a $LOG_FILE
           if curl -s http://localhost:$BACKEND_PORT/health | grep 'OK'; then
             echo '[SUCCESS] Le backend est opérationnel.' | tee -a $LOG_FILE
           else
@@ -265,7 +251,7 @@ jobs:
             exit 1
           fi
 
-          echo '[INFO - Étape 8.11] Déploiement du backend terminé avec succès.' | tee -a $LOG_FILE
+          echo '[INFO - Étape 8.8] Déploiement du backend terminé avec succès.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
 
       # Étape 9 - Configurer l'URL Git distante
