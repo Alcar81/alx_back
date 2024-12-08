@@ -105,8 +105,8 @@ jobs:
               }
               echo '[INFO] Sauvegarde effectuée : \$BACKUP_FILE' | tee -a $LOG_FILE
 
-              # Nettoyage des anciens backups (plus de 7 jours)
-              echo '[INFO - Étape 6.2] Nettoyage des anciens backups...' | tee -a $LOG_FILE
+              # 6.2 - Nettoyage des anciens backups
+              echo '[INFO - Étape 6.2] Nettoyage des anciens backups (plus de 7 jours)...' | tee -a $LOG_FILE
               find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \; || {
                 echo '[WARNING] Échec du nettoyage des anciens backups.' | tee -a $LOG_FILE
               }
@@ -179,13 +179,13 @@ jobs:
             echo '[INFO - Étape 7.1] Vérification du rôle postgres...' | tee -a $LOG_FILE
             if ! docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" | grep -q \"postgres\"; then
               echo '[ERROR] Le rôle postgres n’existe pas. Création en cours...' | tee -a $LOG_FILE
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE postgres;\" || {
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE postgres SUPERUSER;\" || {
                 echo '[ERROR] Impossible de créer le rôle postgres.' | tee -a $LOG_FILE
                 exit 1
               }
               echo '[INFO] Le rôle postgres a été créé avec succès.' | tee -a $LOG_FILE
             else
-              echo '[INFO] Le rôle postgres existe.' | tee -a $LOG_FILE
+              echo '[INFO] Le rôle postgres existe déjà.' | tee -a $LOG_FILE
             fi
 
             # 7.2 - Suppression de la base de données existante
@@ -195,26 +195,30 @@ jobs:
               exit 1
             }
 
-            # 7.3 - Création de la base de données et du rôle
-            echo '[INFO - Étape 7.3] Création de la base de données et du rôle...' | tee -a $LOG_FILE
+            # 7.3 - Suppression et création du rôle utilisateur
+            echo '[INFO - Étape 7.3] Suppression et création du rôle utilisateur...' | tee -a $LOG_FILE
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"DROP ROLE IF EXISTS $DB_USERNAME;\" || true
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\" || {
               echo '[ERROR] Impossible de créer le rôle utilisateur.' | tee -a $LOG_FILE
               exit 1
             }
+
+            # 7.4 - Création de la base de données
+            echo '[INFO - Étape 7.4] Création de la base de données...' | tee -a $LOG_FILE
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\" || {
               echo '[ERROR] Impossible de créer la base de données.' | tee -a $LOG_FILE
               exit 1
             }
 
-            # 7.4 - Attribution des privilèges
-            echo '[INFO - Étape 7.4] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
+            # 7.5 - Attribution des privilèges
+            echo '[INFO - Étape 7.5] Attribution des privilèges sur la base de données...' | tee -a $LOG_FILE
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\" || {
               echo '[ERROR] Impossible d’attribuer les privilèges.' | tee -a $LOG_FILE
               exit 1
             }
+
             echo '[SUCCESS - Étape 7] Configuration de la base de données terminée.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
-        
     
       - name: 8 - Déployer le conteneur Backend
         run: |
