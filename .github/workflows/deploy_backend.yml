@@ -211,14 +211,14 @@ jobs:
             # 7.4.3 - Création du fichier SQL pour initialiser la base de données
             echo \"[INFO - 7.4.3] Création du fichier SQL init_database.sql...\"
             cat <<EOF > init_database.sql
-            DROP DATABASE IF EXISTS $DB_NAME;
-            DO \$\$ BEGIN
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
-                CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
-              END IF;
-            END \$\$;
-            CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
-            GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
+              DROP DATABASE IF EXISTS $DB_NAME;
+              DO \$\$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
+                  CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
+                END IF;
+              END \$\$;
+              CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
+              GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
             EOF
 
             # 7.4.4 - Copier le fichier SQL dans le conteneur PostgreSQL
