@@ -228,8 +228,8 @@ jobs:
             $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a $LOG_FILE; exit 1; }
 
           # 8.5 - Pause pour permettre au conteneur de démarrer
-          echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
-          sleep 10
+          echo '[INFO] Attente de 20 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
+          sleep 20
 
           # 8.6 - Copier le fichier .env dans le conteneur (toujours sur le serveur distant)
           echo '[INFO] Copie du fichier .env dans le conteneur...' | tee -a $LOG_FILE
