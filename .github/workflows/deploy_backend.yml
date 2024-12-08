@@ -58,6 +58,8 @@ jobs:
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
         uses: actions/checkout@v3
+        with:
+          path: alx_back
 
       # Étape 2.5 - Configurer la version de Node.js
       - name: 2.5 - Configurer Node.js
