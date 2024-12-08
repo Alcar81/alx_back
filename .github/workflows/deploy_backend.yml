@@ -200,7 +200,7 @@ jobs:
           echo \"JWT_SECRET=********\" | tee -a $LOG_FILE
           echo \"BACKEND_PORT=$BACKEND_PORT\" | tee -a $LOG_FILE
 
-          # 8.2 - Créer le fichier .env
+          # 8.2 - Créer le fichier .env sur le serveur distant
           echo '[INFO] Création du fichier .env pour le backend...' | tee -a $LOG_FILE
           cat <<EOF > /tmp/.env
           DATABASE_URL=postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME
@@ -231,7 +231,7 @@ jobs:
           echo '[INFO] Attente de 10 secondes pour le démarrage du backend...' | tee -a $LOG_FILE
           sleep 10
 
-          # 8.6 - Copier le fichier .env dans le conteneur
+          # 8.6 - Copier le fichier .env dans le conteneur (toujours sur le serveur distant)
           echo '[INFO] Copie du fichier .env dans le conteneur...' | tee -a $LOG_FILE
           if docker cp /tmp/.env $CONTAINER_NAME:/app/.env; then
             echo '[INFO] Fichier .env copié avec succès.' | tee -a $LOG_FILE
