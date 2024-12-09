@@ -282,7 +282,7 @@ jobs:
                 exit 1
               }
             fi
-          "
+            "
 
           # Étape finale - Confirmation de la réussite
           echo "[SUCCESS] Étape 7 terminée avec succès."
