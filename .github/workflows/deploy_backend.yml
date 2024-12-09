@@ -212,58 +212,58 @@ jobs:
       # Étape 7 - Créer la base de données et les utilisateurs
       - name: 7 - Créer la base de données et les utilisateurs
         run: |
+          set -e
+
           # 7.1 - Afficher les informations pour le diagnostic
-            echo "=== Début de l'étape 7 ==="
-            echo "Environnement : $ENV"
-            echo "Nom de la base de données : $DB_NAME"
-            echo "Hôte de la base de données : $DB_HOST"
-            echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
-            echo "URL de connexion à la base : $DATABASE_URL"
-            echo "Nom utilisateur : $DB_USERNAME"
-            echo "Mot de passe de la base : $DB_PASSWORD"
+          echo "=== Début de l'étape 7 ==="
+          echo "Environnement : $ENV"
+          echo "Nom de la base de données : $DB_NAME"
+          echo "Hôte de la base de données : $DB_HOST"
+          echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
+          echo "URL de connexion à la base : $DATABASE_URL"
+          echo "Nom utilisateur : $DB_USERNAME"
+          echo "Mot de passe de la base : $DB_PASSWORD"
 
-            # Debug des variables avant SSH
-            echo "[DEBUG] DB_USERNAME: $DB_USERNAME"
-            echo "[DEBUG] POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME"
+          # Debug des variables avant SSH
+          echo "[DEBUG] DB_USERNAME: $DB_USERNAME"
+          echo "[DEBUG] POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME"
 
-            # 7.2 - Vérification de l'état du conteneur PostgreSQL
-            echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
-            docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
+          # Vérification que les variables nécessaires sont définies
+          if [[ -z "$DB_USERNAME" || -z "$POSTGRES_CONTAINER_NAME" || -z "$DB_NAME" ]]; then
+            echo "[ERROR] Une ou plusieurs variables nécessaires sont manquantes."
+            exit 1
+          fi
 
-            # 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt
-            echo "=== 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
-            sleep 20
+          # 7.2 - Vérification de l'état du conteneur PostgreSQL
+          echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
+          docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
 
-            # 7.4 - Connexion SSH et configuration de PostgreSQL
-            ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP << EOF
-              set -e
+          # 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt
+          echo "=== 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
+          sleep 20
 
-              # Exporter les variables nécessaires
-              export DB_USERNAME=$DB_USERNAME
-              export DB_PASSWORD=$DB_PASSWORD
-              export DB_NAME=$DB_NAME
-              export DB_HOST=$DB_HOST
-              export POSTGRES_CONTAINER_NAME=$POSTGRES_CONTAINER_NAME
+          # 7.4 - Connexion SSH et configuration de PostgreSQL
+          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP <<EOF
+            set -e
 
-              # 7.4.1 - Diagnostic des variables en cours
-              echo "[INFO - 7.4.1] Diagnostic des variables en cours..."
-              echo "DB_USERNAME: \$DB_USERNAME"
-              echo "DB_PASSWORD: \$DB_PASSWORD"
-              echo "DB_NAME: \$DB_NAME"
-              echo "DB_HOST: \$DB_HOST"
-              echo "POSTGRES_CONTAINER_NAME: \$POSTGRES_CONTAINER_NAME"
+            # 7.4.1 - Diagnostic des variables en cours
+            echo "[INFO - 7.4.1] Diagnostic des variables en cours..."
+            echo "DB_USERNAME: \$DB_USERNAME"
+            echo "DB_PASSWORD: \$DB_PASSWORD"
+            echo "DB_NAME: \$DB_NAME"
+            echo "DB_HOST: \$DB_HOST"
+            echo "POSTGRES_CONTAINER_NAME: \$POSTGRES_CONTAINER_NAME"
 
-              # 7.4.2 - Vérifier que le conteneur PostgreSQL existe
-              echo "[INFO - 7.4.2] Vérifier que le conteneur PostgreSQL existe"
-              if ! docker ps -a --filter "name=\$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w \$POSTGRES_CONTAINER_NAME; then
-                echo "[ERROR] Conteneur PostgreSQL non trouvé : \$POSTGRES_CONTAINER_NAME" | tee -a $LOG_FILE
-                exit 1
-              fi              
-              
-            EOF
+            # 7.4.2 - Vérifier que le conteneur PostgreSQL existe
+            echo "[INFO - 7.4.2] Vérifier que le conteneur PostgreSQL existe"
+            if ! docker ps -a --filter "name=\$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w \$POSTGRES_CONTAINER_NAME; then
+              echo "[ERROR] Conteneur PostgreSQL non trouvé : \$POSTGRES_CONTAINER_NAME" | tee -a $LOG_FILE
+              exit 1
+            fi
+          EOF
 
-            # Étape finale - Confirmation de la réussite
-            echo "[SUCCESS] Étape 7 terminée avec succès."
+          # Étape finale - Confirmation de la réussite
+          echo "[SUCCESS] Étape 7 terminée avec succès."
 
       - name: 8 - Déployer le conteneur Backend
         run: |
