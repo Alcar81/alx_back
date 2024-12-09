@@ -270,10 +270,10 @@ jobs:
 
             # 7.4.4 - Exécution des commandes SQL dans PostgreSQL
             echo "[INFO - 7.4.4] Exécution des commandes SQL dans PostgreSQL"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -f /tmp/init_database.sql &&
             
-            # 7.4.4 - Nettoyage
-            echo "[INFO - 7.4.4] Nettoyage"
+            # 7.4.5 - Nettoyage
+            echo "[INFO - 7.4.5] Nettoyage"
             rm init_database.sql &&
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
             echo 'Base de données et utilisateur créés avec succès.'
