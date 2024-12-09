@@ -222,14 +222,20 @@ jobs:
           echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
           sleep 10
           
-          # 7.4 - Connexion SSH et exécution des commandes pour créer la base et les rôles
+          # 7.4 - Connexion SSH et exécution des commandes pour configurer la base
           echo "7.4 - Connexion SSH et exécution des commandes pour créer la base et les rôles"
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
+              set -e
           
-              # 7.4.1 - Vérification de l'état initial de PostgreSQL
-              echo \"[INFO - 7.4.1] Vérification de l'état initial de PostgreSQL...\"
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"          
+              # 7.4.1 - Vérification et création du rôle 'postgres' si nécessaire
+              echo \"[INFO - 7.4.1] Vérification et création du rôle 'postgres' si nécessaire...\"
+              ROLE_EXIST=\$(docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -tAc \"SELECT 1 FROM pg_roles WHERE rolname='postgres'\")
+              if [ -z \"\$ROLE_EXIST\" ]; then
+                  docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';\"
+                  echo \"[INFO] Rôle 'postgres' créé avec succès.\"
+              else
+                  echo \"[INFO] Le rôle 'postgres' existe déjà.\"
+              fi       
 
               # 7.4.2 - Création et vérification des bases de données et rôles
               echo \"[INFO - 7.4.2] Création et vérification des bases de données et rôles\"              
@@ -243,55 +249,50 @@ jobs:
               AND pg_stat_activity.pid <> pg_backend_pid();
 
             -- Supprimer la base et le rôle si existants
-            DROP DATABASE IF EXISTS "${DB_NAME}";
-            DROP ROLE IF EXISTS "${DB_USERNAME}";
+            DROP DATABASE IF EXISTS \"${DB_NAME}\";
+            DROP ROLE IF EXISTS \"${DB_USERNAME}\";
 
             -- Créer le rôle et la base
-            CREATE ROLE "${DB_USERNAME}" WITH LOGIN PASSWORD '${DB_PASSWORD}';
-            CREATE DATABASE "${DB_NAME}" WITH OWNER "${DB_USERNAME}";
-            GRANT ALL PRIVILEGES ON DATABASE "${DB_NAME}" TO "${DB_USERNAME}";
+            CREATE ROLE \"${DB_USERNAME}\" WITH LOGIN PASSWORD '${DB_PASSWORD}';
+            CREATE DATABASE \"${DB_NAME}\" WITH OWNER \"${DB_USERNAME}\";
+            GRANT ALL PRIVILEGES ON DATABASE \"${DB_NAME}\" TO \"${DB_USERNAME}\";
           EOF
                         
-            # 7.4.3 - Copie du fichier de commandes SQL dans le conteneur PostgreSQL
-            echo \"[INFO - 7.4.3] Copie du fichier de commandes SQL dans le conteneur PostgreSQL\"
-            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql &&
+            # 7.4.3 - Copie du fichier SQL dans le conteneur PostgreSQL
+            echo \"[INFO - 7.4.3] Copie du fichier SQL dans le conteneur PostgreSQL\"
+            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql
 
             # 7.4.4 - Exécution des commandes SQL dans PostgreSQL
             echo \"[INFO - 7.4.4] Exécution des commandes SQL dans PostgreSQL\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql &&
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql
 
-            # 7.4.5 - Vérification de l'état apès l'ajout des droits
-            echo \"[INFO - 7.4.5] Vérification de l'état apès l'ajout des droits\"
+            # 7.4.5 - Vérification de l'état après configuration
+            echo \"[INFO - 7.4.5] Vérification de l'état après configuration\"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"  
             
             # 7.4.6 - Nettoyage
             echo \"[INFO - 7.4.6] Nettoyage\"
-            rm init_database.sql &&
+            rm init_database.sql
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
-            echo \"[INFO - 7.4.6] Base de données et utilisateur créés avec succès.\"
             
-            # 7.4.7 - Si c'est l'environnement de production, restaurer la base de données depuis le backup
-            echo "[INFO - 7.4.7] Si c'est l'environnement de production, restaurer la base de données depuis le backup"
-            if [ "$ENV" == "prod" ]; then
-                BACKUP_FILE="/home/$SSH_USER/backups/prod_backup_latest.sql"
-                echo "Vérification de l'existence du fichier de backup à l'emplacement : $BACKUP_FILE"
-                
-                if [ -f "$BACKUP_FILE" ]; then
-                    echo "Fichier de backup trouvé. Copie dans le conteneur PostgreSQL..."
-                    docker cp $BACKUP_FILE $POSTGRES_CONTAINER_NAME:/tmp/prod_backup_latest.sql
-                    
-                    echo "Lancement de la restauration de la base de données..."
-                    docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /tmp/prod_backup_latest.sql
-                    
-                    echo "Restauration terminée avec succès."
+            # 7.4.7 - Restauration du backup en production
+            if [ \"$ENV\" == \"prod\" ]; then
+                echo \"[INFO - 7.4.7] Restauration du backup en production...\"
+                BACKUP_FILE=\"/home/$SSH_USER/backups/prod_backup_latest.sql\"
+                if [ -f \"$BACKUP_FILE\" ]; then
+                    echo \"Fichier de backup trouvé : $BACKUP_FILE\"
+                    docker cp \"$BACKUP_FILE\" $POSTGRES_CONTAINER_NAME:/tmp/prod_backup_latest.sql
+                    docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME -f /tmp/prod_backup_latest.sql
+                    echo \"Restauration terminée avec succès.\"
                 else
-                    echo "[WARNING] Fichier de backup introuvable : $BACKUP_FILE. La restauration est ignorée."
+                    echo \"[WARNING] Aucun fichier de backup trouvé. Restauration ignorée.\"
                 fi
             else
-                echo "Environnement non-production détecté : aucune restauration nécessaire."
+                echo \"Environnement non-production : pas de restauration nécessaire.\"
             fi
-          "
+            "
+          
 
           # Étape finale - Confirmation de la réussite
           echo \"[SUCCESS] Étape 7 terminée avec succès.\"
