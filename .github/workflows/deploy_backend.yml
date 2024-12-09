@@ -260,9 +260,10 @@ jobs:
                 exit 1
               fi
 
-              
-              # 7.4.5 - Lister les rôles
-              echo "[INFO - 7.4.5] Lister les rôles..."
+              # 7.4.3 - Vérification de l'état initial de PostgreSQL
+              echo "[INFO - 7.4.3] Vérification de l'état initial de PostgreSQL..."
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d postgres -c "\l" 
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d $DB_NAME -c "\l" 
               docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d postgres -c "\du" || {
                 echo "[ERROR] Impossible de lister les rôles. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
