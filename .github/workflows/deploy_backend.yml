@@ -213,7 +213,7 @@ jobs:
             fi
 
             # 6.8 - Pause pour garantir le démarrage
-            echo '[INFO - Étape 6.8] Vérification de PostgreSQL jusqu'à ce qu\'il soit prêt'
+            echo "[INFO - Étape 6.8] Vérification de PostgreSQL jusqu'à ce qu'il soit prêt"
             MAX_ATTEMPTS=30
             for i in \$(seq 1 \$MAX_ATTEMPTS); do
               if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
