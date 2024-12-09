@@ -253,28 +253,29 @@ jobs:
               echo "DB_HOST: \$DB_HOST"
               echo "POSTGRES_CONTAINER_NAME: \$POSTGRES_CONTAINER_NAME"
 
-              # Vérifier que le conteneur PostgreSQL existe
+              # 7.4.2 - Vérifier que le conteneur PostgreSQL existe
+              echo "[INFO - 7.4.2] Vérifier que le conteneur PostgreSQL existe"
               if ! docker ps -a --filter "name=\$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w \$POSTGRES_CONTAINER_NAME; then
                 echo "[ERROR] Conteneur PostgreSQL non trouvé : \$POSTGRES_CONTAINER_NAME" | tee -a $LOG_FILE
                 exit 1
               fi
 
-              # 7.4.2 - Vérification de l'état initial de PostgreSQL
-              echo "[INFO - 7.4.2] Vérification de l'état initial de PostgreSQL..."
+              # 7.4.3 - Vérification de l'état initial de PostgreSQL
+              echo "[INFO - 7.4.3] Vérification de l'état initial de PostgreSQL..."
               docker exec -i \$POSTGRES_CONTAINER_NAME psql -U \$DB_USERNAME -d postgres -c "\\l" || {
                 echo "[ERROR] Impossible de lister les bases de données. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
               }
 
-              # 7.4.3 - Lister les bases de données
-              echo "[INFO - 7.4.3] Lister les bases de données..."
+              # 7.4.4 - Lister les bases de données
+              echo "[INFO - 7.4.4] Lister les bases de données..."
               docker exec -i \$POSTGRES_CONTAINER_NAME psql -U \$DB_USERNAME -d \$DB_NAME -c "\\l" || {
                 echo "[ERROR] Impossible de lister les bases de données. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
               }
 
-              # 7.4.4 - Lister les rôles
-              echo "[INFO - 7.4.4] Lister les rôles..."
+              # 7.4.5 - Lister les rôles
+              echo "[INFO - 7.4.5] Lister les rôles..."
               docker exec -i \$POSTGRES_CONTAINER_NAME psql -U \$DB_USERNAME -d postgres -c "\\du" || {
                 echo "[ERROR] Impossible de lister les rôles. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
