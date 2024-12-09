@@ -294,8 +294,8 @@ jobs:
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql
 
             # Pause pour s'assurer que les commandes SQL ont été correctement exécutées
-            echo \"[INFO] Pause de 10 secondes pour garantir que les commandes SQL sont appliquées...\"
-            sleep 10
+            echo \"[INFO] Pause de 20 secondes pour garantir que les commandes SQL sont appliquées...\"
+            sleep 20
 
             # 7.4.5 - Vérification de l'état final
             echo \"[INFO - 7.4.5] Vérification de l'état final...\"
