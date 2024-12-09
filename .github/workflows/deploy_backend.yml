@@ -259,8 +259,7 @@ jobs:
                 echo "[ERROR] Conteneur PostgreSQL non trouvé : \$POSTGRES_CONTAINER_NAME" | tee -a $LOG_FILE
                 exit 1
               fi              
-              }
-
+              
             EOF
 
             # Étape finale - Confirmation de la réussite
