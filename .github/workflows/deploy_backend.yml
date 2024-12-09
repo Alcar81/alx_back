@@ -136,7 +136,10 @@ jobs:
 
           # 6.1 - Vérification et création du répertoire de logs
           echo '[INFO - Étape 6.1] Vérification et création du répertoire de logs...' | tee -a $LOG_FILE
-          mkdir -p backend/logs || { echo '[ERROR] Impossible de créer le répertoire des logs.' | tee -a $LOG_FILE; exit 1; }
+          mkdir -p backend/logs || { 
+            echo '[ERROR] Impossible de créer le répertoire des logs.' | tee -a $LOG_FILE
+            exit 1
+          }
           chmod -R 777 backend/logs
 
           # 6.2 - Sauvegarde conditionnelle de la base de données (production uniquement)
