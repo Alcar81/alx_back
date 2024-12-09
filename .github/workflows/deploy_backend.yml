@@ -58,6 +58,7 @@ jobs:
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
         uses: actions/checkout@v3
+        
 
       # Étape 2.1 - Vérification après checkout
       - name: 2.1 - Vérification après checkout
@@ -72,7 +73,7 @@ jobs:
       - name: 2.2 - Configurer Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: '20.18.1'
 
       # Étape 3 - Installer les dépendances et valider l'arbre de dépendances
       - name: 3 - Installer les dépendances et valider l'arbre de dépendances
