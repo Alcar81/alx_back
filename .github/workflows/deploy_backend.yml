@@ -129,21 +129,14 @@ jobs:
       # Étape 6 - Démarrer le conteneur PostgreSQL
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |          
+          mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
+          chmod -R 777 backend/logs
+          echo "=== Déploiement Backend : $(date) ===" > $LOG_FILE
+
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             set -e
-            echo '==================================='
-            echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...'
-
-            # 6.1 - Vérification et création du répertoire de logs
-            echo '[INFO - Étape 6.1] Vérification et création du répertoire de logs...'
-            mkdir -p backend/logs || {
-              echo '[ERROR] Impossible de créer le répertoire des logs.'
-              exit 1
-            }
-            chmod -R 777 backend/logs
-
-            # Création ou réinitialisation du fichier de log
-            echo '=== Déploiement Backend : $(date) ===' > backend/logs/backend_deploy_dev.log
+            echo '===================================' | tee -a $LOG_FILE
+            echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE            
 
             # 6.2 - Sauvegarde conditionnelle de la base de données (production uniquement)
             if [ \"$ENV\" = \"prod\" ]; then
