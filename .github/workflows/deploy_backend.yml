@@ -280,11 +280,24 @@ jobs:
             echo \"[INFO - 7.4.6] Base de données et utilisateur créés avec succès.\"
             
             # 7.4.7 - Si c'est l'environnement de production, restaurer la base de données depuis le backup
-            echo \"[INFO - 7.4.7] Si c'est l'environnement de production, restaurer la base de données depuis le backup\"
-            if [ \"$ENV" == "prod\"  ]; then
-              echo \"Restauration de la base de données à partir du fichier de backup...\" 
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /root/prod_backup_latest.sql
-              echo \"Restauration terminée.\"
+            echo "[INFO - 7.4.7] Si c'est l'environnement de production, restaurer la base de données depuis le backup"
+            if [ "$ENV" == "prod" ]; then
+                BACKUP_FILE="/home/$SSH_USER/backups/prod_backup_latest.sql"
+                echo "Vérification de l'existence du fichier de backup à l'emplacement : $BACKUP_FILE"
+                
+                if [ -f "$BACKUP_FILE" ]; then
+                    echo "Fichier de backup trouvé. Copie dans le conteneur PostgreSQL..."
+                    docker cp $BACKUP_FILE $POSTGRES_CONTAINER_NAME:/tmp/prod_backup_latest.sql
+                    
+                    echo "Lancement de la restauration de la base de données..."
+                    docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /tmp/prod_backup_latest.sql
+                    
+                    echo "Restauration terminée avec succès."
+                else
+                    echo "[WARNING] Fichier de backup introuvable : $BACKUP_FILE. La restauration est ignorée."
+                fi
+            else
+                echo "Environnement non-production détecté : aucune restauration nécessaire."
             fi
           "
 
