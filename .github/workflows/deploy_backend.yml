@@ -269,7 +269,9 @@ jobs:
 
               # 7.4.4 - Lister les bases de données
               echo "[INFO - 7.4.4] Lister les bases de données..."
+              echo "[DEBUG] Avant lister les bases de données (7.4.4)"
               docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d $DB_NAME -c "\l" || {
+              echo "[DEBUG] Avant lister les bases de données (7.4.4)"
                 echo "[ERROR] Impossible de lister les bases de données. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
               }
