@@ -260,16 +260,13 @@ jobs:
                 exit 1
               fi
 
-              
-              # 7.4.4 - Lister les bases de données
-              echo "[INFO - 7.4.4] Lister les bases de données..."
-              echo "[DEBUG] Avant lister les bases de données (7.4.4)"
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d $DB_NAME -c "\l" || {
-              echo "[DEBUG] Avant lister les bases de données (7.4.4)"
+              # 7.4.3 - Vérification de l'état initial de PostgreSQL
+              echo "[INFO - 7.4.3] Vérification de l'état initial de PostgreSQL..."
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d postgres -c "\l" || {
                 echo "[ERROR] Impossible de lister les bases de données. Vérifiez la configuration." | tee -a $LOG_FILE
                 exit 1
               }
-
+              
               # 7.4.5 - Lister les rôles
               echo "[INFO - 7.4.5] Lister les rôles..."
               docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -d postgres -c "\du" || {
