@@ -230,6 +230,7 @@ jobs:
           # 7.4 - Connexion SSH et configuration de PostgreSQL
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             set -e
+            
             # 7.4.1 - Diagnostic des variables en cours
             echo \"[INFO - 7.4.1] Diagnostic des variables en cours...\"
             echo \"DB_USERNAME: $DB_USERNAME\"
@@ -237,32 +238,38 @@ jobs:
             echo \"DB_NAME: $DB_NAME\"
             echo \"DB_HOST: $DB_HOST\"
             echo \"POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME\"
+           
             # 7.4.2 - Vérification de l'état initial de PostgreSQL
             echo \"[INFO - 7.4.2] Vérification de l'état initial de PostgreSQL...\"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
+            
             # 7.4.3 - Création du fichier SQL pour initialiser la base de données
             echo \"[INFO - 7.4.3] Création du fichier SQL init_database.sql...\"
             cat <<EOF > init_database.sql
-            DROP DATABASE IF EXISTS $DB_NAME;
-            DO \$\$ BEGIN
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
-                CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
-              END IF;
-            END \$\$;
-            CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
-            GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
+              DROP DATABASE IF EXISTS $DB_NAME;
+              DO \$\$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$DB_USERNAME') THEN
+                  CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';
+                END IF;
+              END \$\$;
+              CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;
+              GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;
             EOF
+            
             # 7.4.4 - Copier le fichier SQL dans le conteneur PostgreSQL
             echo \"[INFO - 7.4.4] Copie du fichier SQL dans le conteneur PostgreSQL...\"
             docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql
+            
             # 7.4.5 - Exécuter le fichier SQL dans le conteneur PostgreSQL
             echo \"[INFO - 7.4.5] Exécution des commandes SQL dans le conteneur PostgreSQL...\"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql
+            
             # 7.4.6 - Nettoyage des fichiers temporaires
             echo \"[INFO - 7.4.6] Nettoyage des fichiers temporaires...\"
             rm init_database.sql
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
+            
             # 7.4.7 - Restauration en production
             if [ \"$ENV\" == \"prod\" ]; then
               echo \"[INFO - 7.4.7] Restauration de la base de données à partir du fichier de backup...\"
@@ -272,8 +279,8 @@ jobs:
               }
             fi
             "
-            # Étape finale - Confirmation de la réussite
-            echo "[SUCCESS] Étape 7 terminée avec succès."
+          # Étape finale - Confirmation de la réussite
+          echo "[SUCCESS] Étape 7 terminée avec succès."
 
       - name: 8 - Déployer le conteneur Backend
         run: |
