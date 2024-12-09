@@ -139,23 +139,30 @@ jobs:
             echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE
 
             # 6.1 - Sauvegarde conditionnelle de la base de données (production uniquement)
-            if [ \"$ENV\" = \"prod\" ]; then
+            if [ "$ENV" = "prod" ]; then
               echo '[INFO - Étape 6.1] Sauvegarde de la base de données en production...' | tee -a $LOG_FILE
-              BACKUP_FILE=\"/root/prod_backup_\$(date +%Y%m%d%H%M%S).sql\"
-              docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > \$BACKUP_FILE || {
-                echo '[ERROR] Échec de la sauvegarde de la base de données.' | tee -a $LOG_FILE
-                exit 1
+              BACKUP_FILE="/root/prod_backup_$(date +%Y%m%d%H%M%S).sql"
+              docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > $BACKUP_FILE || {
+                  echo '[ERROR] Échec de la sauvegarde de la base de données.' | tee -a $LOG_FILE
+                  exit 1
               }
-              echo '[INFO] Sauvegarde effectuée : \$BACKUP_FILE' | tee -a $LOG_FILE
+              echo '[INFO] Sauvegarde effectuée : $BACKUP_FILE' | tee -a $LOG_FILE
+
+              # Créer un lien symbolique pour le dernier fichier de sauvegarde
+              echo '[INFO] Création d\'un lien symbolique vers le dernier fichier de sauvegarde...' | tee -a $LOG_FILE
+              ln -sf $BACKUP_FILE /home/$SSH_USER/backups/prod_backup_latest.sql || {
+                  echo '[WARNING] Échec de la création du lien symbolique pour le fichier de sauvegarde.' | tee -a $LOG_FILE
+              }
 
               # 6.2 - Nettoyage des anciens backups
               echo '[INFO - Étape 6.2] Nettoyage des anciens backups (plus de 7 jours)...' | tee -a $LOG_FILE
               find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \; || {
-                echo '[WARNING] Échec du nettoyage des anciens backups.' | tee -a $LOG_FILE
+                  echo '[WARNING] Échec du nettoyage des anciens backups.' | tee -a $LOG_FILE
               }
-            else
-              echo '[INFO] Pas de sauvegarde nécessaire pour cet environnement.' | tee -a $LOG_FILE
-            fi
+              else
+                  echo '[INFO] Pas de sauvegarde nécessaire pour cet environnement.' | tee -a $LOG_FILE
+              fi
+             
 
             # 6.3 - Vérification et création du réseau Docker
             if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
