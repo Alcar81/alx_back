@@ -129,42 +129,46 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa || (echo "Erreur : Clé SSH invalide." && exit 1)
         
-
       # Étape 6 - Démarrer le conteneur PostgreSQL
       - name: 6 - Démarrer le conteneur PostgreSQL
         run: |
-          mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
+          echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
+          # Étape 1 : Préparation initiale
+          echo "Préparation initiale..."
+          if ! mkdir -p backend/logs; then
+            echo "Erreur : Impossible de créer le répertoire des logs."
+            exit 1
+          fi
           chmod -R 777 backend/logs
-          echo "Déploiement Backend : $(date)" > $LOG_FILE
-
+      
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             set -e
             echo '===================================' | tee -a $LOG_FILE
             echo '[INFO - Étape 6] Configuration du conteneur PostgreSQL...' | tee -a $LOG_FILE
-
+      
             # 6.1 - Sauvegarde conditionnelle de la base de données (production uniquement)
             if [ \"$ENV\" = \"prod\" ]; then
               echo '[INFO - Étape 6.1] Sauvegarde de la base de données en production...' | tee -a $LOG_FILE
               BACKUP_FILE=\"/root/prod_backup_\$(date +%Y%m%d%H%M%S).sql\"
               if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
-                docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > \$BACKUP_FILE || {
+                if ! docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > \$BACKUP_FILE; then
                   echo '[ERROR] Échec de la sauvegarde de la base de données.' | tee -a $LOG_FILE
                   exit 1
-                }
+                fi
                 echo '[INFO] Sauvegarde effectuée : \$BACKUP_FILE' | tee -a $LOG_FILE
               else
                 echo '[WARNING] Aucun conteneur PostgreSQL actif, pas de sauvegarde possible.' | tee -a $LOG_FILE
               fi
-
+      
               # 6.2 - Nettoyage des anciens backups
               echo '[INFO - Étape 6.2] Nettoyage des anciens backups (plus de 7 jours)...' | tee -a $LOG_FILE
-              find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \; || {
+              if ! find /root -name 'prod_backup_*.sql' -type f -mtime +7 -exec rm -f {} \;; then
                 echo '[WARNING] Échec du nettoyage des anciens backups.' | tee -a $LOG_FILE
-              }
+              fi
             else
               echo '[INFO] Pas de sauvegarde nécessaire pour cet environnement.' | tee -a $LOG_FILE
             fi
-
+      
             # 6.3 - Vérification et création du réseau Docker
             if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
               echo '[INFO - Étape 6.3] Création du réseau Docker : $NETWORK' | tee -a $LOG_FILE
@@ -172,7 +176,7 @@ jobs:
             else
               echo '[INFO] Réseau Docker déjà existant : $NETWORK' | tee -a $LOG_FILE
             fi
-
+      
             # 6.4 - Vérification et création du volume Docker
             if ! docker volume ls --filter \"name=^$POSTGRES_VOLUME\$\" --format '{{.Name}}' | grep -w $POSTGRES_VOLUME; then
               echo '[INFO - Étape 6.4] Création du volume Docker : $POSTGRES_VOLUME' | tee -a $LOG_FILE
@@ -180,7 +184,7 @@ jobs:
             else
               echo '[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME' | tee -a $LOG_FILE
             fi
-
+      
             # 6.5 - Arrêt et suppression de l’ancien conteneur PostgreSQL
             if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
               echo '[INFO - Étape 6.5] Suppression de l’ancien conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME' | tee -a $LOG_FILE
@@ -189,49 +193,42 @@ jobs:
             else
               echo '[INFO] Aucun conteneur PostgreSQL existant à supprimer.' | tee -a $LOG_FILE
             fi
-
+      
             # 6.6 - Téléchargement de l’image PostgreSQL
             echo '[INFO - Étape 6.6] Téléchargement de l’image PostgreSQL...' | tee -a $LOG_FILE
             docker pull postgres:13
-
+      
             # 6.7 - Démarrage du nouveau conteneur PostgreSQL
             echo '[INFO - Étape 6.7] Démarrage du nouveau conteneur PostgreSQL...' | tee -a $LOG_FILE
-            docker run -d --name $POSTGRES_CONTAINER_NAME \
+            if ! docker run -d --name $POSTGRES_CONTAINER_NAME \
               --network $NETWORK \
               -e POSTGRES_USER=$DB_USERNAME \
               -e POSTGRES_PASSWORD=$DB_PASSWORD \
               -e POSTGRES_DB=$DB_NAME \
               -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
-              postgres:13 || {
-                echo '[ERROR] Échec de la création du conteneur PostgreSQL.' | tee -a $LOG_FILE
-                exit 1
-              }
-
+              postgres:13; then
+              echo '[ERROR] Échec de la création du conteneur PostgreSQL.' | tee -a $LOG_FILE
+              exit 1
+            fi
+      
             # 6.8 - Pause pour garantir le démarrage
-            echo "[INFO - Étape 6.8] Vérification de PostgreSQL jusqu'à ce qu'il soit prêt"
+            echo '[INFO - Étape 6.8] Vérification de PostgreSQL jusqu'à ce qu\'il soit prêt'
             MAX_ATTEMPTS=30
             for i in $(seq 1 $MAX_ATTEMPTS); do
               if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
-                echo "PostgreSQL est prêt après $i seconde(s)."
+                echo \"PostgreSQL est prêt après $i seconde(s).\" | tee -a $LOG_FILE
                 break
               fi
-              echo "PostgreSQL n’est pas encore prêt, tentative $i/$MAX_ATTEMPTS..."
+              echo \"PostgreSQL n’est pas encore prêt, tentative $i/$MAX_ATTEMPTS...\" | tee -a $LOG_FILE
               sleep 1
-              if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
-                echo "[ERROR] PostgreSQL n’est pas prêt après $MAX_ATTEMPTS secondes." | tee -a $LOG_FILE
+              if [ \"$i\" -eq \"$MAX_ATTEMPTS\" ]; then
+                echo \"[ERROR] PostgreSQL n’est pas prêt après $MAX_ATTEMPTS secondes.\" | tee -a $LOG_FILE
                 exit 1
               fi
             done
-            echo "PostgreSQL est prêt"
-
-            # 6.9 - Vérification finale de PostgreSQL
-            if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
-              echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
-            else
-              echo '[ERROR - Étape 6] PostgreSQL n’est pas prêt après le délai d’attente.' | tee -a $LOG_FILE
-              exit 1
-            fi
+      
+            echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
           " | tee -a $LOG_FILE
 
 
