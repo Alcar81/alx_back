@@ -135,7 +135,8 @@ jobs:
         run: |
           mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
           chmod -R 777 backend/logs
-          echo "=== Déploiement Backend : $(date) ===" > $LOG_FILE   
+          echo "Déploiement Backend : $(date)" > $LOG_FILE
+
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
             set -e
             echo '===================================' | tee -a $LOG_FILE
