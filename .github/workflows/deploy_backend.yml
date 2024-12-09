@@ -276,7 +276,7 @@ jobs:
             echo "[INFO - 7.4.5] Nettoyage"
             rm init_database.sql &&
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
-            echo 'Base de données et utilisateur créés avec succès.'
+            echo '[INFO - 7.4.5] Base de données et utilisateur créés avec succès.'
             
             # 7.4.6 - Si c'est l'environnement de production, restaurer la base de données depuis le backup
             echo "[INFO - 7.4.6] Si c'est l'environnement de production, restaurer la base de données depuis le backup"
