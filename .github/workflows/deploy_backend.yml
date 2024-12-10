@@ -144,7 +144,7 @@ jobs:
             set -e
             echo '===================================' | tee -a $LOG_FILE
             echo '[INFO - Étape 6] Début de la configuration PostgreSQL...' | tee -a $LOG_FILE
-            
+
             # 6.2 - Sauvegarde conditionnelle (prod et dev)
             echo '[INFO - 6.2.1] Sauvegarde de la base de données...' | tee -a $LOG_FILE
             if [ \"$ENV\" == \"prod\" ]; then
@@ -204,7 +204,7 @@ jobs:
             
             # 6.8 - Démarrage du nouveau conteneur PostgreSQL
             echo '[INFO - 6.8] Démarrage du nouveau conteneur PostgreSQL...' | tee -a $LOG_FILE
-
+  
             # Vérifier si le volume existe
             if docker volume ls --filter "name=^${POSTGRES_VOLUME}$" --format '{{.Name}}' | grep -wq "${POSTGRES_VOLUME}"; then
               echo "[INFO - 6.8.1] Volume ${POSTGRES_VOLUME} déjà existant. Lancement du conteneur sans recréer le volume..." | tee -a $LOG_FILE
