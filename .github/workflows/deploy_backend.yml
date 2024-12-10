@@ -205,7 +205,7 @@ jobs:
               -v ${POSTGRES_VOLUME}_${ENV}:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13; then
-              echo '[ERROR - 6.8] Échec de la création du conteneur PostgreSQL.' | tee -a $LOG_FILE
+              echo '[ERROR - 6.8] Échec de la création du conteneur PostgreSQL. ' | tee -a $LOG_FILE
               exit 1
             fi
             # 6.9 - Vérification de PostgreSQL
@@ -222,7 +222,7 @@ jobs:
                 echo \"[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes.\" | tee -a $LOG_FILE
                 exit 1
               fi
-            done          
+            done       
 
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
           " | tee -a $LOG_FILE            
