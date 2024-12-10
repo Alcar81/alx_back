@@ -132,7 +132,7 @@ jobs:
       # Étape 6 - Configuration du conteneur PostgreSQL
       - name: 6 - Configuration du conteneur PostgreSQL
         run: |
-          echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
+          echo "Étape 6 : Configuration du conteneur PostgreSQL"
           # 6.1 - Préparation initiale
           echo "[INFO - 6.1] Préparation initiale..."
           if ! mkdir -p backend/logs; then
@@ -255,10 +255,9 @@ jobs:
                 echo \"[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes.\" | tee -a $LOG_FILE
                 exit 1
               fi
-            done       
-          "
-              echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
-             | tee -a $LOG_FILE            
+            done
+            echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
+          " | tee -a $LOG_FILE            
 
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et les utilisateurs
