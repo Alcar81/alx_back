@@ -238,7 +238,6 @@ jobs:
               echo "[ERROR - 6.8.4] PostgreSQL n'est pas prêt après le démarrage du conteneur." | tee -a $LOG_FILE
               exit 1
             fi
-
             echo '[SUCCESS - 6.8] Conteneur PostgreSQL démarré avec succès.' | tee -a $LOG_FILE
 
             # 6.9 - Vérification de PostgreSQL
@@ -255,9 +254,11 @@ jobs:
                 echo \"[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes.\" | tee -a $LOG_FILE
                 exit 1
               fi
-          done
+            done
+          "  
+            
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
-          " | tee -a $LOG_FILE            
+           | tee -a $LOG_FILE            
 
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et les utilisateurs
