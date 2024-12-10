@@ -241,9 +241,9 @@ jobs:
           # 7.2 - Vérification de l'état du conteneur PostgreSQL
           echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
           docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
-          # 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
-          sleep 10
+          # 7.3 - Attente de 45 secondes pour s'assurer que PostgreSQL est prêt
+          echo "=== 7.3 - Attente de 45 secondes pour s'assurer que PostgreSQL est prêt ==="
+          sleep 45
           
           # 7.4 - Connexion SSH et exécution des commandes pour gérer la base et les rôles
           echo "=== 7.4 - Connexion SSH et gestion des bases de données et rôles ==="
