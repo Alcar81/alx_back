@@ -221,17 +221,17 @@ jobs:
             fi
 
             # 6.9 - Vérification de PostgreSQL
-            echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a $LOG_FILE
+            echo '[INFO - 6.9] Vérification de PostgreSQL après démarrage...'
             MAX_ATTEMPTS=30
-            for i in \$(seq 1 \$MAX_ATTEMPTS); do
+            for i in $(seq 1 $MAX_ATTEMPTS); do
               if docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
-                echo \"PostgreSQL est prêt après \$i seconde(s).\" | tee -a $LOG_FILE
+                echo "[INFO - 6.9.1] PostgreSQL est prêt après $i seconde(s)." | tee -a $LOG_FILE
                 break
               fi
-              echo \"PostgreSQL n’est pas encore prêt, tentative \$i/\$MAX_ATTEMPTS...\" | tee -a $LOG_FILE
+              echo "[WARNING - 6.9.2] PostgreSQL n'est pas encore prêt, tentative $i/$MAX_ATTEMPTS..." | tee -a $LOG_FILE
               sleep 1
-              if [ \"\$i\" -eq \"\$MAX_ATTEMPTS\" ]; then
-                echo \"[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes.\" | tee -a $LOG_FILE
+              if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
+                echo "[ERROR - 6.9.3] PostgreSQL n'est pas prêt après $MAX_ATTEMPTS secondes." | tee -a $LOG_FILE
                 exit 1
               fi
             done
@@ -243,7 +243,7 @@ jobs:
       - name: 7 - Créer la base de données et les utilisateurs
         run: |          
           # Étape 7 - Création de la base de données et des rôles
-          echo "=== Début de l'étape 7 : Création de la base de données et des rôles ==="
+          echo "=== Étape 7 : Création de la base de données et des rôles ==="
 
           # 7.1 - Préparation initiale
           echo "[INFO - 7.1] Préparation initiale..."
@@ -259,13 +259,8 @@ jobs:
           echo "[INFO - 7.2] Sauvegarde conditionnelle de la base de données..."
 
           # 7.2.1 - Déterminer le répertoire et le fichier de sauvegarde
-          if [ "$ENV" == "prod" ]; then
-              BACKUP_DIR="/home/$SSH_USER/backups/prod"
-              BACKUP_FILE="$BACKUP_DIR/prod_backup_$(date +%Y%m%d%H%M%S).sql"
-          else
-              BACKUP_DIR="/home/$SSH_USER/backups/dev"
-              BACKUP_FILE="$BACKUP_DIR/dev_backup_$(date +%Y%m%d%H%M%S).sql"
-          fi
+          BACKUP_DIR="/home/$SSH_USER/backups/$ENV"
+          BACKUP_FILE="$BACKUP_DIR/${ENV}_backup_$(date +%Y%m%d%H%M%S).sql"
           echo "[INFO - 7.2.1] Répertoire de sauvegarde déterminé : $BACKUP_DIR"
 
           # 7.2.2 - Créer le répertoire de sauvegarde s’il n’existe pas
@@ -299,9 +294,9 @@ jobs:
               set -e
               # 7.3.1 - Vérification et création du rôle 'postgres'
               echo '[INFO - 7.3.1] Vérification et création du rôle postgres si nécessaire...'
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -tc \"SELECT 1 FROM pg_roles WHERE rolname='postgres'\" | grep -q 1 || {
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -tc \"SELECT 1 FROM pg_roles WHERE rolname='$DB_USERNAME'\" | grep -q 1 || {
                   echo '[INFO - 7.3.2] Création du rôle postgres...'
-                  docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -c \"CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';\"
+                  docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\"
               }
 
               # 7.3.3 - Préparation du script SQL
@@ -334,25 +329,8 @@ jobs:
                 docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql
             "
 
-            # 7.4 - Restauration en production
-            if [ "$ENV" == "prod" ]; then
-                echo "[INFO - 7.4] Restauration de la base de données (environnement production)..."
-                RESTORE_FILE="/home/$SSH_USER/backups/prod/prod_backup_latest.sql"
-                if ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "[ -f $RESTORE_FILE ]"; then
-                    echo "[INFO - 7.4.1] Fichier de backup trouvé : $RESTORE_FILE"
-                    docker cp $RESTORE_FILE $POSTGRES_CONTAINER_NAME:/tmp/restore.sql
-                    docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /tmp/restore.sql || {
-                        echo "[ERROR - 7.4.2] Échec de la restauration à partir du fichier $RESTORE_FILE."
-                        exit 1
-                    }
-                    echo "[INFO - 7.4.3] Restauration terminée avec succès."
-                else
-                    echo "[WARNING - 7.4.1] Aucun fichier de backup trouvé. Restauration ignorée."
-                fi
-            fi
-
-            # 7.5 - Validation finale
-            echo "[INFO - 7.5] Validation finale..."
+            # 7.4 - Validation finale
+            echo "[INFO - 7.4] Validation finale des bases et rôles..."
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "\l"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c "\du"
 
