@@ -132,7 +132,7 @@ jobs:
       # Étape 6 - Configuration du conteneur PostgreSQL
       - name: 6 - Configuration du conteneur PostgreSQL
         run: |
-          echo "Étape 6 : Configuration du conteneur PostgreSQL"
+          echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
           # 6.1 - Préparation initiale
           echo "[INFO - 6.1] Préparation initiale..."
           if ! mkdir -p backend/logs; then
@@ -144,7 +144,6 @@ jobs:
             set -e
             echo '===================================' | tee -a $LOG_FILE
             echo '[INFO - Étape 6] Début de la configuration PostgreSQL...' | tee -a $LOG_FILE
-
             # 6.2 - Sauvegarde conditionnelle (prod et dev)
             echo '[INFO - 6.2.1] Sauvegarde de la base de données...' | tee -a $LOG_FILE
             if [ \"$ENV\" == \"prod\" ]; then
@@ -164,13 +163,11 @@ jobs:
             else
               echo '[WARNING - 6.2.4] Aucun conteneur PostgreSQL actif, pas de sauvegarde possible.' | tee -a $LOG_FILE
             fi
-
             # 6.3 - Nettoyage des anciens backups (plus de 7 jours)
             echo '[INFO - 6.3] Nettoyage des anciens backups (plus de 7 jours)...' | tee -a $LOG_FILE
             if ! find \$BACKUP_DIR -name '*.sql' -type f -mtime +7 -exec rm -f {} \;; then
               echo '[WARNING - 6.3.1] Échec du nettoyage des anciens backups.' | tee -a $LOG_FILE
             fi
-
             # 6.4 - Vérification et création du réseau Docker
             echo '[INFO - 6.4] Vérification et création du réseau Docker...' | tee -a $LOG_FILE
             if ! docker network ls --filter \"name=^$NETWORK\$\" --format '{{.Name}}' | grep -w $NETWORK; then
@@ -179,7 +176,6 @@ jobs:
             else
               echo '[INFO - 6.4.2] Réseau Docker déjà existant : $NETWORK' | tee -a $LOG_FILE
             fi
-
             # 6.5 - Vérification et création du volume Docker
             echo '[INFO - 6.5] Vérification et création du volume Docker...' | tee -a $LOG_FILE
             if ! docker volume ls --filter \"name=^$POSTGRES_VOLUME\$\" --format '{{.Name}}' | grep -w $POSTGRES_VOLUME; then
@@ -188,7 +184,6 @@ jobs:
             else
               echo '[INFO - 6.5.2] Volume Docker déjà existant : $POSTGRES_VOLUME' | tee -a $LOG_FILE
             fi
-
             # 6.6 - Arrêt et suppression de l’ancien conteneur PostgreSQL
             echo '[INFO - 6.6] Arrêt et suppression de l’ancien conteneur PostgreSQL...' | tee -a $LOG_FILE
             if docker ps -a --filter \"name=$POSTGRES_CONTAINER_NAME\" --format '{{.Names}}' | grep -w $POSTGRES_CONTAINER_NAME; then
@@ -197,49 +192,22 @@ jobs:
             else
               echo '[INFO - 6.6.1] Aucun conteneur PostgreSQL existant à supprimer.' | tee -a $LOG_FILE
             fi
-
             # 6.7 - Téléchargement de l’image PostgreSQL
             echo '[INFO - 6.7] Téléchargement de l’image PostgreSQL...' | tee -a $LOG_FILE
             docker pull postgres:13
-            
             # 6.8 - Démarrage du nouveau conteneur PostgreSQL
             echo '[INFO - 6.8] Démarrage du nouveau conteneur PostgreSQL...' | tee -a $LOG_FILE
-  
-            # Vérifier si le volume existe
-            if docker volume ls --filter "name=^${POSTGRES_VOLUME}$" --format '{{.Name}}' | grep -wq "${POSTGRES_VOLUME}"; then
-              echo "[INFO - 6.8.1] Volume ${POSTGRES_VOLUME} déjà existant. Lancement du conteneur sans recréer le volume..." | tee -a $LOG_FILE
-              docker run -d --name $POSTGRES_CONTAINER_NAME \
-                --network $NETWORK \
-                -e POSTGRES_USER=$DB_USERNAME \
-                -e POSTGRES_PASSWORD=$DB_PASSWORD \
-                -e POSTGRES_DB=$DB_NAME \
-                -p $DB_PORT_EXT:$DB_PORT_INT \
-                postgres:13 || {
-                echo '[ERROR - 6.8.2] Échec du lancement du conteneur PostgreSQL sans recréer le volume.' | tee -a $LOG_FILE
-                exit 1
-              }
-            else
-              echo "[INFO - 6.8.2] Volume ${POSTGRES_VOLUME} inexistant. Lancement du conteneur avec création du volume..." | tee -a $LOG_FILE
-              docker run -d --name $POSTGRES_CONTAINER_NAME \
-                --network $NETWORK \
-                -e POSTGRES_USER=$DB_USERNAME \
-                -e POSTGRES_PASSWORD=$DB_PASSWORD \
-                -e POSTGRES_DB=$DB_NAME \
-                -v ${POSTGRES_VOLUME}:/var/lib/postgresql/data \
-                -p $DB_PORT_EXT:$DB_PORT_INT \
-                postgres:13 || {
-                echo '[ERROR - 6.8.3] Échec du lancement du conteneur PostgreSQL avec création du volume.' | tee -a $LOG_FILE
-                exit 1
-              }
-            fi
-
-            # Vérification de l'état du conteneur après le lancement
-            if ! docker exec $POSTGRES_CONTAINER_NAME pg_isready -U $DB_USERNAME; then
-              echo "[ERROR - 6.8.4] PostgreSQL n'est pas prêt après le démarrage du conteneur." | tee -a $LOG_FILE
+            if ! docker run -d --name $POSTGRES_CONTAINER_NAME \
+              --network $NETWORK \
+              -e POSTGRES_USER=$DB_USERNAME \
+              -e POSTGRES_PASSWORD=$DB_PASSWORD \
+              -e POSTGRES_DB=$DB_NAME \
+              -v ${POSTGRES_VOLUME}:/var/lib/postgresql/data \
+              -p $DB_PORT_EXT:$DB_PORT_INT \
+              postgres:13; then
+              echo '[ERROR - 6.8] Échec de la création du conteneur PostgreSQL. ' | tee -a $LOG_FILE
               exit 1
             fi
-            echo '[SUCCESS - 6.8] Conteneur PostgreSQL démarré avec succès.' | tee -a $LOG_FILE
-
             # 6.9 - Vérification de PostgreSQL
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a $LOG_FILE
             MAX_ATTEMPTS=30
@@ -254,11 +222,9 @@ jobs:
                 echo \"[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes.\" | tee -a $LOG_FILE
                 exit 1
               fi
-            done
-          "  
-            
+            done       
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
-           | tee -a $LOG_FILE            
+          " | tee -a $LOG_FILE        
 
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et les utilisateurs
