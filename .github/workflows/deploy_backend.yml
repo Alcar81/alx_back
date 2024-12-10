@@ -227,10 +227,10 @@ jobs:
             # 6.9.1 - Vérification de l'état du conteneur PostgreSQL
             echo "[INFO - 6.9.1] - Vérification de l'état du conteneur PostgreSQL"
             echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
-            docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" || {
-                echo "[ERROR - 6.9.1] - Échec lors de la vérification de l'état du conteneur PostgreSQL."
-                exit 1
-            }
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
+            docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
+
             # 6.9.2 - Vérification de l'état final
             echo \"[INFO - 6.9.2] Vérification de l'état final...\"
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
