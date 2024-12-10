@@ -223,6 +223,16 @@ jobs:
                 exit 1
               fi
             done
+
+            # 6.9.1 - Vérification de l'état du conteneur PostgreSQL
+            echo "=== 6.9.1 - Vérification de l'état du conteneur PostgreSQL ==="
+            docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
+
+            # 6.9.2 - Vérification de l'état final
+            echo \"[INFO - 6.9.2] Vérification de l'état final...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
+
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
           "
 
@@ -238,12 +248,23 @@ jobs:
           echo "URL de connexion à la base : $DATABASE_URL"
           echo "Nom utilisateur : $DB_USERNAME"
           echo "Mot de passe de la base : $DB_PASSWORD"
+
+          # 7.1.1 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt
+          echo "=== 7.1.1 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
+          sleep 20
+
           # 7.2 - Vérification de l'état du conteneur PostgreSQL
           echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
           docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
-          # 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
-          sleep 10
+
+          # 7.2.1 - Vérification avant
+            echo \"[INFO - 7.2.1] Vérification de l'état final...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
+
+          # 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt
+          echo "=== 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
+          sleep 20
           
           # 7.4 - Connexion SSH et exécution des commandes pour gérer la base et les rôles
           echo "=== 7.4 - Connexion SSH et gestion des bases de données et rôles ==="
