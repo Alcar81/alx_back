@@ -230,7 +230,6 @@ jobs:
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et les utilisateurs
         run: |
-          # 7.1 - Afficher les informations pour le diagnostic
           echo "=== Début de l'étape 7 ==="
           echo "Environnement : $ENV"
           echo "Nom de la base de données : $DB_NAME"
@@ -239,90 +238,64 @@ jobs:
           echo "URL de connexion à la base : $DATABASE_URL"
           echo "Nom utilisateur : $DB_USERNAME"
           echo "Mot de passe de la base : $DB_PASSWORD"
-          # 7.2 - Vérification de l'état du conteneur PostgreSQL
-          echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
-          docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
-          # 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
-          sleep 10
-          
-          # 7.4 - Connexion SSH et exécution des commandes pour gérer la base et les rôles
-          echo "=== 7.4 - Connexion SSH et gestion des bases de données et rôles ==="
+
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-              # 7.4.1 - Vérification de l'état initial de PostgreSQL
-              echo \"[INFO - 7.4.1] Vérification de l'état initial de PostgreSQL...\"
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\" || echo '[WARNING] Impossible d\'énumérer les bases.'
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" || echo '[WARNING] Impossible d\'énumérer les rôles.'
-      
-              # 7.4.2 - Création du rôle postgres si absent
-              echo \"[INFO - 7.4.2] Vérification et création du rôle 'postgres' si nécessaire...\"
-              docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -tc \"SELECT 1 FROM pg_roles WHERE rolname='postgres'\" | grep -q 1 || {
-                  echo '[INFO] Création du rôle postgres...'
-                  docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -c \"CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';\"
-              }
-              
-              # Pause pour s'assurer que les commandes SQL ont été correctement exécutées
-              echo \"[INFO] Pause de 20 secondes pour garantir que les commandes SQL sont appliquées...\"
-              sleep 20
-              
-              # 7.4.3 - Gestion des bases et rôles
-              echo \"[INFO - 7.4.3] Création ou mise à jour des bases et rôles...\"
+            set -e
 
-          cat <<EOF > init_database.sql
-          -- Terminer les connexions actives si la base existe
-            SELECT pg_terminate_backend(pg_stat_activity.pid)
-            FROM pg_stat_activity
-            WHERE pg_stat_activity.datname = '${DB_NAME}'
-              AND pg_stat_activity.pid <> pg_backend_pid();
+            # Vérification de l'état initial des bases et des rôles
+            echo \"[INFO - 7.0] État initial : Bases et Rôles...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\" || echo '[WARNING] Impossible d\'énumérer les bases.'
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" || echo '[WARNING] Impossible d\'énumérer les rôles.'
 
-            -- Supprimer la base et le rôle si existants
-            DROP DATABASE IF EXISTS \"${DB_NAME}\";
-            DROP ROLE IF EXISTS \"${DB_USERNAME}\";
+            # 7.1 - Sauvegarde avant modifications
+            echo \"[INFO - 7.1] Sauvegarde de la base de données...\"
+            BACKUP_DIR=\"/home/$SSH_USER/backups/$ENV\"
+            BACKUP_FILE=\"\$BACKUP_DIR/${DB_NAME}_backup_\$(date +%Y%m%d%H%M%S).sql\"
+            mkdir -p \$BACKUP_DIR
+            docker exec $POSTGRES_CONTAINER_NAME pg_dump -U $DB_USERNAME $DB_NAME > \$BACKUP_FILE || {
+              echo \"[WARNING - 7.1] Échec de la sauvegarde de la base $DB_NAME. Vérifiez le conteneur.\"
+            }
+            echo \"[INFO - 7.1] Sauvegarde terminée : \$BACKUP_FILE\"
 
-            -- Créer le rôle et la base
-            CREATE ROLE \"${DB_USERNAME}\" WITH LOGIN PASSWORD '${DB_PASSWORD}';
-            CREATE DATABASE \"${DB_NAME}\" WITH OWNER \"${DB_USERNAME}\";
-            GRANT ALL PRIVILEGES ON DATABASE \"${DB_NAME}\" TO \"${DB_USERNAME}\";
-          EOF
-            
-            # Pause pour s'assurer que les commandes SQL ont été correctement exécutées
-              echo \"[INFO] Pause de 20 secondes pour garantir que les commandes SQL sont appliquées...\"
-              sleep 20
-          
-            # 7.4.4 - Exécution des commandes SQL
-            echo \"[INFO - 7.4.4] Exécution des commandes SQL...\"
-            docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -f /tmp/init_database.sql
+            # Vérification après sauvegarde
+            echo \"[INFO - 7.1.1] Vérification après sauvegarde : Bases et Rôles...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\" || echo '[WARNING] Impossible d\'énumérer les bases après la sauvegarde.'
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" || echo '[WARNING] Impossible d\'énumérer les rôles après la sauvegarde.'
 
-            # Pause pour s'assurer que les commandes SQL ont été correctement exécutées
-            echo \"[INFO] Pause de 20 secondes pour garantir que les commandes SQL sont appliquées...\"
-            sleep 20
+            # 7.2 - Vérification et création du rôle si absent
+            echo \"[INFO - 7.2] Vérification et création du rôle $DB_USERNAME...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -tc \"SELECT 1 FROM pg_roles WHERE rolname='$DB_USERNAME'\" | grep -q 1 || {
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE ROLE $DB_USERNAME WITH LOGIN PASSWORD '$DB_PASSWORD';\"
+            }
 
-            # 7.4.5 - Vérification de l'état final
-            echo \"[INFO - 7.4.5] Vérification de l'état final...\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
+            # 7.3 - Vérification et création de la base si absente
+            echo \"[INFO - 7.3] Vérification et création de la base $DB_NAME...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -tc \"SELECT 1 FROM pg_database WHERE datname='$DB_NAME'\" | grep -q 1 || {
+              docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"CREATE DATABASE $DB_NAME WITH OWNER $DB_USERNAME;\"
+            }
 
-            # 7.4.6 - Nettoyage
-            echo \"[INFO - 7.4.6] Nettoyage...\"
-            rm init_database.sql
-            docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql 
-            
-            # 7.4.7 - Restauration de la base de données depuis le backup
-            echo "[INFO - 7.4.7] Restauration de la base de données..."
-            BACKUP_FILE="/home/$SSH_USER/backups/$ENV_backup_latest.sql"
+            # 7.4 - Initialisation des permissions
+            echo \"[INFO - 7.4] Initialisation des permissions...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USERNAME;\"
 
-            if [ -f "$BACKUP_FILE" ]; then
-                echo "Fichier de backup trouvé. Copie dans le conteneur PostgreSQL..."
-                docker cp $BACKUP_FILE $POSTGRES_CONTAINER_NAME:/tmp/$ENV_backup_latest.sql
-                docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /tmp/$ENV_backup_latest.sql
-                echo "Restauration terminée avec succès."
-            else
-                echo "[WARNING] Fichier de backup introuvable : $BACKUP_FILE. La restauration est ignorée."
-            fi
+            # Vérification après création/modification
+            echo \"[INFO - 7.4.1] Vérification après création/modification : Bases et Rôles...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\" || echo '[WARNING] Impossible d\'énumérer les bases après modifications.'
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" || echo '[WARNING] Impossible d\'énumérer les rôles après modifications.'
+
+            # 7.5 - Nettoyage
+            echo \"[INFO - 7.5] Nettoyage des fichiers temporaires...\"
+            rm -f init_database.sql
+            docker exec $POSTGRES_CONTAINER_NAME rm -f /tmp/init_database.sql || echo \"[WARNING] Aucun fichier à nettoyer.\"
+
+            # Vérification finale pour s'assurer que tout est prêt
+            echo \"[INFO - 7.6] Vérification finale : Bases et Rôles...\"
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\" || echo '[WARNING] Impossible d\'énumérer les bases lors de la vérification finale.'
+            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\" || echo '[WARNING] Impossible d\'énumérer les rôles lors de la vérification finale.'
           "
-          # Étape finale - Confirmation de la réussite
-          echo \"[SUCCESS] Étape 7 terminée avec succès.\"
+
+          # Confirmation finale
+          echo "[SUCCESS] Étape 7 terminée avec succès."
 
       - name: 8 - Déployer le conteneur Backend
         run: |
