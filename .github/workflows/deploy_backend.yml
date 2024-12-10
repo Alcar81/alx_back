@@ -202,7 +202,7 @@ jobs:
               -e POSTGRES_USER=$DB_USERNAME \
               -e POSTGRES_PASSWORD=$DB_PASSWORD \
               -e POSTGRES_DB=$DB_NAME \
-              -v ${POSTGRES_VOLUME}_${ENV}:/var/lib/postgresql/data \
+              -v ${POSTGRES_VOLUME}:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13; then
               echo '[ERROR - 6.8] Échec de la création du conteneur PostgreSQL. ' | tee -a $LOG_FILE
