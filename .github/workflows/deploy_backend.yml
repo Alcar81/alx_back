@@ -239,9 +239,9 @@ jobs:
               echo "Attente de 20 secondes avant de continuer..."
               sleep 20
               echo "Reprise des opérations..."
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\l"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\du"
               docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U $DB_USERNAME" -c "\l"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U $DB_USERNAME" -c "\du"              
               docker logs "$POSTGRES_CONTAINER_NAME"              
               echo "[INFO - 6.9.1] Vérification du rôle 'postgres' après le démarrage..." | tee -a "$LOG_FILE"
               if docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du" | grep -qw "postgres"; then
