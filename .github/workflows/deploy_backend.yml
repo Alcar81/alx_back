@@ -223,19 +223,6 @@ jobs:
                 exit 1
               fi
             done
-
-            # 6.9.1 - Vérification de l'état du conteneur PostgreSQL
-            echo "[INFO - 6.9.1] - Vérification de l'état du conteneur PostgreSQL"
-            echo "Nom du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
-            docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
-
-            # 6.9.2 - Vérification de l'état final
-            echo \"[INFO - 6.9.2] Vérification de l'état final...\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\l\"
-            docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
-
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
           " | tee -a $LOG_FILE            
 
