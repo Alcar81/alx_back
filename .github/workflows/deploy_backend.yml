@@ -291,7 +291,7 @@ jobs:
             }
 
             # 7.3.3 - Préparation du script SQL
-            echo \"[INFO - 7.3.3] Préparation du script SQL pour la base de données...\"
+            echo "[INFO - 7.3.3] Préparation du script SQL pour la base de données..."
 
             cat <<EOF > init_database.sql
             -- Terminer les connexions actives si la base existe
