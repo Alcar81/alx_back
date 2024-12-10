@@ -203,6 +203,15 @@ jobs:
             docker pull postgres:13
 
             # 6.8 - Démarrage du conteneur PostgreSQL
+            echo '[INFO - 6.8] Affichage des variables utilisées pour le démarrage du conteneur...'
+            echo "POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME"
+            echo "NETWORK: $NETWORK"
+            echo "DB_USERNAME: $DB_USERNAME"
+            echo "DB_PASSWORD: $DB_PASSWORD"
+            echo "DB_NAME: $DB_NAME"
+            echo "POSTGRES_VOLUME: $POSTGRES_VOLUME"
+            echo "DB_PORT_EXT: $DB_PORT_EXT"
+            echo "DB_PORT_INT: $DB_PORT_INT"
             echo '[INFO - 6.8] Démarrage du conteneur PostgreSQL...' | tee -a "$LOG_FILE"
             docker run -d --name "$POSTGRES_CONTAINER_NAME" \
               --network "$NETWORK" \
@@ -213,7 +222,7 @@ jobs:
               -p "$DB_PORT_EXT:$DB_PORT_INT" \
               postgres:13
 
-            # 6.9 - Vérification de PostgreSQL
+            # 6.9 - Vérification de PostgreSQL            
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a "$LOG_FILE"
             MAX_ATTEMPTS=30
             for i in \$(seq 1 \$MAX_ATTEMPTS); do
@@ -226,7 +235,20 @@ jobs:
                 echo "[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes." | tee -a "$LOG_FILE"
                 exit 1
               fi
-            done
+              done
+              docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+              docker logs "$POSTGRES_CONTAINER_NAME"
+              echo "[INFO - 6.9.1] Vérification du rôle 'postgres' après le démarrage..." | tee -a "$LOG_FILE"
+              if docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du" | grep -qw "postgres"; then
+                echo "[INFO - 6.9.2] Le rôle 'postgres' existe." | tee -a "$LOG_FILE"
+              else
+                echo "[WARNING - 6.9.2] Le rôle 'postgres' n'existe pas. Il sera nécessaire de le créer." | tee -a "$LOG_FILE"
+              fi
+              echo "[INFO - 7.1] Création du rôle 'postgres' si nécessaire..." | tee -a "$LOG_FILE"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
+                echo "[ERROR - 7.2] Échec de la création du rôle 'postgres'." | tee -a "$LOG_FILE"
+                exit 1
+              }
           EOF
         # === Étape 7 : Création de la base de données et des utilisateurs ===
       - name: 7 - Création de la base de données et des utilisateurs
