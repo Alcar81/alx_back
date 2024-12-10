@@ -267,7 +267,11 @@ jobs:
                   echo '[INFO] Création du rôle postgres...'
                   docker exec -i $POSTGRES_CONTAINER_NAME psql -U $DB_USERNAME -c \"CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';\"
               }
-               
+              
+              # Pause pour s'assurer que les commandes SQL ont été correctement exécutées
+              echo \"[INFO] Pause de 20 secondes pour garantir que les commandes SQL sont appliquées...\"
+              sleep 20
+              
               # 7.4.3 - Gestion des bases et rôles
               echo \"[INFO - 7.4.3] Création ou mise à jour des bases et rôles...\"
 
@@ -287,7 +291,11 @@ jobs:
             CREATE DATABASE \"${DB_NAME}\" WITH OWNER \"${DB_USERNAME}\";
             GRANT ALL PRIVILEGES ON DATABASE \"${DB_NAME}\" TO \"${DB_USERNAME}\";
           EOF
-                        
+            
+            # Pause pour s'assurer que les commandes SQL ont été correctement exécutées
+              echo \"[INFO] Pause de 20 secondes pour garantir que les commandes SQL sont appliquées...\"
+              sleep 20
+          
             # 7.4.4 - Exécution des commandes SQL
             echo \"[INFO - 7.4.4] Exécution des commandes SQL...\"
             docker cp init_database.sql $POSTGRES_CONTAINER_NAME:/tmp/init_database.sql
