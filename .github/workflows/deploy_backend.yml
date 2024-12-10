@@ -202,7 +202,7 @@ jobs:
               -e POSTGRES_USER=$DB_USERNAME \
               -e POSTGRES_PASSWORD=$DB_PASSWORD \
               -e POSTGRES_DB=$DB_NAME \
-              -v $POSTGRES_VOLUME:/var/lib/postgresql/data \
+              -v ${POSTGRES_VOLUME}_${ENV}:/var/lib/postgresql/data \
               -p $DB_PORT_EXT:$DB_PORT_INT \
               postgres:13; then
               echo '[ERROR - 6.8] Échec de la création du conteneur PostgreSQL.' | tee -a $LOG_FILE
@@ -241,9 +241,9 @@ jobs:
           # 7.2 - Vérification de l'état du conteneur PostgreSQL
           echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
           docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
-          # 7.3 - Attente de 45 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.3 - Attente de 45 secondes pour s'assurer que PostgreSQL est prêt ==="
-          sleep 45
+          # 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt
+          echo "=== 7.3 - Attente de 10 secondes pour s'assurer que PostgreSQL est prêt ==="
+          sleep 10
           
           # 7.4 - Connexion SSH et exécution des commandes pour gérer la base et les rôles
           echo "=== 7.4 - Connexion SSH et gestion des bases de données et rôles ==="
@@ -307,21 +307,18 @@ jobs:
             rm init_database.sql
             docker exec $POSTGRES_CONTAINER_NAME rm /tmp/init_database.sql 
             
-            # 7.4.7 - Si c'est l'environnement de production, restaurer la base de données depuis le backup
-              if [ \"$ENV\" == \"prod\" ]; then
-                  echo \"[INFO - 7.4.7] Restauration de la base de données...\"
-                  BACKUP_FILE=\"/home/$SSH_USER/backups/prod_backup_latest.sql\"
-                  if [ -f \"$BACKUP_FILE\" ]; then
-                      echo \"Fichier de backup trouvé. Copie dans le conteneur PostgreSQL...\"
-                      docker cp $BACKUP_FILE $POSTGRES_CONTAINER_NAME:/tmp/prod_backup_latest.sql
-                      docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /tmp/prod_backup_latest.sql
-                      echo \"Restauration terminée avec succès.\"
-                  else
-                      echo \"[WARNING] Fichier de backup introuvable : $BACKUP_FILE. La restauration est ignorée.\"
-                  fi
-              else
-                  echo \"Environnement non-production détecté : aucune restauration nécessaire.\"
-              fi
+            # 7.4.7 - Restauration de la base de données depuis le backup
+            echo "[INFO - 7.4.7] Restauration de la base de données..."
+            BACKUP_FILE="/home/$SSH_USER/backups/$ENV_backup_latest.sql"
+
+            if [ -f "$BACKUP_FILE" ]; then
+                echo "Fichier de backup trouvé. Copie dans le conteneur PostgreSQL..."
+                docker cp $BACKUP_FILE $POSTGRES_CONTAINER_NAME:/tmp/$ENV_backup_latest.sql
+                docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -d $DB_NAME < /tmp/$ENV_backup_latest.sql
+                echo "Restauration terminée avec succès."
+            else
+                echo "[WARNING] Fichier de backup introuvable : $BACKUP_FILE. La restauration est ignorée."
+            fi
           "
           # Étape finale - Confirmation de la réussite
           echo \"[SUCCESS] Étape 7 terminée avec succès.\"
