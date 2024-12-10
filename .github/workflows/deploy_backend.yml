@@ -217,17 +217,17 @@ jobs:
             # 6.9 - Vérification de PostgreSQL
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a $LOG_FILE
             echo '[INFO - 6.8] Affichage des variables utilisées pour le démarrage du conteneur...'
-            echo "POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME" | tee -a $LOG_FILE
-            echo "NETWORK: $NETWORK" | tee -a $LOG_FILE
-            echo "DB_USERNAME: $DB_USERNAME" | tee -a $LOG_FILE
-            echo "DB_PASSWORD: $DB_PASSWORD" | tee -a $LOG_FILE
-            echo "DB_NAME: $DB_NAME" | tee -a $LOG_FILE
-            echo "POSTGRES_VOLUME: $POSTGRES_VOLUME" | tee -a $LOG_FILE
-            echo "DB_PORT_EXT: $DB_PORT_EXT" | tee -a $LOG_FILE
-            echo "DB_PORT_INT: $DB_PORT_INT" | tee -a $LOG_FILE
+            echo "POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME"
+            echo "NETWORK: $NETWORK"
+            echo "DB_USERNAME: $DB_USERNAME"
+            echo "DB_PASSWORD: $DB_PASSWORD"
+            echo "DB_NAME: $DB_NAME"
+            echo "POSTGRES_VOLUME: $POSTGRES_VOLUME"
+            echo "DB_PORT_EXT: $DB_PORT_EXT"
+            echo "DB_PORT_INT: $DB_PORT_INT"
 
             MAX_ATTEMPTS=30
-            for i in $(seq 1 $MAX_ATTEMPTS); do
+            for i in $(seq 1 "$MAX_ATTEMPTS"); do
               if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
                 echo "PostgreSQL est prêt après $i seconde(s)." | tee -a $LOG_FILE
                 break
@@ -256,8 +256,6 @@ jobs:
             else
               echo "[WARNING - 6.9.3] Impossible d'afficher la liste des rôles." | tee -a $LOG_FILE
             fi
-
-            echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
 
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE            
           " | tee -a $LOG_FILE
