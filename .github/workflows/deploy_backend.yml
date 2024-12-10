@@ -223,7 +223,7 @@ jobs:
                 exit 1
               fi
             done
-
+          "
             # 6.9.1 - Vérification de l'état du conteneur PostgreSQL
             echo "=== 6.9.1 - Vérification de l'état du conteneur PostgreSQL ==="
             docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
@@ -234,7 +234,7 @@ jobs:
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
 
             echo '[SUCCESS - Étape 6] PostgreSQL est opérationnel.' | tee -a $LOG_FILE
-          "
+          
 
       # Étape 7 - Créer la base de données et l'utilisateur démo
       - name: 7 - Créer la base de données et les utilisateurs
