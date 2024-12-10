@@ -195,19 +195,38 @@ jobs:
             # 6.7 - Téléchargement de l’image PostgreSQL
             echo '[INFO - 6.7] Téléchargement de l’image PostgreSQL...' | tee -a $LOG_FILE
             docker pull postgres:13
+
             # 6.8 - Démarrage du nouveau conteneur PostgreSQL
             echo '[INFO - 6.8] Démarrage du nouveau conteneur PostgreSQL...' | tee -a $LOG_FILE
-            if ! docker run -d --name $POSTGRES_CONTAINER_NAME \
-              --network $NETWORK \
-              -e POSTGRES_USER=$DB_USERNAME \
-              -e POSTGRES_PASSWORD=$DB_PASSWORD \
-              -e POSTGRES_DB=$DB_NAME \
-              -v ${POSTGRES_VOLUME}:/var/lib/postgresql/data \
-              -p $DB_PORT_EXT:$DB_PORT_INT \
-              postgres:13; then
-              echo '[ERROR - 6.8] Échec de la création du conteneur PostgreSQL. ' | tee -a $LOG_FILE
-              exit 1
+
+            # Vérifier si le volume existe
+            if docker volume ls --filter "name=^${POSTGRES_VOLUME}$" --format '{{.Name}}' | grep -wq "${POSTGRES_VOLUME}"; then
+              echo "[INFO - 6.8.1] Volume ${POSTGRES_VOLUME} déjà existant. Lancement du conteneur sans recréer le volume..." | tee -a $LOG_FILE
+              docker run -d --name $POSTGRES_CONTAINER_NAME \
+                --network $NETWORK \
+                -e POSTGRES_USER=$DB_USERNAME \
+                -e POSTGRES_PASSWORD=$DB_PASSWORD \
+                -e POSTGRES_DB=$DB_NAME \
+                -p $DB_PORT_EXT:$DB_PORT_INT \
+                postgres:13 || {
+                echo '[ERROR - 6.8.2] Échec du lancement du conteneur PostgreSQL sans recréer le volume.' | tee -a $LOG_FILE
+                exit 1
+              }
+            else
+              echo "[INFO - 6.8.2] Volume ${POSTGRES_VOLUME} inexistant. Lancement du conteneur avec création du volume..." | tee -a $LOG_FILE
+              docker run -d --name $POSTGRES_CONTAINER_NAME \
+                --network $NETWORK \
+                -e POSTGRES_USER=$DB_USERNAME \
+                -e POSTGRES_PASSWORD=$DB_PASSWORD \
+                -e POSTGRES_DB=$DB_NAME \
+                -v ${POSTGRES_VOLUME}:/var/lib/postgresql/data \
+                -p $DB_PORT_EXT:$DB_PORT_INT \
+                postgres:13 || {
+                echo '[ERROR - 6.8.3] Échec du lancement du conteneur PostgreSQL avec création du volume.' | tee -a $LOG_FILE
+                exit 1
+              }
             fi
+            
             # 6.9 - Vérification de PostgreSQL
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a $LOG_FILE
             MAX_ATTEMPTS=30
