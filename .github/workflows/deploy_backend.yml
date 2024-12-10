@@ -236,10 +236,10 @@ jobs:
                 exit 1
               fi
               done
-              docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-              docker logs "$POSTGRES_CONTAINER_NAME"
               docker exec -it postgres_dev psql -U postgres -c "\l"
               docker exec -it postgres_dev psql -U postgres -c "\du"
+              docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+              docker logs "$POSTGRES_CONTAINER_NAME"              
               echo "[INFO - 6.9.1] Vérification du rôle 'postgres' après le démarrage..." | tee -a "$LOG_FILE"
               if docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du" | grep -qw "postgres"; then
                 echo "[INFO - 6.9.2] Le rôle 'postgres' existe." | tee -a "$LOG_FILE"
