@@ -206,8 +206,7 @@ jobs:
                 echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
                 exit 1
               fi
-              echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
-            done
+              echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE            
 
             # Vérifier si le volume existe
             if docker volume ls --filter "name=^${POSTGRES_VOLUME}$" --format '{{.Name}}' | grep -wq "${POSTGRES_VOLUME}"; then
