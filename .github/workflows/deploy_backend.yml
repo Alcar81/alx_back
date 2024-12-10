@@ -49,7 +49,7 @@ jobs:
       - name: 1.1 - Afficher les variables générées
         run: |
           echo "[INFO] Affichage des variables générées : " | tee -a $LOG_FILE
-          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET POSTGRES_CONTAINER_NAME)
+          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
           for VAR in "${MANDATORY_VARS[@]}"; do
             if [ -z "${!VAR}" ]; then
               echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
@@ -197,16 +197,16 @@ jobs:
             docker pull postgres:13
 
             # 6.8 - Démarrage du nouveau conteneur PostgreSQL
+            echo '[INFO - 6.8] Affichage des variables utilisées pour le démarrage du conteneur...'
+            echo "POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME"
+            echo "NETWORK: $NETWORK"
+            echo "DB_USERNAME: $DB_USERNAME"
+            echo "DB_PASSWORD: $DB_PASSWORD"
+            echo "DB_NAME: $DB_NAME"
+            echo "POSTGRES_VOLUME: $POSTGRES_VOLUME"
+            echo "DB_PORT_EXT: $DB_PORT_EXT"
+            echo "DB_PORT_INT: $DB_PORT_INT"
             echo '[INFO - 6.8] Démarrage du nouveau conteneur PostgreSQL...' | tee -a $LOG_FILE
-
-            echo "[INFO] Affichage des variables générées : " | tee -a $LOG_FILE
-            MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET POSTGRES_CONTAINER_NAME POSTGRES_VOLUME)
-            for VAR in "${MANDATORY_VARS[@]}"; do
-              if [ -z "${!VAR}" ]; then
-                echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
-                exit 1
-              fi
-              echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE            
 
             # Vérifier si le volume existe
             if docker volume ls --filter "name=^${POSTGRES_VOLUME}$" --format '{{.Name}}' | grep -wq "${POSTGRES_VOLUME}"; then
