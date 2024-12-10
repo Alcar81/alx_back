@@ -226,7 +226,7 @@ jobs:
           "
             # 6.9.1 - Vérification de l'état du conteneur PostgreSQL
             echo "[INFO - 6.9.1] - Vérification de l'état du conteneur PostgreSQL"
-            docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
+            docker ps -a --filter 'name=$POSTGRES_CONTAINER_NAME'
 
             # 6.9.2 - Vérification de l'état final
             echo \"[INFO - 6.9.2] Vérification de l'état final...\"
@@ -240,7 +240,7 @@ jobs:
       - name: 7 - Créer la base de données et les utilisateurs
         run: |
           # 7.1 - Afficher les informations pour le diagnostic
-          echo "=== Début de l'étape 7 ==="
+          echo "Début de l'étape 7 "
           echo "Environnement : $ENV"
           echo "Nom de la base de données : $DB_NAME"
           echo "Hôte de la base de données : $DB_HOST"
