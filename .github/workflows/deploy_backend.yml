@@ -225,7 +225,7 @@ jobs:
             done
           "
             # 6.9.1 - Vérification de l'état du conteneur PostgreSQL
-            echo "=== 6.9.1 - Vérification de l'état du conteneur PostgreSQL ==="
+            echo "[INFO - 6.9.1] - Vérification de l'état du conteneur PostgreSQL"
             docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
 
             # 6.9.2 - Vérification de l'état final
@@ -250,11 +250,11 @@ jobs:
           echo "Mot de passe de la base : $DB_PASSWORD"
 
           # 7.1.1 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.1.1 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
+          echo "[INFO - 7.1.1] Attente de 20 secondes pour s'assurer que PostgreSQL est prêt"
           sleep 20
 
           # 7.2 - Vérification de l'état du conteneur PostgreSQL
-          echo "=== 7.2 - Vérification de l'état du conteneur PostgreSQL ==="
+          echo "[INFO - 7.2] - Vérification de l'état du conteneur PostgreSQL"
           docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME"
 
           # 7.2.1 - Vérification avant
@@ -263,11 +263,11 @@ jobs:
             docker exec -i $POSTGRES_CONTAINER_NAME psql -U postgres -c \"\du\"
 
           # 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt
-          echo "=== 7.3 - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt ==="
+          echo "[INFO - 7.3] - Attente de 20 secondes pour s'assurer que PostgreSQL est prêt"
           sleep 20
           
           # 7.4 - Connexion SSH et exécution des commandes pour gérer la base et les rôles
-          echo "=== 7.4 - Connexion SSH et gestion des bases de données et rôles ==="
+          echo "[INFO - 7.4]  Connexion SSH et gestion des bases de données et rôles"
           ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
               # 7.4.1 - Vérification de l'état initial de PostgreSQL
               echo \"[INFO - 7.4.1] Vérification de l'état initial de PostgreSQL...\"
