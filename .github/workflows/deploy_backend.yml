@@ -224,14 +224,6 @@ jobs:
               postgres:13
 
             # 6.9 - Vérification de PostgreSQL
-            echo "Attente de 100 secondes avant de continuer..."
-            sleep 100
-            echo "Reprise des opérations..."
-            docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\l"
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\du"              
-            docker logs "$POSTGRES_CONTAINER_NAME"
-
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a "$LOG_FILE"
             MAX_ATTEMPTS=30
             for i in \$(seq 1 \$MAX_ATTEMPTS); do
@@ -246,17 +238,31 @@ jobs:
               fi
               done
                          
-              echo "[INFO - 6.9.1] Vérification du rôle 'postgres' après le démarrage..." | tee -a "$LOG_FILE"
-              if docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du" | grep -qw "postgres"; then
-                echo "[INFO - 6.9.2] Le rôle 'postgres' existe." | tee -a "$LOG_FILE"
+              echo "[INFO - 6.9.1] Vérification et configuration du rôle '$DB_USERNAME' comme superutilisateur..." | tee -a "$LOG_FILE"
+
+              # Vérifier si le rôle existe
+              if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\\du" | grep -qw "$DB_USERNAME"; then
+                echo "[INFO - 6.9.2] Le rôle '$DB_USERNAME' existe. Mise à jour pour superutilisateur..." | tee -a "$LOG_FILE"
+                docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "ALTER ROLE \"$DB_USERNAME\" WITH SUPERUSER;" || {
+                  echo "[ERROR - 6.9.3] Échec de la mise à jour du rôle '$DB_USERNAME'." | tee -a "$LOG_FILE"
+                  exit 1
+                }
               else
-                echo "[WARNING - 6.9.2] Le rôle 'postgres' n'existe pas. Il sera nécessaire de le créer." | tee -a "$LOG_FILE"
+                echo "[INFO - 6.9.2] Le rôle '$DB_USERNAME' n'existe pas. Création en tant que superutilisateur..." | tee -a "$LOG_FILE"
+                docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "CREATE ROLE \"$DB_USERNAME\" WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
+                  echo "[ERROR - 6.9.3] Échec de la création du rôle '$DB_USERNAME'." | tee -a "$LOG_FILE"
+                  exit 1
+                }
               fi
-              echo "[INFO - 7.1] Création du rôle 'postgres' si nécessaire..." | tee -a "$LOG_FILE"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
-                echo "[ERROR - 7.2] Échec de la création du rôle 'postgres'." | tee -a "$LOG_FILE"
-                exit 1
-              }
+
+              echo "[INFO - 6.9.3] Le rôle '$DB_USERNAME' est maintenant un superutilisateur." | tee -a "$LOG_FILE"
+              
+              docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\l"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\\l"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\\du"           
+              docker logs "$POSTGRES_CONTAINER_NAME"
           EOF
         # === Étape 7 : Création de la base de données et des utilisateurs ===
       - name: 7 - Création de la base de données et des utilisateurs
