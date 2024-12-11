@@ -172,9 +172,11 @@ jobs:
                 exit 1
               }
               
-              # Attendre que PostgreSQL soit prêt
+              # Définir le délai et le nombre de tentatives
               ATTEMPTS=10
               SLEEP_TIME=3
+
+              # Attendre que PostgreSQL soit prêt
               for ((i=1; i<=ATTEMPTS; i++)); do
                 echo "[INFO - 6.2.6.$i] Vérification de PostgreSQL (tentative $i/$ATTEMPTS)..." | tee -a "$LOG_FILE"
                 if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
@@ -184,7 +186,8 @@ jobs:
                   echo "[WARNING - 6.2.6.$i] PostgreSQL n’est pas encore prêt. Nouvelle tentative dans $SLEEP_TIME secondes..." | tee -a "$LOG_FILE"
                   sleep "$SLEEP_TIME"
                 fi
-                
+
+                # Si la dernière tentative échoue
                 if [ "$i" -eq "$ATTEMPTS" ]; then
                   echo '[ERROR - 6.2.8] PostgreSQL n’est pas prêt après plusieurs tentatives.' | tee -a "$LOG_FILE"
                   exit 1
