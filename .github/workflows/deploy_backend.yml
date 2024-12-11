@@ -261,6 +261,13 @@ jobs:
 
             # 6.13 - Relancer PostgreSQL avec le volume monté
             echo '[INFO - 6.13] Relancer le conteneur PostgreSQL avec le volume monté...' | tee -a "$LOG_FILE"
+
+            # Supprimer le conteneur arrêté avant de relancer
+            docker rm "$POSTGRES_CONTAINER_NAME" || {
+              echo '[WARNING - 6.13.1] Échec de la suppression du conteneur arrêté. Il est peut-être déjà supprimé.' | tee -a "$LOG_FILE"
+            }
+
+            # Relancer le conteneur
             docker run -d --name "$POSTGRES_CONTAINER_NAME" \
               --network "$NETWORK" \
               -e POSTGRES_USER="$DB_USERNAME" \
