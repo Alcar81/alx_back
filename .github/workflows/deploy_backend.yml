@@ -226,7 +226,7 @@ jobs:
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a "$LOG_FILE"
             MAX_ATTEMPTS=30
             for i in \$(seq 1 \$MAX_ATTEMPTS); do
-              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U postgres; then
                 echo "PostgreSQL est prêt après \$i seconde(s)." | tee -a "$LOG_FILE"
                 break
               fi
@@ -240,8 +240,8 @@ jobs:
               sleep 20
               echo "Reprise des opérations..."
               docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U $DB_USERNAME" -c "\l"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U $DB_USERNAME" -c "\du"              
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\l"
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\du"              
               docker logs "$POSTGRES_CONTAINER_NAME"              
               echo "[INFO - 6.9.1] Vérification du rôle 'postgres' après le démarrage..." | tee -a "$LOG_FILE"
               if docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du" | grep -qw "postgres"; then
