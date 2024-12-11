@@ -195,74 +195,90 @@ jobs:
             echo '[INFO - 6.6] Arrêt et suppression de l’ancien conteneur PostgreSQL...' | tee -a "$LOG_FILE"
             if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
               docker stop "$POSTGRES_CONTAINER_NAME"
-              docker rm "$POSTGRES_CONTAINER_NAME"
-              docker volume rm "${POSTGRES_VOLUME}"
+              docker rm "$POSTGRES_CONTAINER_NAME"              
             fi
+
+            # Suppression du volume associé
+            echo '[INFO - 6.6.1] Suppression du volume Docker...' | tee -a "$LOG_FILE"
+            docker volume rm "${POSTGRES_VOLUME}" || {
+              echo '[WARNING - 6.6.2] Échec de la suppression du volume Docker. Il est peut-être déjà supprimé.' | tee -a "$LOG_FILE"
+            }
 
             # 6.7 - Téléchargement de l’image PostgreSQL
             echo '[INFO - 6.7] Téléchargement de l’image PostgreSQL...' | tee -a "$LOG_FILE"
             docker pull postgres:13
 
-            # 6.8 - Démarrage du conteneur PostgreSQL
-            echo '[INFO - 6.8] Affichage des variables utilisées pour le démarrage du conteneur...'
-            echo "POSTGRES_CONTAINER_NAME: $POSTGRES_CONTAINER_NAME"
-            echo "NETWORK: $NETWORK"
-            echo "DB_USERNAME: $DB_USERNAME"
-            echo "DB_PASSWORD: $DB_PASSWORD"
-            echo "DB_NAME: $DB_NAME"
-            echo "POSTGRES_VOLUME: $POSTGRES_VOLUME"
-            echo "DB_PORT_EXT: $DB_PORT_EXT"
-            echo "DB_PORT_INT: $DB_PORT_INT"
-            echo '[INFO - 6.8] Démarrage du conteneur PostgreSQL...' | tee -a "$LOG_FILE"
+            # 6.8 - Démarrage de PostgreSQL sans volume initial
+            echo '[INFO - 6.8] Démarrage du conteneur PostgreSQL sans volume initial...' | tee -a "$LOG_FILE"
             docker run -d --name "$POSTGRES_CONTAINER_NAME" \
               --network "$NETWORK" \
               -e POSTGRES_USER="$DB_USERNAME" \
               -e POSTGRES_PASSWORD="$DB_PASSWORD" \
               -e POSTGRES_DB="$DB_NAME" \
-              -v "${POSTGRES_VOLUME}:/var/lib/postgresql/data" \
               -p "$DB_PORT_EXT:$DB_PORT_INT" \
-              postgres:13
+              postgres:13 || {
+              echo '[ERROR - 6.8] Échec du lancement du conteneur PostgreSQL sans volume.' | tee -a "$LOG_FILE"
+              exit 1
+            }
 
-            # 6.9 - Vérification de PostgreSQL
-            echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a "$LOG_FILE"
-            MAX_ATTEMPTS=30
-            for i in \$(seq 1 \$MAX_ATTEMPTS); do
-              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U postgres; then
-                echo "PostgreSQL est prêt après \$i seconde(s)." | tee -a "$LOG_FILE"
-                break
-              fi
-              sleep 1
-              if [ "\$i" -eq "\$MAX_ATTEMPTS" ]; then
-                echo "[ERROR - 6.9] PostgreSQL n’est pas prêt après \$MAX_ATTEMPTS secondes." | tee -a "$LOG_FILE"
-                exit 1
-              fi
-              done
-                         
-              echo "[INFO - 6.9.1] Vérification et configuration du rôle '$DB_USERNAME' comme superutilisateur..." | tee -a "$LOG_FILE"
+            # 6.9 - Attendre que PostgreSQL soit prêt
+            echo '[INFO - 6.9] Attente de l’initialisation de PostgreSQL...' | tee -a "$LOG_FILE"
+            sleep 10  # Ajustez ce délai selon votre environnement
+            if ! docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+              echo '[ERROR - 6.9] PostgreSQL n’est pas prêt après l’initialisation.' | tee -a "$LOG_FILE"
+              exit 1
+            fi
 
-              # Vérifier si le rôle existe
-              if docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\\du" | grep -qw "$DB_USERNAME"; then
-                echo "[INFO - 6.9.2] Le rôle '$DB_USERNAME' existe. Mise à jour pour superutilisateur..." | tee -a "$LOG_FILE"
-                docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "ALTER ROLE \"$DB_USERNAME\" WITH SUPERUSER;" || {
-                  echo "[ERROR - 6.9.3] Échec de la mise à jour du rôle '$DB_USERNAME'." | tee -a "$LOG_FILE"
-                  exit 1
-                }
-              else
-                echo "[INFO - 6.9.2] Le rôle '$DB_USERNAME' n'existe pas. Création en tant que superutilisateur..." | tee -a "$LOG_FILE"
-                docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "CREATE ROLE \"$DB_USERNAME\" WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
-                  echo "[ERROR - 6.9.3] Échec de la création du rôle '$DB_USERNAME'." | tee -a "$LOG_FILE"
-                  exit 1
-                }
-              fi
+            # 6.10 - Configuration des rôles et utilisateurs nécessaires
+            echo '[INFO - 6.10] Configuration des rôles et utilisateurs nécessaires...' | tee -a "$LOG_FILE"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
+              echo '[ERROR - 6.10] Échec de la création du rôle postgres.' | tee -a "$LOG_FILE"
+              exit 1
+            }
 
-              echo "[INFO - 6.9.3] Le rôle '$DB_USERNAME' est maintenant un superutilisateur." | tee -a "$LOG_FILE"
+            # 6.11 - Arrêt du conteneur PostgreSQL
+            echo '[INFO - 6.11] Arrêt du conteneur PostgreSQL...' | tee -a "$LOG_FILE"
+            docker stop "$POSTGRES_CONTAINER_NAME" || {
+              echo '[ERROR - 6.11] Échec de l’arrêt du conteneur PostgreSQL.' | tee -a "$LOG_FILE"
+              exit 1
+            }
+
+            # 6.12 - Copie des données initialisées dans le volume Docker
+            echo '[INFO - 6.12] Copie des données initialisées dans le volume Docker...' | tee -a "$LOG_FILE"
+            docker run --rm --volumes-from "$POSTGRES_CONTAINER_NAME" -v "$POSTGRES_VOLUME:/backup" busybox sh -c "cp -R /var/lib/postgresql/data /backup" || {
+              echo '[ERROR - 6.12] Échec de la copie des données initialisées.' | tee -a "$LOG_FILE"
+              exit 1
+            }
+
+            # 6.13 - Relancer PostgreSQL avec le volume monté
+            echo '[INFO - 6.13] Relancer le conteneur PostgreSQL avec le volume monté...' | tee -a "$LOG_FILE"
+            docker run -d --name "$POSTGRES_CONTAINER_NAME" \
+              --network "$NETWORK" \
+              -e POSTGRES_USER="$DB_USERNAME" \
+              -e POSTGRES_PASSWORD="$DB_PASSWORD" \
+              -e POSTGRES_DB="$DB_NAME" \
+              -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
+              -p "$DB_PORT_EXT:$DB_PORT_INT" \
+              postgres:13 || {
+              echo '[ERROR - 6.13] Échec du lancement du conteneur PostgreSQL avec le volume monté.' | tee -a "$LOG_FILE"
+              exit 1
+            }
+
+            # 6.14 - Vérification finale de PostgreSQL
+            echo '[INFO - 6.14] Vérification finale de PostgreSQL...' | tee -a "$LOG_FILE"
+            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+              echo '[SUCCESS - 6.14] PostgreSQL est prêt et fonctionne correctement.' | tee -a "$LOG_FILE"
+            else
+              echo '[ERROR - 6.14] PostgreSQL n’est pas opérationnel après le redémarrage.' | tee -a "$LOG_FILE"
+              exit 1
+            fi
               
-              docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\l"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\\l"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\\du"           
-              docker logs "$POSTGRES_CONTAINER_NAME"
+            docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\l"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\\l"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\\du"           
+            docker logs "$POSTGRES_CONTAINER_NAME"
           EOF
         # === Étape 7 : Création de la base de données et des utilisateurs ===
       - name: 7 - Création de la base de données et des utilisateurs
