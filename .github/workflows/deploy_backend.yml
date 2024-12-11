@@ -196,6 +196,7 @@ jobs:
             if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
               docker stop "$POSTGRES_CONTAINER_NAME"
               docker rm "$POSTGRES_CONTAINER_NAME"
+              docker volume rm "${POSTGRES_VOLUME}"
             fi
 
             # 6.7 - Téléchargement de l’image PostgreSQL
@@ -218,19 +219,19 @@ jobs:
               -e POSTGRES_USER="$DB_USERNAME" \
               -e POSTGRES_PASSWORD="$DB_PASSWORD" \
               -e POSTGRES_DB="$DB_NAME" \
-              -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
+              -v "${POSTGRES_VOLUME}:/var/lib/postgresql/data" \
               -p "$DB_PORT_EXT:$DB_PORT_INT" \
               postgres:13
 
             # 6.9 - Vérification de PostgreSQL
-            echo "Attente de 20 secondes avant de continuer..."
-            sleep 20
+            echo "Attente de 100 secondes avant de continuer..."
+            sleep 100
             echo "Reprise des opérations..."
             docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\l"
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\du"              
             docker logs "$POSTGRES_CONTAINER_NAME"
-                        
+
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a "$LOG_FILE"
             MAX_ATTEMPTS=30
             for i in \$(seq 1 \$MAX_ATTEMPTS); do
