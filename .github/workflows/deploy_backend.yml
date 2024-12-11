@@ -231,10 +231,19 @@ jobs:
 
             # 6.10 - Configuration des rôles et utilisateurs nécessaires
             echo '[INFO - 6.10] Configuration des rôles et utilisateurs nécessaires...' | tee -a "$LOG_FILE"
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';" || {
               echo '[ERROR - 6.10] Échec de la création du rôle postgres.' | tee -a "$LOG_FILE"
               exit 1
             }
+
+            # Vérifiez si la base de données définie par POSTGRES_DB existe
+            echo '[INFO - 6.10.1] Vérification de la base de données définie par POSTGRES_DB...' | tee -a "$LOG_FILE"
+            if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "\l" | grep -qw "$DB_NAME"; then
+              echo "[ERROR - 6.10.2] La base de données '$DB_NAME' n'existe pas." | tee -a "$LOG_FILE"
+              exit 1
+            else
+              echo "[SUCCESS - 6.10.3] La base de données '$DB_NAME' existe." | tee -a "$LOG_FILE"
+            fi
 
             # 6.11 - Arrêt du conteneur PostgreSQL
             echo '[INFO - 6.11] Arrêt du conteneur PostgreSQL...' | tee -a "$LOG_FILE"
