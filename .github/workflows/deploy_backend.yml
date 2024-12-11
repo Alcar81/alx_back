@@ -150,7 +150,7 @@ jobs:
             echo '[INFO - Étape 6] Début de la configuration PostgreSQL...' | tee -a "$LOG_FILE"
 
             # 6.2 - Sauvegarde conditionnelle (prod et dev)
-            echo '[INFO - 6.2.1] Sauvegarde de la base de données...' | tee -a "$LOG_FILE"
+            echo '[INFO - 6.2.1] Préparation de la sauvegarde de la base de données...' | tee -a "$LOG_FILE"
             if [ "$ENV" == "prod" ]; then
               BACKUP_DIR="/home/$SSH_USER/backups/prod"
               BACKUP_FILE="\$BACKUP_DIR/prod_backup_\$(date +%Y%m%d%H%M%S).sql"
@@ -158,20 +158,36 @@ jobs:
               BACKUP_DIR="/home/$SSH_USER/backups/dev"
               BACKUP_FILE="\$BACKUP_DIR/dev_backup_\$(date +%Y%m%d%H%M%S).sql"
             fi
+
+            # Création du répertoire de sauvegarde
             mkdir -p "\$BACKUP_DIR"
-            if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
+
+            # Vérification si le conteneur PostgreSQL est en cours d'exécution
+            if docker ps --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
+              echo '[INFO - 6.2.2] Conteneur PostgreSQL en cours d’exécution. Début de la sauvegarde...' | tee -a "$LOG_FILE"
               if ! docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" "$DB_NAME" > "\$BACKUP_FILE"; then
-                echo '[ERROR - 6.2.2] Échec de la sauvegarde de la base de données.' | tee -a "$LOG_FILE"
+                echo '[ERROR - 6.2.3] Échec de la sauvegarde de la base de données.' | tee -a "$LOG_FILE"
                 exit 1
               fi
-              echo '[INFO - 6.2.3] Sauvegarde effectuée : \$BACKUP_FILE' | tee -a "$LOG_FILE"
+              echo "[INFO - 6.2.4] Sauvegarde effectuée avec succès : \$BACKUP_FILE" | tee -a "$LOG_FILE"
             else
-              echo '[WARNING - 6.2.4] Aucun conteneur PostgreSQL actif, pas de sauvegarde possible.' | tee -a "$LOG_FILE"
+              echo '[WARNING - 6.2.5] Le conteneur PostgreSQL n’est pas en cours d’exécution. Tentative de redémarrage...' | tee -a "$LOG_FILE"
+              docker start "$POSTGRES_CONTAINER_NAME" || {
+                echo '[ERROR - 6.2.6] Impossible de redémarrer le conteneur PostgreSQL. Sauvegarde annulée.' | tee -a "$LOG_FILE"
+                exit 1
+              }
+              echo '[INFO - 6.2.7] Conteneur PostgreSQL redémarré. Début de la sauvegarde...' | tee -a "$LOG_FILE"
+              if ! docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" "$DB_NAME" > "\$BACKUP_FILE"; then
+                echo '[ERROR - 6.2.8] Échec de la sauvegarde de la base de données après redémarrage.' | tee -a "$LOG_FILE"
+                exit 1
+              fi
+              echo "[INFO - 6.2.9] Sauvegarde effectuée avec succès : \$BACKUP_FILE" | tee -a "$LOG_FILE"
             fi
 
             # 6.3 - Nettoyage des anciens backups
             echo '[INFO - 6.3] Nettoyage des anciens backups (plus de 7 jours)...' | tee -a "$LOG_FILE"
             find "\$BACKUP_DIR" -name '*.sql' -type f -mtime +7 -exec rm -f {} \;
+            echo '[INFO - 6.3.1] Nettoyage terminé.' | tee -a "$LOG_FILE"
 
             # 6.4 - Vérification et création du réseau Docker
             echo '[INFO - 6.4] Vérification et création du réseau Docker...' | tee -a "$LOG_FILE"
