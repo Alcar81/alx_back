@@ -275,6 +275,15 @@ jobs:
               exit 1
             }
 
+            # Suppression complète du volume Docker avant le redémarrage
+            docker volume rm "${POSTGRES_VOLUME}" || {
+              echo "[WARNING] Le volume Docker '${POSTGRES_VOLUME}' n'a pas pu être supprimé. Il peut être déjà inexistant."
+            }
+            docker volume create "${POSTGRES_VOLUME}" || {
+              echo "[ERROR] Impossible de recréer le volume '${POSTGRES_VOLUME}'."
+              exit 1
+            }
+
             # 6.13 - Relancer PostgreSQL avec le volume monté
             echo '[INFO - 6.13] Relancer le conteneur PostgreSQL avec le volume monté...' | tee -a "$LOG_FILE"
 
@@ -298,12 +307,26 @@ jobs:
 
             # 6.14 - Vérification finale de PostgreSQL
             echo '[INFO - 6.14] Vérification finale de PostgreSQL...' | tee -a "$LOG_FILE"
-            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
-              echo '[SUCCESS - 6.14] PostgreSQL est prêt et fonctionne correctement.' | tee -a "$LOG_FILE"
-            else
-              echo '[ERROR - 6.14] PostgreSQL n’est pas opérationnel après le redémarrage.' | tee -a "$LOG_FILE"
-              exit 1
-            fi
+
+            ATTEMPTS=10
+            SLEEP_TIME=3
+
+            for ((i=1; i<=ATTEMPTS; i++)); do
+              echo "[INFO - 6.14.$i] Vérification de PostgreSQL (tentative $i/$ATTEMPTS)..." | tee -a "$LOG_FILE"
+              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+                echo '[SUCCESS - 6.14] PostgreSQL est prêt et fonctionne correctement.' | tee -a "$LOG_FILE"
+                break
+              else
+                echo "[WARNING - 6.14.$i] PostgreSQL n’est pas encore prêt. Nouvelle tentative dans $SLEEP_TIME secondes..." | tee -a "$LOG_FILE"
+                sleep "$SLEEP_TIME"
+              fi
+              
+              # Si la dernière tentative échoue
+              if [ "$i" -eq "$ATTEMPTS" ]; then
+                echo '[ERROR - 6.14] PostgreSQL n’est pas opérationnel après plusieurs tentatives.' | tee -a "$LOG_FILE"
+                exit 1
+              fi
+            done
               
             docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\l"
