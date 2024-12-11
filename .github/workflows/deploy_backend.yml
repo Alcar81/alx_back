@@ -365,6 +365,7 @@ jobs:
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
+        
       # Étape 10 - Nettoyage des fichiers temporaires
       - name: Nettoyer les fichiers temporaires
         run: rm -f /tmp/git_id_rsa
