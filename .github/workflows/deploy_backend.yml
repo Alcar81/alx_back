@@ -222,7 +222,15 @@ jobs:
               -p "$DB_PORT_EXT:$DB_PORT_INT" \
               postgres:13
 
-            # 6.9 - Vérification de PostgreSQL            
+            # 6.9 - Vérification de PostgreSQL
+            echo "Attente de 20 secondes avant de continuer..."
+            sleep 20
+            echo "Reprise des opérations..."
+            docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\l"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\du"              
+            docker logs "$POSTGRES_CONTAINER_NAME"
+                        
             echo '[INFO - 6.9] Vérification de PostgreSQL jusqu’à ce qu’il soit prêt...' | tee -a "$LOG_FILE"
             MAX_ATTEMPTS=30
             for i in \$(seq 1 \$MAX_ATTEMPTS); do
@@ -236,13 +244,7 @@ jobs:
                 exit 1
               fi
               done
-              echo "Attente de 20 secondes avant de continuer..."
-              sleep 20
-              echo "Reprise des opérations..."
-              docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\l"
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "\du"              
-              docker logs "$POSTGRES_CONTAINER_NAME"              
+                         
               echo "[INFO - 6.9.1] Vérification du rôle 'postgres' après le démarrage..." | tee -a "$LOG_FILE"
               if docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "\du" | grep -qw "postgres"; then
                 echo "[INFO - 6.9.2] Le rôle 'postgres' existe." | tee -a "$LOG_FILE"
