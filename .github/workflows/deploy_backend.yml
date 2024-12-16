@@ -125,6 +125,17 @@ jobs:
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
           set -e
+
+            echo "[INFO] Affichage des variables générées : " | tee -a $LOG_FILE
+            MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD POSTGRES_CONTAINER_NAME NETWORK DB_PORT_INT DB_PORT_EXT)
+            for VAR in "${MANDATORY_VARS[@]}"; do
+              if [ -z "${!VAR}" ]; then
+                echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
+                exit 1
+              fi
+              echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
+            done
+
             # Variables
             POSTGRES_CONTAINER_NAME=$POSTGRES_CONTAINER_NAME
             POSTGRES_VOLUME=$POSTGRES_VOLUME
