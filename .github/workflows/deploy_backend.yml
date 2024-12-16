@@ -123,91 +123,91 @@ jobs:
         run: |
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
-          # Connexion SSH et exécution des commandes
-          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
-          set -e
+            # Connexion SSH et exécution des commandes
+            ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
+            set -e
 
-          # Variables
-          POSTGRES_CONTAINER_NAME="postgres_dev"
-          POSTGRES_VOLUME="postgres_data_dev"
-          NETWORK="network_dev"
-          DB_USERNAME="usr_db_dev"
-          DB_PASSWORD="your_password"
-          DB_NAME="postgres_dev"
-          DB_PORT_INT=5432
-          DB_PORT_EXT=5433
+            # Variables
+            POSTGRES_CONTAINER_NAME="postgres_dev"
+            POSTGRES_VOLUME="postgres_data_dev"
+            NETWORK="network_dev"
+            DB_USERNAME="usr_db_dev"
+            DB_PASSWORD="your_password"
+            DB_NAME="postgres_dev"
+            DB_PORT_INT=5432
+            DB_PORT_EXT=5433
 
-          # Vérifier et créer le réseau Docker
-          if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
-            echo "[INFO] Création du réseau Docker : $NETWORK"
-            docker network create "$NETWORK" || { echo "[ERROR] Impossible de créer le réseau Docker."; exit 1; }
-          else
-            echo "[INFO] Réseau Docker déjà existant : $NETWORK"
-          fi
-
-          # Vérifier et créer le volume Docker
-          if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
-            echo "[INFO] Création du volume Docker : $POSTGRES_VOLUME"
-            docker volume create "$POSTGRES_VOLUME" || { echo "[ERROR] Impossible de créer le volume Docker."; exit 1; }
-          else
-            echo "[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME"
-          fi
-
-          # Arrêter et supprimer le conteneur PostgreSQL existant
-          if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
-            echo "[INFO] Arrêt et suppression du conteneur PostgreSQL existant"
-            docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
-            docker rm "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
-          fi
-
-          # Lancer un nouveau conteneur PostgreSQL
-          echo "[INFO] Lancement du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
-          docker run -d --name "$POSTGRES_CONTAINER_NAME" \
-            --network "$NETWORK" \
-            -e POSTGRES_USER="$DB_USERNAME" \
-            -e POSTGRES_PASSWORD="$DB_PASSWORD" \
-            -e POSTGRES_DB="$DB_NAME" \
-            -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
-            -p "$DB_PORT_EXT:$DB_PORT_INT" \
-            postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
-
-          # Attente que PostgreSQL soit prêt
-          echo "[INFO] Attente que PostgreSQL soit prêt..."
-          for i in {1..10}; do
-            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
-              echo "[INFO] PostgreSQL est prêt."
-              break
+            # Vérifier et créer le réseau Docker
+            if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
+              echo "[INFO] Création du réseau Docker : $NETWORK"
+              docker network create "$NETWORK" || { echo "[ERROR] Impossible de créer le réseau Docker."; exit 1; }
             else
-              echo "[INFO] En attente... (tentative $i/10)"
-              sleep 5
+              echo "[INFO] Réseau Docker déjà existant : $NETWORK"
             fi
-          done
 
-          # Vérification et création du rôle postgres
-          echo "[INFO] Vérification du rôle 'postgres'..."
-          if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
-            echo "[INFO] Création du rôle 'postgres'..."
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
-          else
-            echo "[INFO] Le rôle 'postgres' existe déjà."
-          fi
+            # Vérifier et créer le volume Docker
+            if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
+              echo "[INFO] Création du volume Docker : $POSTGRES_VOLUME"
+              docker volume create "$POSTGRES_VOLUME" || { echo "[ERROR] Impossible de créer le volume Docker."; exit 1; }
+            else
+              echo "[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME"
+            fi
 
-          # Ajout des vérifications supplémentaires après création des rôles
-          echo "[INFO] Vérifications supplémentaires après la création des rôles..."
-          docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
-          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
-          docker logs "$POSTGRES_CONTAINER_NAME"
+            # Arrêter et supprimer le conteneur PostgreSQL existant
+            if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
+              echo "[INFO] Arrêt et suppression du conteneur PostgreSQL existant"
+              docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
+              docker rm "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
+            fi
 
-          # Vérification finale de PostgreSQL
-          echo "[INFO] Vérification finale de PostgreSQL..."
-          if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
-            echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
-          else
-            echo "[ERROR] PostgreSQL n'est pas opérationnel."
+            # Lancer un nouveau conteneur PostgreSQL
+            echo "[INFO] Lancement du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
+            docker run -d --name "$POSTGRES_CONTAINER_NAME" \
+              --network "$NETWORK" \
+              -e POSTGRES_USER="$DB_USERNAME" \
+              -e POSTGRES_PASSWORD="$DB_PASSWORD" \
+              -e POSTGRES_DB="$DB_NAME" \
+              -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
+              -p "$DB_PORT_EXT:$DB_PORT_INT" \
+              postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
+
+            # Attente que PostgreSQL soit prêt
+            echo "[INFO] Attente que PostgreSQL soit prêt..."
+            for i in {1..10}; do
+              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+                echo "[INFO] PostgreSQL est prêt."
+                break
+              else
+                echo "[INFO] En attente... (tentative $i/10)"
+                sleep 5
+              fi
+            done
+
+            # Vérification et création du rôle postgres
+            echo "[INFO] Vérification du rôle 'postgres'..."
+            if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
+              echo "[INFO] Création du rôle 'postgres'..."
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
+            else
+              echo "[INFO] Le rôle 'postgres' existe déjà."
+            fi
+
+            # Ajout des vérifications supplémentaires après création des rôles
+            echo "[INFO] Vérifications supplémentaires après la création des rôles..."
+            docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
             docker logs "$POSTGRES_CONTAINER_NAME"
-            exit 1
-          fi
+
+            # Vérification finale de PostgreSQL
+            echo "[INFO] Vérification finale de PostgreSQL..."
+            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+              echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
+            else
+              echo "[ERROR] PostgreSQL n'est pas opérationnel."
+              docker logs "$POSTGRES_CONTAINER_NAME"
+              exit 1
+            fi
           EOT
 
             # Exécution du script temporaire
