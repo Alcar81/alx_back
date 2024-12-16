@@ -136,15 +136,6 @@ jobs:
               echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
             done
 
-            # Variables
-            POSTGRES_CONTAINER_NAME=$POSTGRES_CONTAINER_NAME
-            POSTGRES_VOLUME=$POSTGRES_VOLUME
-            NETWORK=$NETWORK
-            DB_USERNAME=$DB_USERNAME
-            DB_PASSWORD=$DB_PASSWORD
-            DB_NAME=$DB_NAME
-            DB_PORT_INT=$DB_PORT_INT
-            DB_PORT_EXT=$DB_PORT_EXT
             # Vérifier et créer le réseau Docker
             if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
               echo "[INFO] Création du réseau Docker : $NETWORK"
