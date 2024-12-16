@@ -211,13 +211,30 @@ jobs:
               fi
             done
 
-            # Sous-étape 6.3.8 : Suppression du fichier temporaire
-            echo "[INFO - Sous-étape 6.3.8] Suppression du fichier temporaire..."
-            rm -f /tmp/env_vars.sh          
+            # 6.3.8 - Ajout des vérifications supplémentaires après création des rôles
+            echo "[INFO - 6.3.8] Vérifications supplémentaires après la création des rôles..."
+            docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
+            docker logs "$POSTGRES_CONTAINER_NAME"
+
+            # 6.3.9 - Vérification finale de PostgreSQL
+            echo "[INFO - 6.3.9] Vérification finale de PostgreSQL..."
+            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+              echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
+            else
+              echo "[ERROR] PostgreSQL n'est pas opérationnel."
+              docker logs "$POSTGRES_CONTAINER_NAME"
+              exit 1
+            fi
+
+            # Sous-étape 6.3.10 : Suppression du fichier temporaire
+            echo "[INFO - 6.3.10] Suppression du fichier temporaire..."
+            rm -f /tmp/env_vars.sh       
           EOF
 
           # Sous-étape 6.4 : Nettoyer le fichier temporaire local
-          echo "[INFO - Sous-étape 6.4] Suppression du fichier temporaire local..."
+          echo "[INFO - 6.4] Suppression du fichier temporaire local..."
           rm -f /tmp/env_vars.sh
 
       # Étape 7 - Création de la base de données et des utilisateurs
