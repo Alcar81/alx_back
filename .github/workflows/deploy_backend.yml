@@ -123,9 +123,8 @@ jobs:
         run: |
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
-            # Connexion SSH et exécution des commandes
-            ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
-            set -e
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
+          set -e
 
             # Variables
             POSTGRES_CONTAINER_NAME="postgres_dev"
@@ -208,17 +207,6 @@ jobs:
               docker logs "$POSTGRES_CONTAINER_NAME"
               exit 1
             fi
-          EOT
-
-            # Exécution du script temporaire
-            echo "[INFO] Script temporaire postgres.sh créé. Attribution des permissions d'exécution."
-            chmod +x /tmp/postgres.sh
-            echo "[INFO] Exécution du script temporaire postgres.sh"
-            bash /tmp/postgres.sh || { echo "[ERROR] Échec de l'exécution du script postgres.sh."; exit 1; }
-
-            # Suppression du script temporaire
-            echo "[INFO] Suppression du script temporaire postgres.sh"
-            rm -f /tmp/postgres.sh
           EOF
 
       # Étape 7 - Création de la base de données et des utilisateurs
