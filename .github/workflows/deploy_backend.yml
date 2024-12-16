@@ -137,6 +137,12 @@ jobs:
           DB_PORT_EXT=$DB_PORT_EXT
           EOT
 
+          # Vérification de la création du fichier
+          if [ ! -f /tmp/env_vars.sh ]; then
+            echo "[ERROR] Échec de la création du fichier temporaire /tmp/env_vars.sh." >&2
+            exit 1
+          fi
+
           # Sous-étape 6.2 : Copier le fichier temporaire vers le serveur distant
           echo "[INFO - Sous-étape 6.2] Envoi du fichier temporaire contenant les variables au serveur distant..."
           scp -P "$SSH_PORT" -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no /tmp/env_vars.sh "$SSH_USER@$SERVER_IP:/tmp/env_vars.sh"
@@ -199,8 +205,8 @@ jobs:
               -p "$DB_PORT_EXT:$DB_PORT_INT" \
               postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
 
-            # Sous-étape 6.3.7 : Attente que PostgreSQL soit prêt
-            echo "[INFO - Sous-étape 6.3.7] Attente que PostgreSQL soit prêt..."
+            # Sous-étape 6.3.7 : Vérification finale que PostgreSQL est prêt
+            echo "[INFO - Sous-étape 6.3.7] Vérification que PostgreSQL est prêt..."
             for i in {1..10}; do
               if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
                 echo "[INFO] PostgreSQL est prêt."
@@ -211,8 +217,8 @@ jobs:
               fi
             done
 
-            # 6.3.8 - Vérification et création du rôle postgres
-            echo "[INFO - 6.3.8] Vérification du rôle 'postgres'..."
+            # Sous-étape 6.3.8 : Vérification et création du rôle postgres
+            echo "[INFO - Sous-étape 6.3.8] Vérification du rôle 'postgres'..."
             if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
               echo "[INFO] Création du rôle 'postgres'..."
               docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
@@ -220,25 +226,15 @@ jobs:
               echo "[INFO] Le rôle 'postgres' existe déjà."
             fi
 
-            # 6.3.9 - Ajout des vérifications supplémentaires après création des rôles
-            echo "[INFO - 6.3.9] Vérifications supplémentaires après la création des rôles..."
+            # Sous-étape 6.3.9 : Ajout des vérifications supplémentaires après création des rôles
+            echo "[INFO - Sous-étape 6.3.9] Vérifications supplémentaires après la création des rôles..."
             docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
             docker logs "$POSTGRES_CONTAINER_NAME"
 
-            # 6.3.10 - Vérification finale de PostgreSQL
-            echo "[INFO - 6.3.10] Vérification finale de PostgreSQL..."
-            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
-              echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
-            else
-              echo "[ERROR] PostgreSQL n'est pas opérationnel."
-              docker logs "$POSTGRES_CONTAINER_NAME"
-              exit 1
-            fi
-
-            # Sous-étape 6.3.11 : Suppression du fichier temporaire
-            echo "[INFO - 6.3.11] Suppression du fichier temporaire..."
+            # Suppression du fichier temporaire
+            echo "[INFO - Sous-étape 6.3.10] Suppression du fichier temporaire..."
             rm -f /tmp/env_vars.sh       
           EOF
 
