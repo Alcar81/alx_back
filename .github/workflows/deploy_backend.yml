@@ -277,6 +277,16 @@ jobs:
             echo '===================================' | tee -a "$LOG_FILE"
             echo '[INFO - Étape 8.1] Début du déploiement du backend...' | tee -a "$LOG_FILE"
 
+            # Étape 8.1.1 - Vérification des variables obligatoires
+            echo '[INFO - Étape 8.1.1] Vérification des variables obligatoires...'
+            REQUIRED_VARS=("DATABASE_URL" "NODE_ENV" "JWT_SECRET" "SERVER_PORT")
+            for VAR in "\${REQUIRED_VARS[@]}"; do
+              if [ -z "\${!VAR}" ]; then
+                echo "[ERROR] La variable \$VAR est vide ou non définie." | tee -a "$LOG_FILE"
+                exit 1
+              fi
+            done
+
             # Étape 8.2 - Création du fichier .env
             echo '[INFO - Étape 8.2] Création du fichier .env...' | tee -a "$LOG_FILE"
 
