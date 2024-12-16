@@ -121,17 +121,17 @@ jobs:
       # Étape 6 - Configuration du conteneur PostgreSQL 
       - name: 6 - Configuration du conteneur PostgreSQL
         run: |
-            # === Étape 6 : Configuration du conteneur PostgreSQL ===
-            echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
+          # === Étape 6 : Configuration du conteneur PostgreSQL ===
+          echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
-            # 6.1 - Création et exécution du script temporaire postgres.sh
-            echo "[INFO - 6.1] Création du script temporaire postgres.sh"
+          # 6.1 - Création et exécution du script temporaire postgres.sh
+          echo "[INFO - 6.1] Création du script temporaire postgres.sh"
 
-            ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
-            set -e
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
+          set -e
 
-            # Étape 6.1 : Création du fichier postgres.sh
-            echo "[INFO] Création du script temporaire postgres.sh"
+          # Étape 6.1 : Création du fichier postgres.sh
+          echo "[INFO] Création du script temporaire postgres.sh"
             cat << 'EOT' > /tmp/postgres.sh
             #!/bin/bash
 
@@ -190,8 +190,8 @@ jobs:
             exit 1
             fi
           EOT
-          
-          # Étape 6.2 : Exécution du script temporaire
+
+            # Étape 6.2 : Exécution du script temporaire
             echo "[INFO] Script temporaire postgres.sh créé. Attribution des permissions d'exécution."
             chmod +x /tmp/postgres.sh
 
