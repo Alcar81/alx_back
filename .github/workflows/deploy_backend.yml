@@ -137,7 +137,7 @@ jobs:
           DB_PORT_EXT=$DB_PORT_EXT
           EOT
 
-          # Vérification de la création du fichier
+          # Vérification de la création du fichier temporaire
           if [ ! -f /tmp/env_vars.sh ]; then
             echo "[ERROR] Échec de la création du fichier temporaire /tmp/env_vars.sh." >&2
             exit 1
@@ -149,93 +149,93 @@ jobs:
 
           # Sous-étape 6.3 : Connexion SSH et exécution des commandes sur le serveur distant
           ssh -p "$SSH_PORT" -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
-            set -e
+          set -e
 
-            # Sous-étape 6.3.1 : Charger les variables depuis le fichier temporaire
-            echo "[INFO - Sous-étape 6.3.1] Chargement des variables depuis le fichier temporaire..."
-            if [ -f /tmp/env_vars.sh ]; then
-              source /tmp/env_vars.sh
-            else
-              echo "[ERROR] Le fichier /tmp/env_vars.sh est introuvable." >&2
+          # Sous-étape 6.3.1 : Charger les variables depuis le fichier temporaire
+          echo "[INFO - Sous-étape 6.3.1] Chargement des variables depuis le fichier temporaire..."
+          if [ -f /tmp/env_vars.sh ]; then
+            source /tmp/env_vars.sh
+          else
+            echo "[ERROR] Le fichier /tmp/env_vars.sh est introuvable." >&2
+            exit 1
+          fi
+
+          # Sous-étape 6.3.2 : Vérification des variables chargées
+          echo "[INFO - Sous-étape 6.3.2] Vérification des variables chargées..."
+          MANDATORY_VARS=(ENV NETWORK POSTGRES_VOLUME POSTGRES_CONTAINER_NAME DB_USERNAME DB_PASSWORD DB_NAME DB_PORT_INT DB_PORT_EXT)
+          for VAR in "${MANDATORY_VARS[@]}"; do
+            if [ -z "\${!VAR}" ]; then
+              echo "[ERROR] La variable \$VAR est manquante ou vide." >&2
               exit 1
             fi
+            echo "[INFO] \$VAR=\${!VAR}"
+          done
 
-            # Sous-étape 6.3.2 : Vérification des variables chargées
-            echo "[INFO - Sous-étape 6.3.2] Vérification des variables chargées..."
-            MANDATORY_VARS=(ENV NETWORK POSTGRES_VOLUME POSTGRES_CONTAINER_NAME DB_USERNAME DB_PASSWORD DB_NAME DB_PORT_INT DB_PORT_EXT)
-            for VAR in "${MANDATORY_VARS[@]}"; do
-              if [ -z "\${!VAR}" ]; then
-                echo "[ERROR] La variable \$VAR est manquante ou vide." >&2
-                exit 1
-              fi
-              echo "[INFO] \$VAR=\${!VAR}"
-            done
+          # Sous-étape 6.3.3 : Vérifier et créer le réseau Docker
+          echo "[INFO - Sous-étape 6.3.3] Vérification/création du réseau Docker..."
+          if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
+            docker network create "$NETWORK" || { echo "[ERROR] Impossible de créer le réseau Docker."; exit 1; }
+          else
+            echo "[INFO] Réseau Docker déjà existant : $NETWORK"
+          fi
 
-            # Sous-étape 6.3.3 : Vérifier et créer le réseau Docker
-            echo "[INFO - Sous-étape 6.3.3] Vérification/création du réseau Docker..."
-            if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
-              docker network create "$NETWORK" || { echo "[ERROR] Impossible de créer le réseau Docker."; exit 1; }
+          # Sous-étape 6.3.4 : Vérifier et créer le volume Docker
+          echo "[INFO - Sous-étape 6.3.4] Vérification/création du volume Docker..."
+          if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
+            docker volume create "$POSTGRES_VOLUME" || { echo "[ERROR] Impossible de créer le volume Docker."; exit 1; }
+          else
+            echo "[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME"
+          fi
+
+          # Sous-étape 6.3.5 : Arrêter et supprimer le conteneur PostgreSQL existant
+          echo "[INFO - Sous-étape 6.3.5] Arrêt/suppression du conteneur PostgreSQL existant..."
+          if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
+            docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
+            docker rm "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
+          fi
+
+          # Sous-étape 6.3.6 : Lancer un nouveau conteneur PostgreSQL
+          echo "[INFO - Sous-étape 6.3.6] Lancement du conteneur PostgreSQL..."
+          docker run -d --name "$POSTGRES_CONTAINER_NAME" \
+            --network "$NETWORK" \
+            -e POSTGRES_USER="$DB_USERNAME" \
+            -e POSTGRES_PASSWORD="$DB_PASSWORD" \
+            -e POSTGRES_DB="$DB_NAME" \
+            -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
+            -p "$DB_PORT_EXT:$DB_PORT_INT" \
+            postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
+
+          # Sous-étape 6.3.7 : Vérification finale que PostgreSQL est prêt
+          echo "[INFO - Sous-étape 6.3.7] Vérification que PostgreSQL est prêt..."
+          for i in {1..10}; do
+            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+              echo "[INFO] PostgreSQL est prêt."
+              break
             else
-              echo "[INFO] Réseau Docker déjà existant : $NETWORK"
+              echo "[INFO] En attente... (tentative $i/10)"
+              sleep 5
             fi
+          done
 
-            # Sous-étape 6.3.4 : Vérifier et créer le volume Docker
-            echo "[INFO - Sous-étape 6.3.4] Vérification/création du volume Docker..."
-            if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
-              docker volume create "$POSTGRES_VOLUME" || { echo "[ERROR] Impossible de créer le volume Docker."; exit 1; }
-            else
-              echo "[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME"
-            fi
+          # Sous-étape 6.3.8 : Vérification et création du rôle postgres
+          echo "[INFO - Sous-étape 6.3.8] Vérification du rôle 'postgres'..."
+          if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
+            echo "[INFO] Création du rôle 'postgres'..."
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
+          else
+            echo "[INFO] Le rôle 'postgres' existe déjà."
+          fi
 
-            # Sous-étape 6.3.5 : Arrêter et supprimer le conteneur PostgreSQL existant
-            echo "[INFO - Sous-étape 6.3.5] Arrêt/suppression du conteneur PostgreSQL existant..."
-            if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
-              docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
-              docker rm "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
-            fi
+          # Sous-étape 6.3.9 : Ajout des vérifications supplémentaires après création des rôles
+          echo "[INFO - Sous-étape 6.3.9] Vérifications supplémentaires après la création des rôles..."
+          docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
+          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
+          docker logs "$POSTGRES_CONTAINER_NAME"
 
-            # Sous-étape 6.3.6 : Lancer un nouveau conteneur PostgreSQL
-            echo "[INFO - Sous-étape 6.3.6] Lancement du conteneur PostgreSQL..."
-            docker run -d --name "$POSTGRES_CONTAINER_NAME" \
-              --network "$NETWORK" \
-              -e POSTGRES_USER="$DB_USERNAME" \
-              -e POSTGRES_PASSWORD="$DB_PASSWORD" \
-              -e POSTGRES_DB="$DB_NAME" \
-              -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
-              -p "$DB_PORT_EXT:$DB_PORT_INT" \
-              postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
-
-            # Sous-étape 6.3.7 : Vérification finale que PostgreSQL est prêt
-            echo "[INFO - Sous-étape 6.3.7] Vérification que PostgreSQL est prêt..."
-            for i in {1..10}; do
-              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
-                echo "[INFO] PostgreSQL est prêt."
-                break
-              else
-                echo "[INFO] En attente... (tentative $i/10)"
-                sleep 5
-              fi
-            done
-
-            # Sous-étape 6.3.8 : Vérification et création du rôle postgres
-            echo "[INFO - Sous-étape 6.3.8] Vérification du rôle 'postgres'..."
-            if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
-              echo "[INFO] Création du rôle 'postgres'..."
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
-            else
-              echo "[INFO] Le rôle 'postgres' existe déjà."
-            fi
-
-            # Sous-étape 6.3.9 : Ajout des vérifications supplémentaires après création des rôles
-            echo "[INFO - Sous-étape 6.3.9] Vérifications supplémentaires après la création des rôles..."
-            docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
-            docker logs "$POSTGRES_CONTAINER_NAME"
-
-            # Suppression du fichier temporaire
-            echo "[INFO - Sous-étape 6.3.10] Suppression du fichier temporaire..."
-            rm -f /tmp/env_vars.sh       
+          # Suppression du fichier temporaire
+          echo "[INFO - Sous-étape 6.3.10] Suppression du fichier temporaire..."
+          rm -f /tmp/env_vars.sh      
           EOF
 
           # Sous-étape 6.4 : Nettoyer le fichier temporaire local
