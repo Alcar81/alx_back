@@ -124,13 +124,11 @@ jobs:
           # === Étape 6 : Configuration du conteneur PostgreSQL ===
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
-          # 6.1 - Création et exécution du script temporaire postgres.sh
-          echo "[INFO - 6.1] Création du script temporaire postgres.sh"
-
+          # Connexion SSH et exécution des commandes
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
           set -e
 
-          # Étape 6.1 : Création du fichier postgres.sh
+          # Création du fichier postgres.sh
           echo "[INFO] Création du script temporaire postgres.sh"
           cat << 'EOT' > /tmp/postgres.sh
           #!/bin/bash
@@ -200,14 +198,12 @@ jobs:
             echo "[INFO] Le rôle 'postgres' existe déjà."
           fi
 
-          # Vérification et création de la base de données
-          echo "[INFO] Vérification de la base de données '$DB_NAME'..."
-          if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
-            echo "[INFO] Création de la base de données '$DB_NAME'..."
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE DATABASE $DB_NAME;"
-          else
-            echo "[INFO] La base de données '$DB_NAME' existe déjà."
-          fi
+          # Ajout des vérifications supplémentaires après création des rôles
+          echo "[INFO] Vérifications supplémentaires après la création des rôles..."
+          docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
+          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
+          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
+          docker logs "$POSTGRES_CONTAINER_NAME"
 
           # Vérification finale de PostgreSQL
           echo "[INFO] Vérification finale de PostgreSQL..."
@@ -220,13 +216,13 @@ jobs:
           fi
           EOT
 
-            # Étape 6.2 : Exécution du script temporaire
+            # Exécution du script temporaire
             echo "[INFO] Script temporaire postgres.sh créé. Attribution des permissions d'exécution."
             chmod +x /tmp/postgres.sh
             echo "[INFO] Exécution du script temporaire postgres.sh"
             bash /tmp/postgres.sh || { echo "[ERROR] Échec de l'exécution du script postgres.sh."; exit 1; }
 
-            # Étape 6.3 : Suppression du script temporaire
+            # Suppression du script temporaire
             echo "[INFO] Suppression du script temporaire postgres.sh"
             rm -f /tmp/postgres.sh
           EOF
@@ -252,54 +248,83 @@ jobs:
             docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USERNAME\";"
             echo '[SUCCESS] Étape 7 terminée avec succès.' | tee -a "$LOG_FILE"
           EOF
+
       - name: 8 - Déployer le conteneur Backend
         run: |
-          ssh -p $SSH_PORT -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa $SSH_USER@$SERVER_IP "
-          set -e
-          echo '===================================' | tee -a $LOG_FILE
-          echo '[INFO - Étape 8.1] Début du déploiement du backend...' | tee -a $LOG_FILE
-          # 8.2 - Vérification des variables d'environnement
-          echo '[INFO - Étape 8.2] Vérification des variables d'environnement...' | tee -a $LOG_FILE
-          DATABASE_URL=\"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME\"
-          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
-          for VAR in \"${MANDATORY_VARS[@]}\"; do
-            if [ -z \"\${!VAR}\" ]; then
-              echo \"[ERROR] La variable $VAR est manquante ou vide.\" | tee -a $LOG_FILE
-              exit 1
-            fi
-            echo \"[INFO] $VAR=\${!VAR}\" | tee -a $LOG_FILE
-          done
-          # Étape 8.3 - Création dynamique du fichier .env
-          echo '[INFO - Étape 8.3] Création dynamique du fichier .env...' | tee -a $LOG_FILE
-          cat <<EOF > $MOUNT_PATH/.env
+          # === Étape 8 : Déploiement du backend ===
+          echo "=== Étape 8 : Déploiement du backend ==="
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
+            set -e
+            echo '===================================' | tee -a "$LOG_FILE"
+            echo '[INFO - Étape 8.1] Début du déploiement du backend...' | tee -a "$LOG_FILE"
+
+            # Étape 8.2 - Vérification des variables d'environnement
+            echo '[INFO - Étape 8.2] Vérification des variables d'environnement...' | tee -a "$LOG_FILE"
+            DATABASE_URL="postgres://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT_INT/$DB_NAME"
+            MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
+
+            for VAR in "${MANDATORY_VARS[@]}"; do
+              if [ -z "\${!VAR}" ]; then
+                echo "[ERROR] La variable \$VAR est manquante ou vide." | tee -a "$LOG_FILE"
+                exit 1
+              fi
+              echo "[INFO] \$VAR=\${!VAR}" | tee -a "$LOG_FILE"
+            done
+
+            # Étape 8.3 - Création du fichier de log et du fichier .env
+            echo '[INFO - Étape 8.3] Création des répertoires nécessaires...' | tee -a "$LOG_FILE"
+            mkdir -p backend/logs
+            mkdir -p "$MOUNT_PATH"
+
+            echo '[INFO - Étape 8.3] Création du fichier .env...' | tee -a "$LOG_FILE"
+            cat <<EOT > "$MOUNT_PATH/.env"
           DATABASE_URL=$DATABASE_URL
           NODE_ENV=$ENV
           JWT_SECRET=$JWT_SECRET
           SERVER_PORT=$BACKEND_PORT
+          EOT
+
+            if [ -f "$MOUNT_PATH/.env" ]; then
+              echo '[INFO] Fichier .env créé avec succès.' | tee -a "$LOG_FILE"
+            else
+              echo '[ERROR] Échec de la création du fichier .env.' | tee -a "$LOG_FILE"
+              exit 1
+            fi
+
+            # Étape 8.4 - Suppression de l'ancien conteneur si nécessaire
+            echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur...' | tee -a "$LOG_FILE"
+            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              echo '[INFO] Arrêt du conteneur existant : $CONTAINER_NAME' | tee -a "$LOG_FILE"
+              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.' | tee -a "$LOG_FILE"
+              echo '[INFO] Suppression du conteneur existant : $CONTAINER_NAME' | tee -a "$LOG_FILE"
+              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.' | tee -a "$LOG_FILE"
+            fi
+
+            # Étape 8.5 - Lancement du nouveau conteneur backend
+            echo '[INFO - Étape 8.5] Lancement du conteneur backend...' | tee -a "$LOG_FILE"
+            docker run -d --name "$CONTAINER_NAME" \
+              --network "$NETWORK" \
+              -v "$MOUNT_PATH:/app" \
+              -w /app \
+              -p "$BACKEND_PORT:$BACKEND_PORT" \
+              "$DOCKER_NAME" || {
+                echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a "$LOG_FILE"
+                exit 1
+              }
+
+            # Étape 8.6 - Vérification que le conteneur est actif
+            echo '[INFO - Étape 8.6] Vérification du conteneur backend...' | tee -a "$LOG_FILE"
+            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.' | tee -a "$LOG_FILE"
+            else
+              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' | tee -a "$LOG_FILE"
+              docker logs "$CONTAINER_NAME" | tee -a "$LOG_FILE"
+              exit 1
+            fi
+
+            echo '[SUCCESS - Étape 8] Déploiement terminé avec succès.' | tee -a "$LOG_FILE"
           EOF
-          if [ -f \"$MOUNT_PATH/.env\" ]; then
-            echo '[INFO] Fichier .env créé avec succès.' | tee -a $LOG_FILE
-          else
-            echo '[ERROR] Échec de la création du fichier .env.' | tee -a $LOG_FILE
-            exit 1
-          fi
-          # Étape 8.4 - Suppression de l'ancien conteneur si nécessaire
-          echo '[INFO - Étape 8.4] Vérification et suppression de l’ancien conteneur...' | tee -a $LOG_FILE
-          if docker ps -a --filter \"name=$CONTAINER_NAME\" --format '{{.Names}}' | grep -w $CONTAINER_NAME; then
-            echo '[INFO] Suppression de l’ancien conteneur : $CONTAINER_NAME' | tee -a $LOG_FILE
-            docker stop $CONTAINER_NAME
-            docker rm $CONTAINER_NAME
-          fi
-          # Étape 8.5 - Lancer un nouveau conteneur backend
-          echo '[INFO - Étape 8.5] Lancement du conteneur backend...' | tee -a $LOG_FILE
-          docker run -d --name $CONTAINER_NAME \
-            --network $NETWORK \
-            -v $MOUNT_PATH:/app \
-            -w /app \
-            -p $BACKEND_PORT:$BACKEND_PORT \
-            $DOCKER_NAME || { echo '[ERROR] Échec du démarrage du conteneur.' | tee -a $LOG_FILE; exit 1; }
-          echo '[SUCCESS - Étape 8] Déploiement terminé avec succès.' | tee -a $LOG_FILE
-          " | tee -a $LOG_FILE
+
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
