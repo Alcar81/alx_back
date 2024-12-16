@@ -179,6 +179,24 @@ jobs:
             -p "$DB_PORT_EXT:$DB_PORT_INT" \
             postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
 
+            # Vérification et création du rôle postgres
+            echo "[INFO] Vérification du rôle 'postgres'..."
+            if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
+              echo "[INFO] Création du rôle 'postgres'..."
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
+            else
+              echo "[INFO] Le rôle 'postgres' existe déjà."
+            fi
+
+            # Vérification et création de la base de données
+            echo "[INFO] Vérification de la base de données '$DB_NAME'..."
+            if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+              echo "[INFO] Création de la base de données '$DB_NAME'..."
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE DATABASE $DB_NAME;"
+            else
+              echo "[INFO] La base de données '$DB_NAME' existe déjà."
+            fi
+
             # Vérification du conteneur PostgreSQL
             echo "[INFO] Vérification de PostgreSQL..."
             sleep 10
