@@ -124,30 +124,24 @@ jobs:
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
           # Connexion SSH et exécution des commandes
-          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
           set -e
 
-          # Vérification des variables
+          # Définir les variables nécessaires
+          export NETWORK="$NETWORK"
+          export POSTGRES_VOLUME="$POSTGRES_VOLUME"
+          export POSTGRES_CONTAINER_NAME="$POSTGRES_CONTAINER_NAME"
+          export DB_USERNAME="$DB_USERNAME"
+          export DB_PASSWORD="$DB_PASSWORD"
+          export DB_NAME="$DB_NAME"
+          export DB_PORT_INT="$DB_PORT_INT"
+          export DB_PORT_EXT="$DB_PORT_EXT"
+
+          # Vérifier et créer le réseau Docker
           if [ -z "$NETWORK" ]; then
             echo "[ERROR] La variable NETWORK est vide ou non définie." >&2
             exit 1
           fi
-
-          if [ -z "$POSTGRES_VOLUME" ]; then
-            echo "[ERROR] La variable POSTGRES_VOLUME est vide ou non définie." >&2
-            exit 1
-          fi
-
-          if [ -z "$POSTGRES_CONTAINER_NAME" ]; then
-            echo "[ERROR] La variable POSTGRES_CONTAINER_NAME est vide ou non définie." >&2
-            exit 1
-          fi
-
-          echo "[DEBUG] NETWORK=$NETWORK"
-          echo "[DEBUG] POSTGRES_VOLUME=$POSTGRES_VOLUME"
-          echo "[DEBUG] POSTGRES_CONTAINER_NAME=$POSTGRES_CONTAINER_NAME"
-
-          # Vérifier et créer le réseau Docker
           if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
             echo "[INFO] Création du réseau Docker : $NETWORK"
             docker network create "$NETWORK" || { echo "[ERROR] Impossible de créer le réseau Docker."; exit 1; }
@@ -156,6 +150,10 @@ jobs:
           fi
 
           # Vérifier et créer le volume Docker
+          if [ -z "$POSTGRES_VOLUME" ]; then
+            echo "[ERROR] La variable POSTGRES_VOLUME est vide ou non définie." >&2
+            exit 1
+          fi
           if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
             echo "[INFO] Création du volume Docker : $POSTGRES_VOLUME"
             docker volume create "$POSTGRES_VOLUME" || { echo "[ERROR] Impossible de créer le volume Docker."; exit 1; }
@@ -164,6 +162,10 @@ jobs:
           fi
 
           # Arrêter et supprimer le conteneur PostgreSQL existant
+          if [ -z "$POSTGRES_CONTAINER_NAME" ]; then
+            echo "[ERROR] La variable POSTGRES_CONTAINER_NAME est vide ou non définie." >&2
+            exit 1
+          fi
           if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
             echo "[INFO] Arrêt et suppression du conteneur PostgreSQL existant"
             docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
