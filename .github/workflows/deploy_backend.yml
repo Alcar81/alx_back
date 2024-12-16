@@ -211,15 +211,24 @@ jobs:
               fi
             done
 
-            # 6.3.8 - Ajout des vérifications supplémentaires après création des rôles
-            echo "[INFO - 6.3.8] Vérifications supplémentaires après la création des rôles..."
+            # 6.3.8 - Vérification et création du rôle postgres
+            echo "[INFO - 6.3.8] Vérification du rôle 'postgres'..."
+            if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
+              echo "[INFO] Création du rôle 'postgres'..."
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
+            else
+              echo "[INFO] Le rôle 'postgres' existe déjà."
+            fi
+
+            # 6.3.9 - Ajout des vérifications supplémentaires après création des rôles
+            echo "[INFO - 6.3.9] Vérifications supplémentaires après la création des rôles..."
             docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
             docker logs "$POSTGRES_CONTAINER_NAME"
 
-            # 6.3.9 - Vérification finale de PostgreSQL
-            echo "[INFO - 6.3.9] Vérification finale de PostgreSQL..."
+            # 6.3.10 - Vérification finale de PostgreSQL
+            echo "[INFO - 6.3.10] Vérification finale de PostgreSQL..."
             if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
               echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
             else
@@ -228,8 +237,8 @@ jobs:
               exit 1
             fi
 
-            # Sous-étape 6.3.10 : Suppression du fichier temporaire
-            echo "[INFO - 6.3.10] Suppression du fichier temporaire..."
+            # Sous-étape 6.3.11 : Suppression du fichier temporaire
+            echo "[INFO - 6.3.11] Suppression du fichier temporaire..."
             rm -f /tmp/env_vars.sh       
           EOF
 
