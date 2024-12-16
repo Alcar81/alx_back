@@ -271,7 +271,11 @@ jobs:
       - name: 8 - Déployer le conteneur Backend
         run: |
           echo "=== Étape 8 : Déploiement du backend ==="
-      
+          # Construction explicite de DATABASE_URL avant SSH
+          DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT_INT}/${DB_NAME}"
+          echo "[INFO] DATABASE_URL construit : $DATABASE_URL"
+
+          # Exécution de la commande SSH
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
             set -e
 
@@ -280,13 +284,13 @@ jobs:
             MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT)
             for VAR in "${MANDATORY_VARS[@]}"; do
               VALUE=$(eval echo "\$$VAR")
-              if [ -z "$VALUE" ]; then
-                echo "[ERROR] La variable $VAR est manquante ou vide." >&2
+              if [ -z "\$VALUE" ]; then
+                echo "[ERROR] La variable \$VAR est manquante ou vide." >&2
                 exit 1
               fi
-              echo "[INFO] $VAR=$VALUE"
+              echo "[INFO] \$VAR=\$VALUE"
             done
-                  
+
             # Étape 8.1 - Création d’un fichier temporaire pour les variables
             echo '[INFO - Étape 8.1] Création d’un fichier temporaire avec les variables...'
             cat <<EOT > /tmp/env_vars_backend.sh
@@ -294,6 +298,15 @@ jobs:
           NODE_ENV=${ENV}
           JWT_SECRET=${JWT_SECRET}
           SERVER_PORT=${BACKEND_PORT}
+          EOT
+
+            # Étape 8.2 - Charger les variables et créer le fichier .env
+            source /tmp/env_vars_backend.sh
+            cat <<EOT > "$MOUNT_PATH/.env"
+          DATABASE_URL=\$DATABASE_URL
+          NODE_ENV=\$NODE_ENV
+          JWT_SECRET=\$JWT_SECRET
+          SERVER_PORT=\$SERVER_PORT
           EOT
           
             # Vérification de la création du fichier temporaire
