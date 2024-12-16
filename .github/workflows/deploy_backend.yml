@@ -279,13 +279,14 @@ jobs:
             echo "[INFO - Sous-étape 8.0] Vérification des variables chargées..."
             MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT)
             for VAR in "${MANDATORY_VARS[@]}"; do
-              if [ -z "\${!VAR}" ]; then
-                echo "[ERROR] La variable \$VAR est manquante ou vide." >&2
+              VALUE=$(eval echo "\$$VAR")
+              if [ -z "$VALUE" ]; then
+                echo "[ERROR] La variable $VAR est manquante ou vide." >&2
                 exit 1
               fi
-              echo "[INFO] \$VAR=\${!VAR}"
+              echo "[INFO] $VAR=$VALUE"
             done
-      
+                  
             # Étape 8.1 - Création d’un fichier temporaire pour les variables
             echo '[INFO - Étape 8.1] Création d’un fichier temporaire avec les variables...'
             cat <<EOT > /tmp/env_vars_backend.sh
