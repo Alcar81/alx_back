@@ -127,6 +127,26 @@ jobs:
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
           set -e
 
+          # Vérification des variables
+          if [ -z "$NETWORK" ]; then
+            echo "[ERROR] La variable NETWORK est vide ou non définie." >&2
+            exit 1
+          fi
+
+          if [ -z "$POSTGRES_VOLUME" ]; then
+            echo "[ERROR] La variable POSTGRES_VOLUME est vide ou non définie." >&2
+            exit 1
+          fi
+
+          if [ -z "$POSTGRES_CONTAINER_NAME" ]; then
+            echo "[ERROR] La variable POSTGRES_CONTAINER_NAME est vide ou non définie." >&2
+            exit 1
+          fi
+
+          echo "[DEBUG] NETWORK=$NETWORK"
+          echo "[DEBUG] POSTGRES_VOLUME=$POSTGRES_VOLUME"
+          echo "[DEBUG] POSTGRES_CONTAINER_NAME=$POSTGRES_CONTAINER_NAME"
+
           # Vérifier et créer le réseau Docker
           if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
             echo "[INFO] Création du réseau Docker : $NETWORK"
@@ -172,22 +192,6 @@ jobs:
               sleep 5
             fi
           done
-
-          # Vérification et création du rôle postgres
-          echo "[INFO] Vérification du rôle 'postgres'..."
-          if ! docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres';" | grep -q 1; then
-            echo "[INFO] Création du rôle 'postgres'..."
-            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD '$DB_PASSWORD';"
-          else
-            echo "[INFO] Le rôle 'postgres' existe déjà."
-          fi
-
-          # Ajout des vérifications supplémentaires après création des rôles
-          echo "[INFO] Vérifications supplémentaires après la création des rôles..."
-          docker inspect "$POSTGRES_CONTAINER_NAME" | grep -A 10 "Env"
-          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\l'
-          docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c '\du'
-          docker logs "$POSTGRES_CONTAINER_NAME"
 
           # Vérification finale de PostgreSQL
           echo "[INFO] Vérification finale de PostgreSQL..."
