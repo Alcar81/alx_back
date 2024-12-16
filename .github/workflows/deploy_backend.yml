@@ -268,72 +268,84 @@ jobs:
             echo '[SUCCESS] Étape 7 terminée avec succès.' | tee -a "$LOG_FILE"
           EOF
 
-      - name: 8 - Déployer le conteneur Backend
-        run: |
-          echo "=== Étape 8 : Déploiement du backend ==="
-
-          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
-            set -e
-            echo '===================================' | tee -a "$LOG_FILE"
-            echo '[INFO - Étape 8.1] Début du déploiement du backend...' | tee -a "$LOG_FILE"
-
-            # Étape 8.1.1 - Vérification des variables obligatoires
-            echo '[INFO - Étape 8.1.1] Vérification des variables obligatoires...'
-            REQUIRED_VARS=("DATABASE_URL" "NODE_ENV" "JWT_SECRET" "SERVER_PORT")
-            for VAR in "\${REQUIRED_VARS[@]}"; do
-              if [ -z "\${!VAR}" ]; then
-                echo "[ERROR] La variable \$VAR est vide ou non définie." | tee -a "$LOG_FILE"
-                exit 1
-              fi
-            done
-
-            # Étape 8.2 - Création du fichier .env
-            echo '[INFO - Étape 8.2] Création du fichier .env...' | tee -a "$LOG_FILE"
-
-            cat <<EOT > "$MOUNT_PATH/.env"
-          DATABASE_URL=$DATABASE_URL
-          NODE_ENV=$ENV
-          JWT_SECRET=$JWT_SECRET
-          SERVER_PORT=$BACKEND_PORT
+          - name: 8 - Déployer le conteneur Backend
+            run: |
+              echo "=== Étape 8 : Déploiement du backend ==="
+          
+              ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
+                set -e
+          
+                # Étape 8.1 - Création d’un fichier temporaire pour les variables
+                echo '[INFO - Étape 8.1] Création d’un fichier temporaire avec les variables...'
+                cat <<EOT > /tmp/env_vars_backend.sh
+          DATABASE_URL=${DATABASE_URL}
+          NODE_ENV=${ENV}
+          JWT_SECRET=${JWT_SECRET}
+          SERVER_PORT=${BACKEND_PORT}
           EOT
-
-            if [ -f "$MOUNT_PATH/.env" ]; then
-              echo '[INFO] Fichier .env créé avec succès.' | tee -a "$LOG_FILE"
-            else
-              echo '[ERROR] Échec de la création du fichier .env.' | tee -a "$LOG_FILE"
-              exit 1
-            fi
-
-            # Étape 8.3 - Suppression de l'ancien conteneur si nécessaire
-            echo '[INFO - Étape 8.3] Suppression de l’ancien conteneur...' | tee -a "$LOG_FILE"
-            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.' | tee -a "$LOG_FILE"
-              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.' | tee -a "$LOG_FILE"
-            fi
-
-            # Étape 8.4 - Lancement du conteneur backend
-            echo '[INFO - Étape 8.4] Lancement du conteneur backend...' | tee -a "$LOG_FILE"
-            docker run -d --name "$CONTAINER_NAME" \
-              --network "$NETWORK" \
-              -v "$MOUNT_PATH:/app" \
-              -w /app \
-              -p "$BACKEND_PORT:$BACKEND_PORT" \
-              "$DOCKER_NAME" || {
-                echo '[ERROR] Échec du démarrage du conteneur backend.' | tee -a "$LOG_FILE"
-                exit 1
-              }
-
-            # Étape 8.5 - Vérification que le conteneur est actif
-            echo '[INFO - Étape 8.5] Vérification du conteneur backend...' | tee -a "$LOG_FILE"
-            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.' | tee -a "$LOG_FILE"
-            else
-              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' | tee -a "$LOG_FILE"
-              docker logs "$CONTAINER_NAME" | tee -a "$LOG_FILE"
-              exit 1
-            fi
-
-            echo '[SUCCESS - Étape 8] Déploiement terminé avec succès.' | tee -a "$LOG_FILE"
+          
+                # Vérification de la création du fichier temporaire
+                if [ -f /tmp/env_vars_backend.sh ]; then
+                  echo '[INFO] Fichier temporaire créé avec succès.'
+                else
+                  echo '[ERROR] Échec de la création du fichier temporaire.' >&2
+                  exit 1
+                fi
+          
+                # Étape 8.2 - Charger les variables et créer le fichier .env
+                echo '[INFO - Étape 8.2] Chargement des variables depuis le fichier temporaire...'
+                source /tmp/env_vars_backend.sh
+          
+                echo '[INFO - Étape 8.3] Création du fichier .env...'
+                cat <<EOT > "$MOUNT_PATH/.env"
+          DATABASE_URL=\$DATABASE_URL
+          NODE_ENV=\$NODE_ENV
+          JWT_SECRET=\$JWT_SECRET
+          SERVER_PORT=\$SERVER_PORT
+          EOT
+          
+                # Étape 8.4 - Vérifier la création du fichier .env
+                if [ -f "$MOUNT_PATH/.env" ]; then
+                  echo '[INFO] Fichier .env créé avec succès.'
+                else
+                  echo '[ERROR] Échec de la création du fichier .env.' >&2
+                  exit 1
+                fi
+          
+                # Étape 8.5 - Suppression de l'ancien conteneur
+                echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
+                if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+                  docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
+                  docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
+                fi
+          
+                # Étape 8.6 - Lancement du nouveau conteneur backend
+                echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
+                docker run -d --name "$CONTAINER_NAME" \
+                  --network "$NETWORK" \
+                  -v "$MOUNT_PATH:/app" \
+                  -w /app \
+                  -p "$BACKEND_PORT:$BACKEND_PORT" \
+                  "$DOCKER_NAME" || {
+                    echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+                    exit 1
+                  }
+          
+                # Étape 8.7 - Vérification du conteneur
+                echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
+                if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+                  echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
+                else
+                  echo '[ERROR] Le conteneur backend n’est pas opérationnel.' >&2
+                  docker logs "$CONTAINER_NAME"
+                  exit 1
+                fi
+        
+              # Nettoyage du fichier temporaire
+              echo '[INFO] Suppression du fichier temporaire...'
+              rm -f /tmp/env_vars_backend.sh
+        
+              echo '[SUCCESS] Déploiement terminé avec succès.'
           EOF
 
       # Étape 9 - Configurer l'URL Git distante
