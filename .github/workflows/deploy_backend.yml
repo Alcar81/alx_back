@@ -121,98 +121,88 @@ jobs:
       # Étape 6 - Configuration du conteneur PostgreSQL 
       - name: 6 - Configuration du conteneur PostgreSQL
         run: |
-            # === Étape 6 : Configuration du conteneur PostgreSQL ===
-            echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
+          # === Étape 6 : Configuration du conteneur PostgreSQL ===
+          echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
-            # 6.1 - Création et exécution du script temporaire postgres.sh
-            echo "[INFO - 6.1] Création du script temporaire postgres.sh"
+          # 6.1 - Création et exécution du script temporaire postgres.sh
+          echo "[INFO - 6.1] Création du script temporaire postgres.sh"
 
-            ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
-            set -e
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
+          set -e
 
-            echo "[INFO] Création du script temporaire postgres.sh"
-            cat << 'EOT' > /tmp/postgres.sh
-            #!/bin/bash
+          # Étape 6.1 : Création du fichier postgres.sh
+          echo "[INFO] Création du script temporaire postgres.sh"
+          cat << 'EOT' > /tmp/postgres.sh
+          #!/bin/bash
 
-            # Variables
-            POSTGRES_CONTAINER_NAME="postgres_dev"
-            POSTGRES_VOLUME="postgres_data_dev"
-            NETWORK="network_dev"
-            DB_USERNAME="usr_db_dev"
-            DB_PASSWORD="your_password"
-            DB_NAME="postgres_dev"
-            DB_PORT_INT=5432
-            DB_PORT_EXT=5433
+          # Variables
+          POSTGRES_CONTAINER_NAME="postgres_dev"
+          POSTGRES_VOLUME="postgres_data_dev"
+          NETWORK="network_dev"
+          DB_USERNAME="usr_db_dev"
+          DB_PASSWORD="your_password"
+          DB_NAME="postgres_dev"
+          DB_PORT_INT=5432
+          DB_PORT_EXT=5433
 
-            # Vérifier et créer le réseau Docker
-            if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
-            echo "[INFO] Création du réseau Docker : $NETWORK"
-            docker network create "$NETWORK" || {
-                echo "[ERROR] Impossible de créer le réseau Docker."
-                exit 1
-            }
-            else
-            echo "[INFO] Réseau Docker déjà existant : $NETWORK"
-            fi
+          # Vérifier et créer le réseau Docker
+          if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
+          echo "[INFO] Création du réseau Docker : $NETWORK"
+          docker network create "$NETWORK" || { echo "[ERROR] Impossible de créer le réseau Docker."; exit 1; }
+          else
+          echo "[INFO] Réseau Docker déjà existant : $NETWORK"
+          fi
 
-            # Vérifier et créer le volume Docker
-            if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
-            echo "[INFO] Création du volume Docker : $POSTGRES_VOLUME"
-            docker volume create "$POSTGRES_VOLUME" || {
-                echo "[ERROR] Impossible de créer le volume Docker."
-                exit 1
-            }
-            else
-            echo "[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME"
-            fi
+          # Vérifier et créer le volume Docker
+          if ! docker volume ls --filter "name=^$POSTGRES_VOLUME\$" --format '{{.Name}}' | grep -w "$POSTGRES_VOLUME"; then
+          echo "[INFO] Création du volume Docker : $POSTGRES_VOLUME"
+          docker volume create "$POSTGRES_VOLUME" || { echo "[ERROR] Impossible de créer le volume Docker."; exit 1; }
+          else
+          echo "[INFO] Volume Docker déjà existant : $POSTGRES_VOLUME"
+          fi
 
-            # Arrêter et supprimer le conteneur PostgreSQL s'il existe
-            if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
-            echo "[INFO] Arrêt du conteneur PostgreSQL existant : $POSTGRES_CONTAINER_NAME"
-            docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
-            echo "[INFO] Suppression du conteneur PostgreSQL existant."
-            docker rm "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
-            fi
+          # Arrêter et supprimer le conteneur PostgreSQL s'il existe
+          if docker ps -a --filter "name=$POSTGRES_CONTAINER_NAME" --format '{{.Names}}' | grep -w "$POSTGRES_CONTAINER_NAME"; then
+          echo "[INFO] Arrêt et suppression du conteneur PostgreSQL existant"
+          docker stop "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
+          docker rm "$POSTGRES_CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
+          fi
 
-            # Lancer le conteneur PostgreSQL
-            echo "[INFO] Lancement du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
-            docker run -d --name "$POSTGRES_CONTAINER_NAME" \
-            --network "$NETWORK" \
-            -e POSTGRES_USER="$DB_USERNAME" \
-            -e POSTGRES_PASSWORD="$DB_PASSWORD" \
-            -e POSTGRES_DB="$DB_NAME" \
-            -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
-            -p "$DB_PORT_EXT:$DB_PORT_INT" \
-            postgres:13 || {
-            echo "[ERROR] Échec du lancement du conteneur PostgreSQL."
-            exit 1
-            }
+          # Lancer le conteneur PostgreSQL
+          echo "[INFO] Lancement du conteneur PostgreSQL : $POSTGRES_CONTAINER_NAME"
+          docker run -d --name "$POSTGRES_CONTAINER_NAME" \
+          --network "$NETWORK" \
+          -e POSTGRES_USER="$DB_USERNAME" \
+          -e POSTGRES_PASSWORD="$DB_PASSWORD" \
+          -e POSTGRES_DB="$DB_NAME" \
+          -v "$POSTGRES_VOLUME:/var/lib/postgresql/data" \
+          -p "$DB_PORT_EXT:$DB_PORT_INT" \
+          postgres:13 || { echo "[ERROR] Échec du lancement du conteneur PostgreSQL."; exit 1; }
 
-            # Vérification du conteneur PostgreSQL
-            echo "[INFO] Vérification de PostgreSQL..."
-            sleep 10
-            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
-            echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
-            else
-            echo "[ERROR] PostgreSQL n'est pas opérationnel."
-            docker logs "$POSTGRES_CONTAINER_NAME"
-            exit 1
-            fi
-            EOT
+          # Vérification du conteneur PostgreSQL
+          echo "[INFO] Vérification de PostgreSQL..."
+          sleep 10
+          if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+          echo "[SUCCESS] PostgreSQL est prêt et fonctionne correctement."
+          else
+          echo "[ERROR] PostgreSQL n'est pas opérationnel."
+          docker logs "$POSTGRES_CONTAINER_NAME"
+          exit 1
+          fi
+          EOT
 
-            echo "[INFO] Script temporaire postgres.sh créé. Attribution des permissions d'exécution."
-            chmod +x /tmp/postgres.sh
+          # Étape 6.2 : Exécution du script temporaire
+          echo "[INFO] Script temporaire postgres.sh créé. Attribution des permissions d'exécution."
+          chmod +x /tmp/postgres.sh
 
-            echo "[INFO] Exécution du script temporaire postgres.sh"
-            /tmp/postgres.sh || {
-                echo "[ERROR] Échec de l'exécution du script postgres.sh."
-                exit 1
-            }
+          echo "[INFO] Exécution du script temporaire postgres.sh"
+          bash /tmp/postgres.sh || { echo "[ERROR] Échec de l'exécution du script postgres.sh."; exit 1; }
 
-            echo "[INFO] Suppression du script temporaire postgres.sh"
-            rm -f /tmp/postgres.sh
+          # Étape 6.3 : Suppression du script temporaire
+          echo "[INFO] Suppression du script temporaire postgres.sh"
+          rm -f /tmp/postgres.sh
 
-            EOF            
+          EOF    
             
         # === Étape 7 : Création de la base de données et des utilisateurs ===
       - name: 7 - Création de la base de données et des utilisateurs
