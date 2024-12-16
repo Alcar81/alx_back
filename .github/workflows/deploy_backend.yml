@@ -118,13 +118,14 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa || (echo "Erreur : Clé SSH invalide." && exit 1)
         
-      # Étape 6 - Configuration du conteneur PostgreSQL 
+      # Étape 6 - Configuration du conteneur PostgreSQL
       - name: 6 - Configuration du conteneur PostgreSQL
         run: |
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
 
+          # Connexion SSH et exécution des commandes
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << 'EOF'
-          set -e          
+          set -e
 
           # Vérifier et créer le réseau Docker
           if ! docker network ls --filter "name=^$NETWORK\$" --format '{{.Name}}' | grep -w "$NETWORK"; then
