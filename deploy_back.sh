@@ -1,9 +1,25 @@
 #!/bin/bash
-# deploy_backend
+# deploy_backend.sh
+
+# Naviguer vers la racine du dépôt Git
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+  echo "[ERROR] Ce script doit être exécuté dans un dépôt Git valide."
+  exit 1
+fi
+
+cd "$REPO_ROOT" || { echo "[ERROR] Impossible de naviguer vers la racine du dépôt Git : $REPO_ROOT."; exit 1; }
 
 # Définir le répertoire des logs et le fichier log
 LOG_DIR="./logs"
 LOG_FILE="$LOG_DIR/deployment_back.log"
+
+# Rotation des logs si nécessaire
+MAX_LOG_SIZE=$((1024 * 1024)) # 1 Mo
+if [ -f "$LOG_FILE" ] && [ $(stat -c%s "$LOG_FILE") -ge $MAX_LOG_SIZE ]; then
+  echo "[INFO] Rotation du fichier de log : $LOG_FILE -> $LOG_FILE.bak"
+  mv "$LOG_FILE" "$LOG_FILE.bak"
+fi
 
 # Créer le répertoire des logs s'il n'existe pas encore
 if [ ! -d "$LOG_DIR" ]; then
@@ -19,7 +35,7 @@ chmod 644 "$LOG_FILE"
 # Rediriger les sorties vers le fichier log
 exec >> "$LOG_FILE" 2>&1
 
-echo "=== Déploiement Niveau 2 commencé : $(date) ==="
+echo "=== Déploiement Backend commencé : $(date) ==="
 
 # Vérifier si les branches existent
 if ! git show-ref --quiet refs/heads/master; then
@@ -52,9 +68,8 @@ git reset --hard origin/dev || { echo '[ERROR] Échec de la réinitialisation de
 echo '[INFO] Poussée forcée vers la branche master...' | tee -a $LOG_FILE
 git push origin master --force || { echo '[ERROR] Échec de la poussée forcée vers master.' | tee -a $LOG_FILE; exit 1; }
 
-
 # Revenir sur dev pour continuer les travaux de développement
 git checkout dev || exit 1
 
-echo "=== Déploiement Niveau 2 terminé : $(date) ==="
+echo "=== Déploiement Backend terminé : $(date) ==="
 echo "Les logs de ce déploiement sont disponibles dans $LOG_FILE"
