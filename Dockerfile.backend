@@ -20,8 +20,8 @@ WORKDIR /app
 # Copier les fichiers package.json et package-lock.json pour installer les dépendances
 COPY package*.json ./
 
-# Mettre à jour Prisma et ses dépendances AVANT d'installer tout le reste
-RUN npm install --save-dev prisma@latest @prisma/client@latest
+# Mettre à jour Prisma et son client
+RUN npm install --save-dev prisma@latest @prisma/client@latest --force --legacy-peer-deps
 
 # Installer les dépendances de production
 RUN npm install --production --loglevel=warn
