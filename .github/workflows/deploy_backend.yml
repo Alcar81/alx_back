@@ -372,7 +372,7 @@ jobs:
               rm -f /tmp/env_vars_backend.sh
         
               echo '[SUCCESS] Déploiement terminé avec succès.'
-              
+
             # Étape 8.8 - Vérification et initialisation conditionnelle de la base de données
             echo '[INFO - Étape 8.8] Vérification de l’état de la base de données...'
             TABLE_COUNT=$(psql -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" | xargs)
@@ -386,11 +386,18 @@ jobs:
 
             # Étape 8.9 - Déploiement des migrations Prisma
             echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
-            npx prisma migrate deploy || {
-              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+
+            if [ -f "/app/prisma/schema.prisma" ]; then
+              echo "[INFO] Fichier schema.prisma trouvé, lancement des migrations..."
+              npx prisma migrate deploy --schema /app/prisma/schema.prisma || {
+                echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+                exit 1
+              }
+            else
+              echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur." >&2
               exit 1
-            }
-                      EOF
+            fi
+          EOF
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
