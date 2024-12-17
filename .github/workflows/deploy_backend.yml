@@ -368,20 +368,21 @@ jobs:
             # Étape 8.8 - Gestion des migrations avec backup et rollback
             echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
-            # 1. Backup de la base de données avant les migrations
-            echo '[INFO] Création d’un backup de la base de données avant migration...'
+            # Étape 8.8.1 - Backup de la base de données avant les migrations
+            echo '[INFO - Étape 8.8.1] Création d’un backup de la base de données avant migration...'
             docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$MOUNT_PATH/backup_$(date +%Y%m%d%H%M%S).sql" || {
               echo '[ERROR] Échec de la création du backup. Migration annulée.' >&2
               exit 1
             }
 
-            # 2. Vérification des migrations échouées
+            # Étape 8.8.2 - Vérification des migrations échouées
+            echo '[INFO - Étape 8.8.2] Vérification des migrations échouées...'
             FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
 
             if [ -n "$FAILED_MIGRATION" ]; then
               echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
               for MIGRATION in $FAILED_MIGRATION; do
-                echo "[INFO] Marquage de la migration comme rollback : $MIGRATION"
+                echo "[INFO - Étape 8.8.2.1] Marquage de la migration comme rollback : $MIGRATION"
                 docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
                   echo "[ERROR] Échec du rollback pour $MIGRATION." >&2
                   exit 1
@@ -389,28 +390,35 @@ jobs:
               done
             fi
 
-            # 3. Appliquer les migrations restantes
-            echo '[INFO] Application des migrations Prisma...'
+            # Étape 8.8.3 - Application des migrations Prisma
+            echo '[INFO - Étape 8.8.3] Application des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo '[ERROR] Échec du déploiement des migrations Prisma. Restauration du backup...' >&2
-              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$MOUNT_PATH/backup_*.sql"
+              LATEST_BACKUP=$(ls -t "$MOUNT_PATH"/backup_*.sql | head -n 1)
+              docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$LATEST_BACKUP" || {
+                echo "[ERROR] Échec de la restauration du backup. Vérification manuelle requise." >&2
+                exit 1
+              }
               exit 1
             }
 
-            echo '[SUCCESS] Les migrations Prisma ont été appliquées avec succès.'
-
-            echo '[INFO] Vérification finale de l’état des migrations Prisma...'
+            # Étape 8.8.4 - Vérification finale de l’état des migrations Prisma
+            echo '[INFO - Étape 8.8.4] Vérification finale de l’état des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate status || {
               echo '[ERROR] Les migrations ne sont pas dans un état cohérent.' >&2
               exit 1
             }
 
-            # Nettoyage des anciens conteneurs
-            echo '[INFO] Nettoyage des anciens conteneurs...'
+            # Étape 8.8.5 - Nettoyage des anciens conteneurs
+            echo '[INFO - Étape 8.8.5] Nettoyage des anciens conteneurs...'
             docker container prune -f
 
-            echo '[INFO] Nettoyage des images Docker non utilisées...'
+            # Étape 8.8.6 - Nettoyage des images Docker non utilisées
+            echo '[INFO - Étape 8.8.6] Nettoyage des images Docker non utilisées...'
             docker image prune -f
+
+            # Fin de l’étape 8.8
+            echo '[SUCCESS - Étape 8.8] Les migrations Prisma ont été appliquées avec succès et le nettoyage a été effectué.'
 
           EOF
 
