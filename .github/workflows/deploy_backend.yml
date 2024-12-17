@@ -346,17 +346,24 @@ jobs:
         
             # Étape 8.6 - Lancement du nouveau conteneur backend
             echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
-            docker run -d --name "$CONTAINER_NAME" \
-              --network "$NETWORK" \
-              -v "$MOUNT_PATH:/app" \
-              -w /app \
-              --env-file "$MOUNT_PATH/.env" \
-              -p "$BACKEND_PORT:$BACKEND_PORT" \
-              "$DOCKER_NAME" || {
-                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
-                exit 1
-            }
-                  
+            echo "[INFO] Contenu de /app :"
+            ls -la /app
+
+            echo "[INFO] Contenu de /app/prisma :"
+            ls -la /app/prisma            
+            ls -la $MOUNT_PATH/prisma
+            
+            --network "$NETWORK" \
+            -v "$MOUNT_PATH:/app" \
+            -v "$MOUNT_PATH/prisma:/app/prisma" \   # Ajout explicite pour le dossier prisma
+            -w /app \
+            --env-file "$MOUNT_PATH/.env" \
+            -p "$BACKEND_PORT:$BACKEND_PORT" \
+            "$DOCKER_NAME" || {
+              echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+              exit 1
+          }
+                            
             # Étape 8.7 - Vérification du conteneur
             echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
             if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
