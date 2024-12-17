@@ -395,16 +395,22 @@ jobs:
         
               echo '[SUCCESS] Déploiement terminé avec succès.'
 
-            # Étape 8.8 - Vérification et initialisation conditionnelle de la base de données
-            echo '[INFO - Étape 8.8] Vérification de l’état de la base de données...'
-            TABLE_COUNT=$(psql -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" | xargs)
+            echo '[INFO - Étape 8.8] Vérification que PostgreSQL est prêt...'
+            for i in {1..10}; do
+              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME" -d "$DB_NAME"; then
+                echo '[INFO] PostgreSQL est prêt.'
+                break
+              else
+                echo "[INFO] En attente de PostgreSQL... (tentative $i/10)"
+                sleep 5
+              fi
+            done
 
-            if [ "$TABLE_COUNT" -eq "0" ]; then
-              echo '[INFO] La base de données est vide. Exécution du script baseline.sql...'
-              psql -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -f "$MOUNT_PATH/baseline.sql"
-            else
-              echo '[INFO] La base de données est déjà initialisée. Aucun script baseline requis.'
+            if [ "$i" -eq 10 ]; then
+              echo "[ERROR] PostgreSQL n'est pas prêt après 10 tentatives." >&2
+              exit 1
             fi
+
 
             # Étape 8.9 - Déploiement des migrations Prisma avec gestion des baselines
             echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
@@ -434,6 +440,14 @@ jobs:
               echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
               exit 1
             }
+
+            # Nouvelle étape : Vérification des mises à jour Prisma et npm
+            echo '[INFO] Vérification des mises à jour Prisma et npm...'
+            docker exec "$CONTAINER_NAME" npm outdated || true
+
+            # Nouvelle étape : Nettoyage des anciens conteneurs
+            echo '[INFO] Nettoyage des anciens conteneurs...'
+            docker container prune -f
           EOF
 
       # Étape 9 - Configurer l'URL Git distante
