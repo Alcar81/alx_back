@@ -11,7 +11,7 @@ RUN apk add --no-cache \
     bash \
     file
 
-# Mettre à jour npm à la dernière version
+# Mettre à jour npm à la dernière version globale
 RUN npm install -g npm@11.0.0
 
 # Définir le répertoire de travail
@@ -20,18 +20,22 @@ WORKDIR /app
 # Copier les fichiers package.json et package-lock.json pour installer les dépendances
 COPY package*.json ./
 
-# Installer les dépendances
+# Mettre à jour Prisma et ses dépendances AVANT d'installer tout le reste
+RUN npm install --save-dev prisma@latest @prisma/client@latest
+
+# Installer les dépendances de production
 RUN npm install --production --loglevel=warn
 
-# Installer Prisma et générer le client
-RUN npm install prisma @prisma/client pg argon2
+# Copier le schéma Prisma
 COPY prisma ./prisma
+
+# Générer le client Prisma après avoir copié le schéma
 RUN npx prisma generate
 
 # Copier tout le code source
 COPY . .
 
-# Vérifier si server.js existe
+# Vérifier si server.js existe pour debug
 RUN ls -l /app/server.js && file /app/server.js
 
 # Nettoyer le cache npm pour réduire la taille de l'image
