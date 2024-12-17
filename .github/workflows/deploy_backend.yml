@@ -355,8 +355,8 @@ jobs:
               "$DOCKER_NAME" || {
                 echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
                 exit 1
-              }
-      
+            }
+                  
             # Étape 8.7 - Vérification du conteneur
             echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
             if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
