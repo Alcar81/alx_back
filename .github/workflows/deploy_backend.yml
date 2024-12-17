@@ -385,6 +385,14 @@ jobs:
             fi
 
             # Étape 8.8 : Mise à jour de npm et Prisma avant les migrations
+            echo "[INFO] Vérification des variables SSH..."
+            if [ -z "$SSH_PORT" ] || [ -z "$SSH_USER" ] || [ -z "$SERVER_IP" ] || [ -z "$MOUNT_PATH" ]; then
+              echo "[ERROR] Une ou plusieurs variables SSH ne sont pas définies." >&2
+              exit 1
+            else
+              echo "[SUCCESS] Toutes les variables SSH sont correctement définies."
+            fi
+
             echo "[INFO - Étape 8.8.0] Mise à jour de npm et Prisma..."
 
             # Mise à jour de npm à la dernière version
