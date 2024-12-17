@@ -311,20 +311,28 @@ jobs:
             # Étape 8.1 - Création du fichier temporaire pour les variables
             echo '[INFO - Étape 8.1] Création du fichier temporaire...'
             cat <<EOT > /tmp/env_vars_backend.sh
-          DATABASE_URL=${DATABASE_URL}
-          NODE_ENV=${ENV}
-          JWT_SECRET=${JWT_SECRET}
-          SERVER_PORT=${BACKEND_PORT}
-          EOT
+            DATABASE_URL=${DATABASE_URL}
+            NODE_ENV=${ENV}
+            JWT_SECRET=${JWT_SECRET}
+            SERVER_PORT=${BACKEND_PORT}
+            EOT
+
+            # Étape 8.2 - Vérification du fichier temporaire
+            echo '[INFO - Étape 8.2] Vérification du fichier temporaire...'
+            cat /tmp/env_vars_backend.sh
 
             # Étape 8.3 - Création du fichier .env
             echo '[INFO - Étape 8.3] Création du fichier .env...'
             cat <<EOT > "$MOUNT_PATH/.env"
-          DATABASE_URL=\$DATABASE_URL
-          NODE_ENV=\$NODE_ENV
-          JWT_SECRET=\$JWT_SECRET
-          SERVER_PORT=\$SERVER_PORT
-          EOT
+            DATABASE_URL=${DATABASE_URL}
+            NODE_ENV=${ENV}
+            JWT_SECRET=${JWT_SECRET}
+            SERVER_PORT=${BACKEND_PORT}
+            EOT
+
+            # Étape 8.4 - Vérification du fichier .env
+            echo '[INFO - Étape 8.4] Vérification du fichier .env...'
+            cat "$MOUNT_PATH/.env"
 
             # Étape 8.5 - Suppression de l’ancien conteneur
             echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
@@ -357,25 +365,19 @@ jobs:
               exit 1
             fi
 
-            # Étape 8.8 - Appliquer les migrations manuellement
+            # Étape 8.8 - Application des migrations Prisma
             echo '[INFO - Étape 8.8] Application des migrations Prisma...'
-
-            # Vérifier l'état des migrations
             docker exec "$CONTAINER_NAME" npx prisma migrate status || {
               echo '[ERROR] Impossible de vérifier l’état des migrations Prisma.' >&2
               exit 1
             }
-
-            # Appliquer les migrations si elles existent
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
               exit 1
             }
 
-            # Ajouter une temporisation pour éviter tout problème d'accès
-            sleep 5
-
-            # Debug : Vérification du fichier schema.prisma après migration
+            # Vérification du fichier schema.prisma
+            echo '[INFO] Vérification du fichier schema.prisma...'
             docker exec "$CONTAINER_NAME" ls -la /app/prisma/schema.prisma || {
               echo "[ERROR] Le fichier schema.prisma est introuvable après migration." >&2
               exit 1
