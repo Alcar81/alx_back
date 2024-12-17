@@ -434,13 +434,13 @@ jobs:
             # Étape 8.8.3 - Vérification des migrations échouées
             echo '[INFO - Étape 8.8.3] Vérification des migrations échouées...'
             FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
-      
+
             if [ -n "$FAILED_MIGRATION" ]; then
               echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
               for MIGRATION in $FAILED_MIGRATION; do
-                echo "[INFO - Étape 8.8.3.1] Rollback de la migration : $MIGRATION"
-                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
-                  echo "[ERROR] Échec du rollback pour $MIGRATION." >&2
+                echo "[INFO - Étape 8.8.3.1] Résolution de la migration échouée : $MIGRATION"
+                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "$MIGRATION" || {
+                  echo "[ERROR] Échec de la résolution de la migration : $MIGRATION" >&2
                   exit 1
                 }
               done
