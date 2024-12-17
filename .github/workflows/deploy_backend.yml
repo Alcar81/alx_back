@@ -368,24 +368,24 @@ jobs:
             # Étape 8.8 - Gestion des migrations avec backup et rollback
             echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
-            # Étape 8.8.1 - Création du répertoire de backup
-            echo "[INFO - Étape 8.8.1] Définition du répertoire de backup..."
+            # Étape 8.8.1 - Définition du répertoire de backup
+            echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
 
-            # Validation stricte de MOUNT_PATH
-            if [ -z "$MOUNT_PATH" ]; then
-              echo "[ERROR] La variable MOUNT_PATH est vide ou non définie. Vérifiez les secrets GitHub Actions." >&2
+            # Utiliser ./ pour naviguer dans le répertoire parent et créer backup_bd
+            BACKUP_DIR="./../backup_bd"
+
+            # Créer le répertoire de backup
+            echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
+            mkdir -p "$BACKUP_DIR" || {
+              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
               exit 1
-            fi
+            }
 
-            echo "[DEBUG] MOUNT_PATH est défini comme : $MOUNT_PATH"
-
-            # Extraire le répertoire parent
-            BASE_DIR=$(dirname "${MOUNT_PATH:-/dev/null}")  # Définit une valeur par défaut en cas de vide
-            BACKUP_DIR="$BASE_DIR/backup_bd"
-
-            # Vérifier si BASE_DIR est valide
-            if [ "$BASE_DIR" = "/" ] || [ -z "$BASE_DIR" ]; then
-              echo "[ERROR] Impossible de déterminer BASE_DIR à partir de MOUNT_PATH." >&2
+            # Vérification finale
+            if [ -d "$BACKUP_DIR" ]; then
+              echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
+            else
+              echo "[ERROR] Échec de la création du répertoire de backup." >&2
               exit 1
             fi
 
