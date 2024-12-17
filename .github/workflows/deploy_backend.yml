@@ -371,18 +371,19 @@ jobs:
             # Étape 8.8.1 - Définition du répertoire de backup
             echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
 
-            # Trouver la racine du dépôt Git
-            REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-
-            if [ -z "$REPO_ROOT" ]; then
-              echo "[ERROR] Impossible de déterminer la racine du dépôt Git. Vérifiez que le script est exécuté dans un dépôt valide." >&2
+            # Validation stricte de MOUNT_PATH
+            if [ -z "$MOUNT_PATH" ]; then
+              echo "[ERROR] La variable MOUNT_PATH est vide ou non définie. Vérifiez les secrets GitHub Actions." >&2
               exit 1
             fi
 
-            echo "[INFO] Racine du dépôt Git détectée : $REPO_ROOT"
+            echo "[DEBUG] MOUNT_PATH est défini comme : $MOUNT_PATH"
 
-            # Définir le répertoire de backup basé sur la racine du dépôt
-            BACKUP_DIR="$REPO_ROOT/backup_bd"
+            # Définir le répertoire de backup
+            BACKUP_DIR="$MOUNT_PATH/../backup_bd"
+
+            # Normaliser le chemin avec readlink pour éviter les erreurs
+            BACKUP_DIR=$(readlink -f "$BACKUP_DIR")
 
             # Création du répertoire s'il n'existe pas
             echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
@@ -396,21 +397,6 @@ jobs:
               echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
             else
               echo "[ERROR] Échec de la validation du répertoire de backup." >&2
-              exit 1
-            fi
-
-            # Créer le répertoire de backup
-            echo "[INFO - Étape 8.8.1] Création du répertoire de backup : $BACKUP_DIR"
-            mkdir -p "$BACKUP_DIR" || {
-              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
-              exit 1
-            }
-
-            # Vérification de l'existence finale
-            if [ -d "$BACKUP_DIR" ]; then
-              echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
-            else
-              echo "[ERROR] Échec de la création du répertoire de backup." >&2
               exit 1
             fi
 
