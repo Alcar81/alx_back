@@ -308,6 +308,19 @@ jobs:
               echo "[INFO] \$VAR=\$VALUE"
             done
 
+            # Étape 8.0.1 - Extraire MOUNT_PATH depuis un fichier temporaire
+            echo "${MOUNT_PATH}" > /tmp/mount_path.tmp
+            ACTUAL_MOUNT_PATH=$(cat /tmp/mount_path.tmp)
+
+            # Validation pour debug
+            echo "[DEBUG] MOUNT_PATH extrait : $ACTUAL_MOUNT_PATH"
+
+            # Vérification de la valeur extraite
+            if [ -z "$ACTUAL_MOUNT_PATH" ]; then
+              echo "[ERROR] Impossible d'extraire la valeur de MOUNT_PATH." >&2
+              exit 1
+            fi
+
             # Étape 8.1 - Création du fichier temporaire pour les variables
             echo '[INFO - Étape 8.1] Création du fichier temporaire...'
             cat <<EOT > /tmp/env_vars_backend.sh
@@ -323,7 +336,7 @@ jobs:
 
             # Étape 8.3 - Création du fichier .env
             echo '[INFO - Étape 8.3] Création du fichier .env...'
-            cat <<EOT > "$MOUNT_PATH/.env"
+            cat <<EOT > "$ACTUAL_MOUNT_PATH/.env"
             DATABASE_URL=${DATABASE_URL}
             NODE_ENV=${ENV}
             JWT_SECRET=${JWT_SECRET}
@@ -368,35 +381,50 @@ jobs:
             # Étape 8.8 - Gestion des migrations avec backup et rollback
             echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
-            # Étape 8.8.1 - Définition du répertoire de backup
+            # Étape 8.8.1 - Définir le répertoire de backup avec extraction du secret
             echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
 
-            # Validation stricte de MOUNT_PATH
-            if [ -z "$MOUNT_PATH" ]; then
-              echo "[ERROR] La variable MOUNT_PATH est vide ou non définie. Vérifiez les secrets GitHub Actions." >&2
+            # 1. Écrire le secret MOUNT_PATH dans un fichier temporaire
+            echo "${MOUNT_PATH}" > /tmp/mount_path.tmp
+
+            # 2. Extraire la valeur depuis le fichier temporaire
+            ACTUAL_MOUNT_PATH=$(cat /tmp/mount_path.tmp)
+
+            # 3. Validation de la valeur extraite
+            if [ -z "$ACTUAL_MOUNT_PATH" ]; then
+              echo "[ERROR] Impossible d'extraire la valeur de MOUNT_PATH." >&2
               exit 1
             fi
+            echo "[DEBUG] MOUNT_PATH extrait : $ACTUAL_MOUNT_PATH"
 
-            echo "[DEBUG] MOUNT_PATH est défini comme : $MOUNT_PATH"
+            # 4. Déterminer le répertoire parent (BASE_DIR) et le répertoire de backup
+            BASE_DIR=$(dirname "${ACTUAL_MOUNT_PATH}")
+            BACKUP_DIR="$BASE_DIR/backup_bd"
 
-            # Définir le répertoire de backup
-            BACKUP_DIR="$MOUNT_PATH/../backup_bd"
-
-            # Normaliser le chemin avec readlink pour éviter les erreurs
-            BACKUP_DIR=$(readlink -f "$BACKUP_DIR")
-
-            # Création du répertoire s'il n'existe pas
-            echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
-            mkdir -p "$BACKUP_DIR" || {
-              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
+            # 5. Validation stricte des répertoires
+            if [ "$BASE_DIR" = "/" ] || [ -z "$BASE_DIR" ]; then
+              echo "[ERROR] Impossible de déterminer BASE_DIR à partir de MOUNT_PATH." >&2
               exit 1
-            }
+            fi
+            echo "[DEBUG] BASE_DIR déterminé : $BASE_DIR"
+            echo "[DEBUG] Répertoire de backup défini : $BACKUP_DIR"
 
-            # Vérification finale de l'existence du répertoire
+            # 6. Créer le répertoire de backup s'il n'existe pas
+            if [ ! -d "$BACKUP_DIR" ]; then
+              echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
+              mkdir -p "$BACKUP_DIR" || {
+                echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
+                exit 1
+              }
+            else
+              echo "[INFO] Le répertoire de backup existe déjà : $BACKUP_DIR"
+            fi
+
+            # 7. Vérification finale de l'existence du répertoire
             if [ -d "$BACKUP_DIR" ]; then
               echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
             else
-              echo "[ERROR] Échec de la validation du répertoire de backup." >&2
+              echo "[ERROR] Le répertoire de backup ne peut pas être utilisé." >&2
               exit 1
             fi
 
