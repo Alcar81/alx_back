@@ -1,8 +1,8 @@
 # Dockerfile.backend
 # Utiliser une image Node.js 20 Alpine
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
-# Installer les dépendances système nécessaires
+# Étape 1 : Installer les dépendances système nécessaires
 RUN apk add --no-cache \
     python3 \
     make \
@@ -11,35 +11,40 @@ RUN apk add --no-cache \
     bash \
     file
 
-# Mettre à jour npm à la dernière version globale
+# Étape 2 : Mettre à jour npm à la dernière version globale
 RUN npm install -g npm@latest --force
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers package.json et package-lock.json pour installer les dépendances
+# Étape 3 : Copier les fichiers package.json et package-lock.json pour installer les dépendances
 COPY package*.json ./
 
-# Mettre à jour Prisma et son client
+# Mettre à jour Prisma et @prisma/client à la dernière version
 RUN npm install --save-dev prisma@latest @prisma/client@latest --force --legacy-peer-deps
 
-# Installer les dépendances de production
+# Étape 4 : Installer les dépendances de production
 RUN npm install --production --loglevel=warn
 
-# Copier le schéma Prisma
+# Étape 5 : Copier le schéma Prisma et générer le client Prisma
 COPY prisma ./prisma
-
-# Générer le client Prisma après avoir copié le schéma
 RUN npx prisma generate
 
-# Copier tout le code source
+# Étape 6 : Copier tout le code source
 COPY . .
+
+# Étape 7 : Nettoyer le cache npm pour réduire la taille de l'image
+RUN npm cache clean --force
 
 # Vérifier si server.js existe pour debug
 RUN ls -l /app/server.js && file /app/server.js
 
-# Nettoyer le cache npm pour réduire la taille de l'image
-RUN npm cache clean --force
+# Étape finale : Créer une image allégée pour l'exécution
+FROM node:20-alpine
+
+# Copie des fichiers nécessaires depuis la phase builder
+WORKDIR /app
+COPY --from=builder /app /app
 
 # Exposer le port sur lequel le backend écoute
 EXPOSE 7000
