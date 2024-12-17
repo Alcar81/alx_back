@@ -368,18 +368,19 @@ jobs:
             # Étape 8.8 - Gestion des migrations échouées et application
             echo '[INFO - Étape 8.8] Vérification et résolution des migrations Prisma...'
 
-            # Récupération des migrations échouées (sans échouer si la commande retourne une erreur)
-            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" sh -c "npx prisma migrate status --json || true" | jq -r '.failedMigrations[]?')
+            # Étape 8.8.1 - Exécuter prisma migrate status pour obtenir l'état
+            docker exec "$CONTAINER_NAME" sh -c "npx prisma migrate status --json" > /tmp/migrate_status.json || true
 
-            if [ -n "$FAILED_MIGRATIONS" ]; then
-              echo "[WARNING] Migration(s) échouée(s) détectée(s) : $FAILED_MIGRATIONS"
+            # Extraction de la migration échouée
+            FAILED_MIGRATION=$(cat /tmp/migrate_status.json | jq -r '.failedMigrations[]?')
 
-              for MIGRATION in $FAILED_MIGRATIONS; do
-                echo "[INFO] Tentative de résolution de la migration : $MIGRATION"
+            if [ -n "$FAILED_MIGRATION" ]; then
+              echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
 
-                # Marquer la migration comme résolue
+              for MIGRATION in $FAILED_MIGRATION; do
+                echo "[INFO] Marquage de la migration comme appliquée : $MIGRATION"
                 docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "$MIGRATION" || {
-                  echo "[ERROR] Impossible de résoudre la migration $MIGRATION. Vérification manuelle requise." >&2
+                  echo "[ERROR] Impossible de marquer la migration $MIGRATION comme appliquée." >&2
                   exit 1
                 }
               done
@@ -387,19 +388,16 @@ jobs:
               echo "[INFO] Aucune migration échouée détectée."
             fi
 
-            # Appliquer les migrations restantes
+            # Étape 8.8.2 - Appliquer les migrations restantes
             echo '[INFO] Application des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
               exit 1
             }
 
-            # Vérification finale du fichier schema.prisma
-            echo '[INFO] Vérification du fichier schema.prisma...'
-            docker exec "$CONTAINER_NAME" ls -la /app/prisma/schema.prisma || {
-              echo "[ERROR] Le fichier schema.prisma est introuvable après migration." >&2
-              exit 1
-            }
+            # Vérification finale des migrations
+            echo '[INFO] Vérification de l’état final des migrations Prisma...'
+            docker exec "$CONTAINER_NAME" npx prisma migrate status
 
             echo '[SUCCESS] Les migrations Prisma ont été appliquées avec succès.'
 
