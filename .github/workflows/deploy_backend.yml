@@ -378,21 +378,21 @@ jobs:
             fi
 
             # Extraire le répertoire parent
-            BASE_DIR=$(dirname "$MOUNT_PATH")
-            BACKUP_DIR="${BASE_DIR}/backup_bd"
+            BASE_DIR=$(dirname "${MOUNT_PATH:-/dev/null}")  # Définit une valeur par défaut en cas de vide
+            BACKUP_DIR="$BASE_DIR/backup_bd"
 
-            # Debugging : Affichage des chemins
-            echo "[DEBUG] MOUNT_PATH: $MOUNT_PATH"
-            echo "[DEBUG] BASE_DIR: $BASE_DIR"
-            echo "[DEBUG] BACKUP_DIR: $BACKUP_DIR"
+            # Vérifier si BASE_DIR est valide
+            if [ "$BASE_DIR" = "/" ] || [ -z "$BASE_DIR" ]; then
+              echo "[ERROR] Impossible de déterminer BASE_DIR à partir de MOUNT_PATH." >&2
+              exit 1
+            fi
 
-            # Création sécurisée du répertoire BACKUP_DIR
-            if [ ! -d "$BACKUP_DIR" ]; then
-              echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
-              mkdir -p "$BACKUP_DIR" || {
-                echo "[ERROR] Impossible de créer le répertoire de backup : $BACKUP_DIR" >&2
-                exit 1
-              }
+            # Créer le répertoire de backup
+            echo "[INFO - Étape 8.8.1] Création du répertoire de backup : $BACKUP_DIR"
+            mkdir -p "$BACKUP_DIR" || {
+              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
+              exit 1
+            }
             else
               echo "[INFO] Le répertoire de backup existe déjà : $BACKUP_DIR"
             fi
