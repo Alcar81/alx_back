@@ -393,19 +393,19 @@ jobs:
             echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
 
             # Ajout d'une temporisation pour éviter les problèmes d'accès
-            sleep 20
+            sleep 10
 
-            if [ -f "/app/prisma/schema.prisma" ]; then
-              echo "[INFO] Fichier schema.prisma trouvé, lancement des migrations..."
-              npx prisma migrate deploy --schema /app/prisma/schema.prisma || {
-                echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
-                exit 1
-              }
-            else
-              echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur." >&2
-              ls -la /app/prisma  # Debug pour vérifier le contenu du répertoire
+            # Debug : Vérification du fichier avant migration
+            docker exec "$CONTAINER_NAME" ls -la /app/prisma/schema.prisma || {
+              echo "[ERROR] Le fichier schema.prisma est introuvable." >&2
               exit 1
-            fi
+            }
+
+            # Exécution de la migration
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy --schema /app/prisma/schema.prisma || {
+              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+              exit 1
+            }
           EOF
 
       # Étape 9 - Configurer l'URL Git distante
