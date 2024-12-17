@@ -368,15 +368,8 @@ jobs:
             # Étape 8.8 - Gestion des migrations échouées et application
             echo '[INFO - Étape 8.8] Vérification et résolution des migrations Prisma...'
 
-            # Afficher l'état actuel des migrations pour diagnostic
-            echo '[INFO] État actuel des migrations :'
-            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
-              echo "[ERROR] Impossible d'obtenir l'état des migrations." >&2
-              exit 1
-            }
-
-            # Vérifier si une migration échouée existe
-            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status 2>&1 | grep -oP '(?<=failed:\s)\S+')
+            # Récupération des migrations échouées (sans échouer si la commande retourne une erreur)
+            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" sh -c "npx prisma migrate status --json || true" | jq -r '.failedMigrations[]?')
 
             if [ -n "$FAILED_MIGRATIONS" ]; then
               echo "[WARNING] Migration(s) échouée(s) détectée(s) : $FAILED_MIGRATIONS"
