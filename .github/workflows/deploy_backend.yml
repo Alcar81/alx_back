@@ -406,8 +406,19 @@ jobs:
               echo '[INFO] La base de données est déjà initialisée. Aucun script baseline requis.'
             fi
 
-            # Étape 8.9 - Déploiement des migrations Prisma
+            # Étape 8.9 - Déploiement des migrations Prisma avec gestion des baselines
             echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
+
+            # Ajout d'une vérification pour appliquer une baseline si nécessaire
+            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
+              echo '[INFO] La base de données nécessite un baselining...'
+              docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "20241108005223_init"
+            }
+
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
+              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+              exit 1
+            }
 
             # Ajout d'une temporisation pour éviter les problèmes d'accès
             sleep 10
