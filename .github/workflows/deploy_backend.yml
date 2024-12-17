@@ -230,8 +230,8 @@ jobs:
 
           # Étape 6.3.7.1 - Création de la base de données si elle n'existe pas
           echo '[INFO - Sous-étape 6.3.7.1] Vérification/création de la base de données...'
-          docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 || \
-          docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -c "CREATE DATABASE $DB_NAME;"
+          docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" | grep -q 1 || \
+          docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d postgres -c "CREATE DATABASE $DB_NAME;"
           echo "[INFO] Base de données '$DB_NAME' vérifiée/créée avec succès."
 
           # Sous-étape 6.3.8 : Vérification et création du rôle postgres
