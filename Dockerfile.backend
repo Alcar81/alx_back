@@ -11,6 +11,9 @@ RUN apk add --no-cache \
     bash \
     file
 
+# Mettre à jour npm à la dernière version
+RUN npm install -g npm@11.0.0
+
 # Définir le répertoire de travail
 WORKDIR /app
 
