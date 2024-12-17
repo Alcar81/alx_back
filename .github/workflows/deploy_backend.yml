@@ -406,8 +406,8 @@ jobs:
 
             # Nouvelle étape : Synchroniser le fichier schema.prisma
             echo "[INFO] Synchronisation du fichier schema.prisma..."
-            scp -P "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                -i /tmp/git_id_rsa prisma/schema.prisma "$SSH_USER@$SERVER_IP:$MOUNT_PATH/prisma/schema.prisma"
+            scp -P "${SSH_PORT}" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+                -i /tmp/git_id_rsa prisma/schema.prisma "${SSH_USER}@${SERVER_IP}:${MOUNT_PATH}/prisma/schema.prisma"
             echo "[SUCCESS] Fichier schema.prisma synchronisé avec succès."
 
             # Continuer avec les migrations Prisma
