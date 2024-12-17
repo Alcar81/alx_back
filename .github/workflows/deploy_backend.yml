@@ -368,14 +368,16 @@ jobs:
             # Étape 8.8 - Gestion des migrations avec backup et rollback
             echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
-            # Étape 8.8.1 - Définir le répertoire de backup en fonction de l'environnement
+            # Étape 8.8.1 - Création du répertoire de backup
             echo "[INFO - Étape 8.8.1] Définition du répertoire de backup..."
 
             # Validation stricte de MOUNT_PATH
             if [ -z "$MOUNT_PATH" ]; then
-              echo "[ERROR] La variable MOUNT_PATH est vide ou non définie." >&2
+              echo "[ERROR] La variable MOUNT_PATH est vide ou non définie. Vérifiez les secrets GitHub Actions." >&2
               exit 1
             fi
+
+            echo "[DEBUG] MOUNT_PATH est défini comme : $MOUNT_PATH"
 
             # Extraire le répertoire parent
             BASE_DIR=$(dirname "${MOUNT_PATH:-/dev/null}")  # Définit une valeur par défaut en cas de vide
@@ -393,9 +395,6 @@ jobs:
               echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
               exit 1
             }
-            else
-              echo "[INFO] Le répertoire de backup existe déjà : $BACKUP_DIR"
-            fi
 
             # Vérification de l'existence finale
             if [ -d "$BACKUP_DIR" ]; then
