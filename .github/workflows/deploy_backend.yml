@@ -288,146 +288,40 @@ jobs:
       - name: 8 - Déployer le conteneur Backend
         run: |
           echo "=== Étape 8 : Déploiement du backend ==="
-          # Construction explicite de DATABASE_URL avant SSH
           DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT_INT}/${DB_NAME}"
           echo "[INFO] DATABASE_URL construit : $DATABASE_URL"
-
-          # Exécution de la commande SSH
-          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
+      
+          # Passer MOUNT_PATH comme variable explicite
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" \
+          "MOUNT_PATH=\"$MOUNT_PATH\" bash -s" << 'EOF'
             set -e
-
+      
             # Sous-étape 8.0 : Vérification des variables chargées
             echo "[INFO - Sous-étape 8.0] Vérification des variables chargées..."
-            MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT)
-            for VAR in "\${MANDATORY_VARS[@]}"; do
-              VALUE=\$(eval echo "\$$VAR")
-              if [ -z "\$VALUE" ]; then
-                echo "[ERROR] La variable \$VAR est manquante ou vide." >&2
+            MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT MOUNT_PATH)
+            for VAR in "${MANDATORY_VARS[@]}"; do
+              VALUE=$(eval echo "\$$VAR")
+              if [ -z "$VALUE" ]; then
+                echo "[ERROR] La variable $VAR est manquante ou vide." >&2
                 exit 1
               fi
-              echo "[INFO] \$VAR=\$VALUE"
+              echo "[INFO] $VAR=$VALUE"
             done
-
-            # Étape 8.0.1 - Extraire MOUNT_PATH depuis un fichier temporaire
-            echo "${MOUNT_PATH}" > /tmp/mount_path.tmp
-            ACTUAL_MOUNT_PATH=$(cat /tmp/mount_path.tmp)
-
-            # Validation pour debug
-            echo "[DEBUG] MOUNT_PATH extrait : $ACTUAL_MOUNT_PATH"
-
-            # Vérification de la valeur extraite
-            if [ -z "$ACTUAL_MOUNT_PATH" ]; then
-              echo "[ERROR] Impossible d'extraire la valeur de MOUNT_PATH." >&2
-              exit 1
-            fi
-
-            # Étape 8.1 - Création du fichier temporaire pour les variables
-            echo '[INFO - Étape 8.1] Création du fichier temporaire...'
-            cat <<EOT > /tmp/env_vars_backend.sh
-            DATABASE_URL=${DATABASE_URL}
-            NODE_ENV=${ENV}
-            JWT_SECRET=${JWT_SECRET}
-            SERVER_PORT=${BACKEND_PORT}
-          EOT
-
-            # Étape 8.2 - Vérification du fichier temporaire
-            echo '[INFO - Étape 8.2] Vérification du fichier temporaire...'
-            cat /tmp/env_vars_backend.sh
-
-            # Étape 8.3 - Création du fichier .env
-            echo '[INFO - Étape 8.3] Création du fichier .env...'
-            cat <<EOT > "$ACTUAL_MOUNT_PATH/.env"
-            DATABASE_URL=${DATABASE_URL}
-            NODE_ENV=${ENV}
-            JWT_SECRET=${JWT_SECRET}
-            SERVER_PORT=${BACKEND_PORT}
-          EOT
-
-            # Étape 8.4 - Vérification du fichier .env
-            echo '[INFO - Étape 8.4] Vérification du fichier .env...'
-            cat "$MOUNT_PATH/.env"
-
-            # Étape 8.5 - Suppression de l’ancien conteneur
-            echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
-            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
-              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
-            fi
-
-            # Étape 8.6 - Lancement du nouveau conteneur backend
-            echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
-            docker run -d --name "$CONTAINER_NAME" \
-              --network "$NETWORK" \
-              -v "$MOUNT_PATH/.env:/app/.env" \
-              -v "$MOUNT_PATH/logs:/app/logs" \
-              -w /app \
-              --env-file "$MOUNT_PATH/.env" \
-              -p "$BACKEND_PORT:$BACKEND_PORT" \
-              "$DOCKER_NAME" || {
-                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
-                exit 1
-            }
-
-            # Étape 8.7 - Vérification que le conteneur est actif.
-            echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
-            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
-            else
-              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' >&2
-              docker logs "$CONTAINER_NAME"
-              exit 1
-            fi
-
-            # Étape 8.8 - Gestion des migrations avec backup et rollback
-            echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
-
-            # Étape 8.8.1 - Définir le répertoire de backup avec extraction du secret
+      
+            # Étape 8.8.1 - Définir le répertoire de backup
             echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
-
-            # 1. Écrire le secret MOUNT_PATH dans un fichier temporaire
-            echo "${MOUNT_PATH}" > /tmp/mount_path.tmp
-
-            # 2. Extraire la valeur depuis le fichier temporaire
-            ACTUAL_MOUNT_PATH=$(cat /tmp/mount_path.tmp)
-
-            # 3. Validation de la valeur extraite
-            if [ -z "$ACTUAL_MOUNT_PATH" ]; then
-              echo "[ERROR] Impossible d'extraire la valeur de MOUNT_PATH." >&2
-              exit 1
-            fi
-            echo "[DEBUG] MOUNT_PATH extrait : $ACTUAL_MOUNT_PATH"
-
-            # 4. Déterminer le répertoire parent (BASE_DIR) et le répertoire de backup
-            BASE_DIR=$(dirname "${ACTUAL_MOUNT_PATH}")
-            BACKUP_DIR="$BASE_DIR/backup_bd"
-
-            # 5. Validation stricte des répertoires
-            if [ "$BASE_DIR" = "/" ] || [ -z "$BASE_DIR" ]; then
-              echo "[ERROR] Impossible de déterminer BASE_DIR à partir de MOUNT_PATH." >&2
-              exit 1
-            fi
-            echo "[DEBUG] BASE_DIR déterminé : $BASE_DIR"
-            echo "[DEBUG] Répertoire de backup défini : $BACKUP_DIR"
-
-            # 6. Créer le répertoire de backup s'il n'existe pas
+            BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
+      
+            # Créer le répertoire de backup s'il n'existe pas
             if [ ! -d "$BACKUP_DIR" ]; then
               echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
               mkdir -p "$BACKUP_DIR" || {
                 echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
                 exit 1
               }
-            else
-              echo "[INFO] Le répertoire de backup existe déjà : $BACKUP_DIR"
             fi
-
-            # 7. Vérification finale de l'existence du répertoire
-            if [ -d "$BACKUP_DIR" ]; then
-              echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
-            else
-              echo "[ERROR] Le répertoire de backup ne peut pas être utilisé." >&2
-              exit 1
-            fi
-
+            echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
+      
             # Étape 8.8.2 - Backup de la base de données avant les migrations
             echo '[INFO - Étape 8.8.2] Création d’un backup de la base de données avant migration...'
             BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
@@ -436,11 +330,11 @@ jobs:
               exit 1
             }
             echo "[INFO] Backup créé : $BACKUP_FILE"
-
+      
             # Étape 8.8.3 - Vérification des migrations échouées
             echo '[INFO - Étape 8.8.3] Vérification des migrations échouées...'
             FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
-
+      
             if [ -n "$FAILED_MIGRATION" ]; then
               echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
               for MIGRATION in $FAILED_MIGRATION; do
@@ -450,9 +344,11 @@ jobs:
                   exit 1
                 }
               done
+            else
+              echo "[INFO] Aucune migration échouée détectée."
             fi
-
-            # Étape 8.8.4 - Application des migrations Prisma.
+      
+            # Étape 8.8.4 - Application des migrations Prisma
             echo '[INFO - Étape 8.8.4] Application des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo '[ERROR] Échec du déploiement des migrations Prisma. Restauration du backup...' >&2
@@ -462,22 +358,23 @@ jobs:
               }
               exit 1
             }
-
+            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."
+      
             # Étape 8.8.5 - Vérification finale des migrations
             echo '[INFO - Étape 8.8.5] Vérification finale de l’état des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate status || {
               echo '[ERROR] Les migrations ne sont pas dans un état cohérent.' >&2
               exit 1
             }
-
+            echo "[SUCCESS] Vérification des migrations terminée avec succès."
+      
             # Étape 8.8.6 - Nettoyage des anciens conteneurs et images
             echo '[INFO - Étape 8.8.6] Nettoyage des anciens conteneurs et des images non utilisées...'
-            docker container prune -f
-            docker image prune -f
-
-            # Fin de l’étape 8.8.7
-            echo '[SUCCESS - Étape 8.8.7] Migrations Prisma appliquées avec succès, backup sauvegardé dans un répertoire dédié.'
-
+            docker container prune -f || echo "[WARNING] Nettoyage des conteneurs échoué."
+            docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
+      
+            # Étape 8.8.7 - Confirmation finale
+            echo '[SUCCESS - Étape 8.8.7] Migrations Prisma appliquées avec succès, backup sauvegardé dans un répertoire dédié.'      
           EOF
 
       # Étape 9 - Configurer l'URL Git distante
