@@ -369,24 +369,41 @@ jobs:
             echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
             # Étape 8.8.1 - Définir le répertoire de backup en fonction de l'environnement
+            echo "[INFO - Étape 8.8.1] Définition du répertoire de backup..."
+
+            # Validation stricte de MOUNT_PATH
             if [ -z "$MOUNT_PATH" ]; then
               echo "[ERROR] La variable MOUNT_PATH est vide ou non définie." >&2
               exit 1
             fi
 
-            BASE_DIR=$(dirname "$MOUNT_PATH")  # Prend le répertoire parent de $MOUNT_PATH
-            BACKUP_DIR="$BASE_DIR/backup_bd"   # Définit le répertoire de sauvegarde
+            # Extraire le répertoire parent
+            BASE_DIR=$(dirname "$MOUNT_PATH")
+            BACKUP_DIR="${BASE_DIR}/backup_bd"
 
-            # Debug : Vérification des chemins
-            echo "[DEBUG] BASE_DIR : $BASE_DIR"
-            echo "[DEBUG] BACKUP_DIR : $BACKUP_DIR"
+            # Debugging : Affichage des chemins
+            echo "[DEBUG] MOUNT_PATH: $MOUNT_PATH"
+            echo "[DEBUG] BASE_DIR: $BASE_DIR"
+            echo "[DEBUG] BACKUP_DIR: $BACKUP_DIR"
 
-            # Création du répertoire si nécessaire
-            echo "[INFO - Étape 8.8.1] Création du répertoire de backup : $BACKUP_DIR"
-            mkdir -p "$BACKUP_DIR" || {
-              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
+            # Création sécurisée du répertoire BACKUP_DIR
+            if [ ! -d "$BACKUP_DIR" ]; then
+              echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
+              mkdir -p "$BACKUP_DIR" || {
+                echo "[ERROR] Impossible de créer le répertoire de backup : $BACKUP_DIR" >&2
+                exit 1
+              }
+            else
+              echo "[INFO] Le répertoire de backup existe déjà : $BACKUP_DIR"
+            fi
+
+            # Vérification de l'existence finale
+            if [ -d "$BACKUP_DIR" ]; then
+              echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
+            else
+              echo "[ERROR] Échec de la création du répertoire de backup." >&2
               exit 1
-            }
+            fi
 
             # Étape 8.8.2 - Backup de la base de données avant les migrations
             echo '[INFO - Étape 8.8.2] Création d’un backup de la base de données avant migration...'
