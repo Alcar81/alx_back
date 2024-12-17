@@ -315,7 +315,7 @@ jobs:
             NODE_ENV=${ENV}
             JWT_SECRET=${JWT_SECRET}
             SERVER_PORT=${BACKEND_PORT}
-            EOT
+          EOT
 
             # Étape 8.2 - Vérification du fichier temporaire
             echo '[INFO - Étape 8.2] Vérification du fichier temporaire...'
@@ -328,7 +328,7 @@ jobs:
             NODE_ENV=${ENV}
             JWT_SECRET=${JWT_SECRET}
             SERVER_PORT=${BACKEND_PORT}
-            EOT
+          EOT
 
             # Étape 8.4 - Vérification du fichier .env
             echo '[INFO - Étape 8.4] Vérification du fichier .env...'
