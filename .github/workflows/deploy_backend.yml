@@ -429,7 +429,7 @@ jobs:
               done
             fi
 
-            # Étape 8.8.4 - Application des migrations Prisma
+            # Étape 8.8.4 - Application des migrations Prisma.
             echo '[INFO - Étape 8.8.4] Application des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo '[ERROR] Échec du déploiement des migrations Prisma. Restauration du backup...' >&2
