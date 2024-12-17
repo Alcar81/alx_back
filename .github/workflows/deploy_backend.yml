@@ -371,21 +371,31 @@ jobs:
             # Étape 8.8.1 - Définition du répertoire de backup
             echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
 
-            # Utiliser ./ pour naviguer dans le répertoire parent et créer backup_bd
-            BACKUP_DIR="./../backup_bd"
+            # Trouver la racine du dépôt Git
+            REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 
-            # Créer le répertoire de backup
+            if [ -z "$REPO_ROOT" ]; then
+              echo "[ERROR] Impossible de déterminer la racine du dépôt Git. Vérifiez que le script est exécuté dans un dépôt valide." >&2
+              exit 1
+            fi
+
+            echo "[INFO] Racine du dépôt Git détectée : $REPO_ROOT"
+
+            # Définir le répertoire de backup basé sur la racine du dépôt
+            BACKUP_DIR="$REPO_ROOT/backup_bd"
+
+            # Création du répertoire s'il n'existe pas
             echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
             mkdir -p "$BACKUP_DIR" || {
               echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
               exit 1
             }
 
-            # Vérification finale
+            # Vérification finale de l'existence du répertoire
             if [ -d "$BACKUP_DIR" ]; then
               echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
             else
-              echo "[ERROR] Échec de la création du répertoire de backup." >&2
+              echo "[ERROR] Échec de la validation du répertoire de backup." >&2
               exit 1
             fi
 
