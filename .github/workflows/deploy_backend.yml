@@ -290,12 +290,12 @@ jobs:
           echo "=== Étape 8 : Déploiement du backend ==="
           DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT_INT}/${DB_NAME}"
           echo "[INFO] DATABASE_URL construit : $DATABASE_URL"
-      
-          # Passer MOUNT_PATH comme variable explicite
+
+          # Passer toutes les variables comme arguments dans la session SSH
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" \
-          "MOUNT_PATH=\"$MOUNT_PATH\" bash -s" << 'EOF'
+          "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' bash -s" << 'EOF'
             set -e
-      
+
             # Sous-étape 8.0 : Vérification des variables chargées
             echo "[INFO - Sous-étape 8.0] Vérification des variables chargées..."
             MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT MOUNT_PATH)
@@ -307,29 +307,109 @@ jobs:
               fi
               echo "[INFO] $VAR=$VALUE"
             done
-      
+
+            # Sous-étape 8.1 : Suppression de l’ancien conteneur backend
+            echo '[INFO - Sous-étape 8.1] Suppression de l’ancien conteneur backend...'
+            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
+              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
+            fi
+
+            # Sous-étape 8.2 : Lancement du conteneur backend
+            echo '[INFO - Sous-étape 8.2] Lancement du nouveau conteneur backend...'
+            docker run -d --name "$CONTAINER_NAME" \
+              --network "$NETWORK" \
+              -v "$MOUNT_PATH/.env:/app/.env" \
+              -v "$MOUNT_PATH/logs:/app/logs" \
+              -w /app \
+              --env-file "$MOUNT_PATH/.env" \
+              -p "$BACKEND_PORT:$BACKEND_PORT" \
+              "$DOCKER_NAME" || {
+                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+                exit 1
+            }
+
+            # Sous-étape 8.3 : Vérification que le conteneur est actif
+            echo '[INFO - Sous-étape 8.3] Vérification que le conteneur est actif...'
+            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
+            else
+              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            fi
+
+            # Sous-étape 8.4 : Création et vérification du fichier .env
+            echo '[INFO - Sous-étape 8.4] Création et vérification du fichier .env...'
+            cat <<EOT > "$MOUNT_PATH/.env"
+            DATABASE_URL=$DATABASE_URL
+            NODE_ENV=$ENV
+            JWT_SECRET=$JWT_SECRET
+            SERVER_PORT=$BACKEND_PORT
+          EOT
+            cat "$MOUNT_PATH/.env"
+
+            # Sous-étape 8.4.1 : Nettoyage des logs
+            echo '[INFO - Sous-étape 8.6] Vérification et création du répertoire de logs...'
+            mkdir -p "$MOUNT_PATH/logs"
+
+            # Étape 8.5 - Suppression de l’ancien conteneur
+            echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
+            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
+              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
+            fi
+
+            # Étape 8.6 - Lancement du nouveau conteneur backend
+            echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
+            docker run -d --name "$CONTAINER_NAME" \
+              --network "$NETWORK" \
+              -v "$MOUNT_PATH/.env:/app/.env" \
+              -v "$MOUNT_PATH/logs:/app/logs" \
+              -w /app \
+              --env-file "$MOUNT_PATH/.env" \
+              -p "$BACKEND_PORT:$BACKEND_PORT" \
+              "$DOCKER_NAME" || {
+                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+                exit 1
+            }
+
+            # Étape 8.7 - Vérification que le conteneur est actif.
+            echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
+            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
+            else
+              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            fi
+
             # Étape 8.8.1 - Définir le répertoire de backup
             echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
             BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
-      
-            # Créer le répertoire de backup s'il n'existe pas
-            if [ ! -d "$BACKUP_DIR" ]; then
-              echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
-              mkdir -p "$BACKUP_DIR" || {
-                echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
-                exit 1
-              }
+
+            # Vérification stricte de BACKUP_DIR
+            if [ -z "$BACKUP_DIR" ] || [ "$BACKUP_DIR" = "/" ]; then
+              echo "[ERROR] Impossible de déterminer BACKUP_DIR à partir de MOUNT_PATH." >&2
+              exit 1
             fi
-            echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
-      
-            # Étape 8.8.2 - Backup de la base de données avant les migrations
-            echo '[INFO - Étape 8.8.2] Création d’un backup de la base de données avant migration...'
-            BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
-            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE" || {
-              echo '[ERROR] Échec de la création du backup. Migration annulée.' >&2
+
+            # Création du répertoire de backup s'il n'existe pas
+            echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
+            mkdir -p "$BACKUP_DIR" || {
+              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
               exit 1
             }
-            echo "[INFO] Backup créé : $BACKUP_FILE"
+            echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
+
+              # Étape 8.8.2 - Backup de la base de données avant les migrations
+              echo '[INFO - Étape 8.8.2] Création d’un backup de la base de données avant migration...'
+              BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
+              docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE" || {
+                echo '[ERROR] Échec de la création du backup. Migration annulée.' >&2
+                exit 1
+              }
+              echo "[INFO] Backup créé : $BACKUP_FILE"
       
             # Étape 8.8.3 - Vérification des migrations échouées
             echo '[INFO - Étape 8.8.3] Vérification des migrations échouées...'
@@ -374,7 +454,9 @@ jobs:
             docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
       
             # Étape 8.8.7 - Confirmation finale
-            echo '[SUCCESS - Étape 8.8.7] Migrations Prisma appliquées avec succès, backup sauvegardé dans un répertoire dédié.'      
+            echo '[SUCCESS - Étape 8.8.7] Migrations Prisma appliquées avec succès, backup sauvegardé dans un répertoire dédié.' 
+            echo "[SUCCESS] Déploiement backend terminé avec succès !"           
+            
           EOF
 
       # Étape 9 - Configurer l'URL Git distante
