@@ -369,8 +369,17 @@ jobs:
             echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
             # Étape 8.8.1 - Définir le répertoire de backup en fonction de l'environnement
+            if [ -z "$MOUNT_PATH" ]; then
+              echo "[ERROR] La variable MOUNT_PATH est vide ou non définie." >&2
+              exit 1
+            fi
+
             BASE_DIR=$(dirname "$MOUNT_PATH")  # Prend le répertoire parent de $MOUNT_PATH
-            BACKUP_DIR="$BASE_DIR/backup_bd"   # Ajoute le dossier de sauvegarde dédié
+            BACKUP_DIR="$BASE_DIR/backup_bd"   # Définit le répertoire de sauvegarde
+
+            # Debug : Vérification des chemins
+            echo "[DEBUG] BASE_DIR : $BASE_DIR"
+            echo "[DEBUG] BACKUP_DIR : $BACKUP_DIR"
 
             # Création du répertoire si nécessaire
             echo "[INFO - Étape 8.8.1] Création du répertoire de backup : $BACKUP_DIR"
