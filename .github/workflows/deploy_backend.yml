@@ -368,21 +368,30 @@ jobs:
             # Étape 8.8 - Gestion des migrations échouées et application
             echo '[INFO - Étape 8.8] Vérification et résolution des migrations Prisma...'
 
+            # Afficher l'état actuel des migrations pour diagnostic
+            echo '[INFO] État actuel des migrations :'
+            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
+              echo "[ERROR] Impossible d'obtenir l'état des migrations." >&2
+              exit 1
+            }
+
             # Vérifier si une migration échouée existe
-            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status 2>&1 | grep 'failed' | awk '{print $2}')
+            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status 2>&1 | grep -oP '(?<=failed:\s)\S+')
 
             if [ -n "$FAILED_MIGRATIONS" ]; then
               echo "[WARNING] Migration(s) échouée(s) détectée(s) : $FAILED_MIGRATIONS"
 
               for MIGRATION in $FAILED_MIGRATIONS; do
                 echo "[INFO] Tentative de résolution de la migration : $MIGRATION"
-                
+
                 # Marquer la migration comme résolue
                 docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "$MIGRATION" || {
                   echo "[ERROR] Impossible de résoudre la migration $MIGRATION. Vérification manuelle requise." >&2
                   exit 1
                 }
               done
+            else
+              echo "[INFO] Aucune migration échouée détectée."
             fi
 
             # Appliquer les migrations restantes
@@ -398,6 +407,8 @@ jobs:
               echo "[ERROR] Le fichier schema.prisma est introuvable après migration." >&2
               exit 1
             }
+
+            echo '[SUCCESS] Les migrations Prisma ont été appliquées avec succès.'
 
             # Nettoyage des anciens conteneurs
             echo '[INFO] Nettoyage des anciens conteneurs...'
