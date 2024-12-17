@@ -387,6 +387,9 @@ jobs:
             # Étape 8.9 - Déploiement des migrations Prisma
             echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
 
+            # Ajout d'une temporisation pour éviter les problèmes d'accès
+            sleep 5
+
             if [ -f "/app/prisma/schema.prisma" ]; then
               echo "[INFO] Fichier schema.prisma trouvé, lancement des migrations..."
               npx prisma migrate deploy --schema /app/prisma/schema.prisma || {
@@ -395,6 +398,7 @@ jobs:
               }
             else
               echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur." >&2
+              ls -la /app/prisma  # Debug pour vérifier le contenu du répertoire
               exit 1
             fi
           EOF
