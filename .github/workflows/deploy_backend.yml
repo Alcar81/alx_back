@@ -365,40 +365,53 @@ jobs:
               exit 1
             fi
 
-            # Étape 8.8 - Gestion des migrations échouées et application
-            echo '[INFO - Étape 8.8] Vérification et résolution des migrations Prisma...'
+            # Étape 8.8 - Gestion des migrations avec backup et rollback
+            echo '[INFO - Étape 8.8] Vérification et application des migrations Prisma...'
 
-            # Vérifier les migrations échouées
+            # 1. Backup de la base de données avant les migrations
+            echo '[INFO] Création d’un backup de la base de données avant migration...'
+            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$MOUNT_PATH/backup_$(date +%Y%m%d%H%M%S).sql" || {
+              echo '[ERROR] Échec de la création du backup. Migration annulée.' >&2
+              exit 1
+            }
+
+            # 2. Vérification des migrations échouées
             FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
 
             if [ -n "$FAILED_MIGRATION" ]; then
               echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
-
               for MIGRATION in $FAILED_MIGRATION; do
-                echo "[INFO] Marquage de la migration comme appliquée : $MIGRATION"
-                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "$MIGRATION" || {
-                  echo "[ERROR] Échec de résolution pour $MIGRATION." >&2
+                echo "[INFO] Marquage de la migration comme rollback : $MIGRATION"
+                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
+                  echo "[ERROR] Échec du rollback pour $MIGRATION." >&2
                   exit 1
                 }
               done
             fi
 
-            # Appliquer les migrations restantes
+            # 3. Appliquer les migrations restantes
             echo '[INFO] Application des migrations Prisma...'
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
-              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+              echo '[ERROR] Échec du déploiement des migrations Prisma. Restauration du backup...' >&2
+              docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$MOUNT_PATH/backup_*.sql"
               exit 1
             }
 
-            # Vérification finale
-            echo '[INFO] Vérification de l’état des migrations...'
-            docker exec "$CONTAINER_NAME" npx prisma migrate status
+            echo '[SUCCESS] Les migrations Prisma ont été appliquées avec succès.'
 
-            echo '[SUCCESS] Migrations Prisma appliquées avec succès.'
+            echo '[INFO] Vérification finale de l’état des migrations Prisma...'
+            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
+              echo '[ERROR] Les migrations ne sont pas dans un état cohérent.' >&2
+              exit 1
+            }
 
             # Nettoyage des anciens conteneurs
             echo '[INFO] Nettoyage des anciens conteneurs...'
             docker container prune -f
+
+            echo '[INFO] Nettoyage des images Docker non utilisées...'
+            docker image prune -f
+
           EOF
 
       # Étape 9 - Configurer l'URL Git distante
