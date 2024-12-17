@@ -393,7 +393,7 @@ jobs:
             echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
 
             # Ajout d'une temporisation pour éviter les problèmes d'accès
-            sleep 5
+            sleep 20
 
             if [ -f "/app/prisma/schema.prisma" ]; then
               echo "[INFO] Fichier schema.prisma trouvé, lancement des migrations..."
