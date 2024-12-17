@@ -384,6 +384,26 @@ jobs:
               exit 1
             fi
 
+            # Étape 8.8 : Mise à jour de npm et Prisma avant les migrations
+            echo "[INFO - Étape 8.8.0] Mise à jour de npm et Prisma..."
+
+            # Mise à jour de npm à la dernière version
+            echo "[INFO] Mise à jour de npm à la dernière version..."
+            docker exec "$CONTAINER_NAME" npm install -g npm@latest --force
+
+            # Mise à jour de Prisma et @prisma/client
+            echo "[INFO] Mise à jour de Prisma et @prisma/client..."
+            docker exec "$CONTAINER_NAME" npm install --save-dev prisma@latest @prisma/client@latest --force --legacy-peer-deps
+
+            # Vérification des versions mises à jour
+            echo "[INFO] Vérification des versions de npm et Prisma..."
+            docker exec "$CONTAINER_NAME" npm --version
+            docker exec "$CONTAINER_NAME" npx prisma --version
+            docker exec "$CONTAINER_NAME" npm list @prisma/client
+
+            # Continuer avec les migrations Prisma
+            echo "[INFO - Étape 8.8.1] Définition du répertoire de backup..."
+
             # Étape 8.8.1 - Définir le répertoire de backup
             echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
             BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
