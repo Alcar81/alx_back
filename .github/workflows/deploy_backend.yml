@@ -372,7 +372,25 @@ jobs:
               rm -f /tmp/env_vars_backend.sh
         
               echo '[SUCCESS] Déploiement terminé avec succès.'
-          EOF
+              
+            # Étape 8.8 - Vérification et initialisation conditionnelle de la base de données
+            echo '[INFO - Étape 8.8] Vérification de l’état de la base de données...'
+            TABLE_COUNT=$(psql -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -t -c "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';" | xargs)
+
+            if [ "$TABLE_COUNT" -eq "0" ]; then
+              echo '[INFO] La base de données est vide. Exécution du script baseline.sql...'
+              psql -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -f "$MOUNT_PATH/baseline.sql"
+            else
+              echo '[INFO] La base de données est déjà initialisée. Aucun script baseline requis.'
+            fi
+
+            # Étape 8.9 - Déploiement des migrations Prisma
+            echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
+            npx prisma migrate deploy || {
+              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+              exit 1
+            }
+                      EOF
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
