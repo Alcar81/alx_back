@@ -365,8 +365,29 @@ jobs:
               exit 1
             fi
 
-            ## Étape 8.8 - Résolution automatique des migrations échouées
-            echo '[INFO - Étape 8.8] Vérification des migrations Prisma échouées...'
+            # Étape 8.8 - Gestion des migrations échouées et application
+            echo '[INFO - Étape 8.8] Vérification et résolution des migrations Prisma...'
+
+            # Identifier la migration échouée
+            FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status 2>&1 | grep 'failed' | awk '{print $2}')
+
+            if [ -n "$FAILED_MIGRATION" ]; then
+              echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
+
+              # Tentative de résolution en marquant la migration comme appliquée
+              echo "[INFO] Marquage de la migration comme appliquée pour continuer..."
+              docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "$FAILED_MIGRATION" || {
+                echo "[ERROR] Impossible de résoudre la migration. Vérification manuelle requise." >&2
+                exit 1
+              }
+            fi
+
+            # Appliquer les migrations restantes
+            echo '[INFO] Application des migrations Prisma...'
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
+              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
+              exit 1
+            }
 
             # Récupération de l'état des migrations
             FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status 2>&1 | grep 'Following migration have failed:' | awk '{print $5}')
