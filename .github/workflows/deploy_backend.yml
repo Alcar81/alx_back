@@ -299,8 +299,8 @@ jobs:
             # Sous-étape 8.0 : Vérification des variables chargées
             echo "[INFO - Sous-étape 8.0] Vérification des variables chargées..."
             MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT)
-            for VAR in "${MANDATORY_VARS[@]}"; do
-              VALUE=$(eval echo "\$$VAR")
+            for VAR in "\${MANDATORY_VARS[@]}"; do
+              VALUE=\$(eval echo "\$$VAR")
               if [ -z "\$VALUE" ]; then
                 echo "[ERROR] La variable \$VAR est manquante ou vide." >&2
                 exit 1
@@ -308,8 +308,8 @@ jobs:
               echo "[INFO] \$VAR=\$VALUE"
             done
 
-            # Étape 8.1 - Création d’un fichier temporaire pour les variables
-            echo '[INFO - Étape 8.1] Création d’un fichier temporaire avec les variables...'
+            # Étape 8.1 - Création du fichier temporaire pour les variables
+            echo '[INFO - Étape 8.1] Création du fichier temporaire...'
             cat <<EOT > /tmp/env_vars_backend.sh
           DATABASE_URL=${DATABASE_URL}
           NODE_ENV=${ENV}
@@ -317,27 +317,7 @@ jobs:
           SERVER_PORT=${BACKEND_PORT}
           EOT
 
-            # Étape 8.2 - Charger les variables et créer le fichier .env
-            source /tmp/env_vars_backend.sh
-            cat <<EOT > "$MOUNT_PATH/.env"
-          DATABASE_URL=\$DATABASE_URL
-          NODE_ENV=\$NODE_ENV
-          JWT_SECRET=\$JWT_SECRET
-          SERVER_PORT=\$SERVER_PORT
-          EOT
-          
-            # Vérification de la création du fichier temporaire
-            if [ -f /tmp/env_vars_backend.sh ]; then
-              echo '[INFO] Fichier temporaire créé avec succès.'
-            else
-              echo '[ERROR] Échec de la création du fichier temporaire.' >&2
-              exit 1
-            fi
-      
-            # Étape 8.2 - Charger les variables et créer le fichier .env
-            echo '[INFO - Étape 8.2] Chargement des variables depuis le fichier temporaire...'
-            source /tmp/env_vars_backend.sh
-      
+            # Étape 8.3 - Création du fichier .env
             echo '[INFO - Étape 8.3] Création du fichier .env...'
             cat <<EOT > "$MOUNT_PATH/.env"
           DATABASE_URL=\$DATABASE_URL
@@ -345,25 +325,16 @@ jobs:
           JWT_SECRET=\$JWT_SECRET
           SERVER_PORT=\$SERVER_PORT
           EOT
-          
-              # Étape 8.4 - Vérifier la création du fichier .env
-              if [ -f "$MOUNT_PATH/.env" ]; then
-                echo '[INFO] Fichier .env créé avec succès.'
-              else
-                echo '[ERROR] Échec de la création du fichier .env.' >&2
-                exit 1
-              fi
-        
-              # Étape 8.5 - Suppression de l'ancien conteneur
-              echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
-              if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-                docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
-                docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
-              fi
-        
+
+            # Étape 8.5 - Suppression de l’ancien conteneur
+            echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
+            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
+              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
+            fi
+
             # Étape 8.6 - Lancement du nouveau conteneur backend
             echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
-
             docker run -d --name "$CONTAINER_NAME" \
               --network "$NETWORK" \
               -v "$MOUNT_PATH/.env:/app/.env" \
@@ -376,10 +347,7 @@ jobs:
                 exit 1
             }
 
-            # Vérification du contenu de /app/prisma
-            docker exec "$CONTAINER_NAME" ls -la /app/prisma
-                            
-            # Étape 8.7 - Vérification du conteneur
+            # Étape 8.7 - Vérification que le conteneur est actif
             echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
             if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
               echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
@@ -388,64 +356,32 @@ jobs:
               docker logs "$CONTAINER_NAME"
               exit 1
             fi
-        
-              # Nettoyage du fichier temporaire
-              echo '[INFO] Suppression du fichier temporaire...'
-              rm -f /tmp/env_vars_backend.sh
-        
-              echo '[SUCCESS] Déploiement terminé avec succès.'
 
-            echo '[INFO - Étape 8.8] Vérification que PostgreSQL est prêt...'
-            for i in {1..10}; do
-              if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME" -d "$DB_NAME"; then
-                echo '[INFO] PostgreSQL est prêt.'
-                break
-              else
-                echo "[INFO] En attente de PostgreSQL... (tentative $i/10)"
-                sleep 5
-              fi
-            done
+            # Étape 8.8 - Appliquer les migrations manuellement
+            echo '[INFO - Étape 8.8] Application des migrations Prisma...'
 
-            if [ "$i" -eq 10 ]; then
-              echo "[ERROR] PostgreSQL n'est pas prêt après 10 tentatives." >&2
-              exit 1
-            fi
-
-
-            # Étape 8.9 - Déploiement des migrations Prisma avec gestion des baselines
-            echo '[INFO - Étape 8.9] Déploiement des migrations Prisma...'
-
-            # Ajout d'une vérification pour appliquer une baseline si nécessaire
+            # Vérifier l'état des migrations
             docker exec "$CONTAINER_NAME" npx prisma migrate status || {
-              echo '[INFO] La base de données nécessite un baselining...'
-              docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "20241108005223_init"
+              echo '[ERROR] Impossible de vérifier l’état des migrations Prisma.' >&2
+              exit 1
             }
 
+            # Appliquer les migrations si elles existent
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
               exit 1
             }
 
-            # Ajout d'une temporisation pour éviter les problèmes d'accès
-            sleep 10
+            # Ajouter une temporisation pour éviter tout problème d'accès
+            sleep 5
 
-            # Debug : Vérification du fichier avant migration
+            # Debug : Vérification du fichier schema.prisma après migration
             docker exec "$CONTAINER_NAME" ls -la /app/prisma/schema.prisma || {
-              echo "[ERROR] Le fichier schema.prisma est introuvable." >&2
+              echo "[ERROR] Le fichier schema.prisma est introuvable après migration." >&2
               exit 1
             }
 
-            # Exécution de la migration
-            docker exec "$CONTAINER_NAME" npx prisma migrate deploy --schema /app/prisma/schema.prisma || {
-              echo '[ERROR] Échec du déploiement des migrations Prisma.' >&2
-              exit 1
-            }
-
-            # Nouvelle étape : Vérification des mises à jour Prisma et npm
-            echo '[INFO] Vérification des mises à jour Prisma et npm...'
-            docker exec "$CONTAINER_NAME" npm outdated || true
-
-            # Nouvelle étape : Nettoyage des anciens conteneurs
+            # Nettoyage des anciens conteneurs
             echo '[INFO] Nettoyage des anciens conteneurs...'
             docker container prune -f
           EOF
