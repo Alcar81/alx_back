@@ -348,14 +348,17 @@ jobs:
             echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
 
             docker run -d --name "$CONTAINER_NAME" \
-              --network "$NETWORK" \
-              -w /app \
-              --env-file "$MOUNT_PATH/.env" \
-              -p "$BACKEND_PORT:$BACKEND_PORT" \
-              "$DOCKER_NAME" || {
-                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
-                exit 1
+            --network "$NETWORK" \
+            -w /app \
+            --env-file "$MOUNT_PATH/.env" \
+            -p "$BACKEND_PORT:$BACKEND_PORT" \
+            "$DOCKER_NAME" || {
+              echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+              exit 1
             }
+
+            # Vérification du contenu de /app/prisma
+            docker exec "$CONTAINER_NAME" ls -la /app/prisma
                             
             # Étape 8.7 - Vérification du conteneur
             echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
