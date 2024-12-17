@@ -208,7 +208,7 @@ jobs:
           # Sous-étape 6.3.7 : Vérification finale que PostgreSQL est prêt
           echo "[INFO - Sous-étape 6.3.7] Vérification que PostgreSQL est prêt..."
           for i in {1..10}; do
-            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U "$DB_USERNAME"; then
+            if docker exec "$POSTGRES_CONTAINER_NAME" pg_isready -U postgres -d postgres; then
               echo "[INFO] PostgreSQL est prêt."
               break
             else
