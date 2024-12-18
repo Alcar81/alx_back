@@ -324,23 +324,33 @@ jobs:
 
             # 8.5.3 - Validation du fichier schema.prisma
             echo "[INFO - 8.5.3] Vérification du fichier schema.prisma..."
-            SCHEMA_FILE="/prisma/schema.prisma"
-            if [ ! -f "$SCHEMA_FILE" ]; then
-              echo "[ERROR] Fichier $SCHEMA_FILE introuvable dans le conteneur !" >&2
+
+            # Étape 8.5.3.0 - Recherche du fichier schema.prisma dans le conteneur
+            echo "[INFO - 8.5.3.0] Recherche du fichier schema.prisma dans le conteneur..."
+            SCHEMA_PATH=$(docker exec "$CONTAINER_NAME" find / -name "schema.prisma" 2>/dev/null | head -n 1)
+
+            if [ -z "$SCHEMA_PATH" ]; then
+              echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur !" >&2
+              echo "[INFO] Vérifiez que le fichier est inclus dans l'image Docker et que le chemin est correct."
               exit 1
             fi
-            echo "[SUCCESS] Fichier schema.prisma trouvé."
+
+            echo "[SUCCESS] Fichier schema.prisma trouvé : $SCHEMA_PATH"
+
+            # Étape 8.5.3.1 - Validation syntaxique du schéma
             echo "[INFO] Validation syntaxique du schéma..."
-            docker exec "$CONTAINER_NAME" npx prisma validate || {
+            docker exec "$CONTAINER_NAME" npx prisma validate --schema="$SCHEMA_PATH" || {
               echo "[ERROR] Le fichier schema.prisma est invalide. Corrigez les erreurs avant de continuer." >&2
               exit 1
             }
             echo "[SUCCESS] Le fichier schema.prisma est valide."
 
+            # Étape 8.5.3.2 - Vérification des migrations Prisma en attente
             echo "[INFO] Vérification des migrations Prisma en attente..."
-            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
+            docker exec "$CONTAINER_NAME" npx prisma migrate status --schema="$SCHEMA_PATH" || {
               echo "[WARNING] Des migrations sont en attente ou ont échoué. Vérifiez avant le déploiement." >&2
             }
+
 
             # 8.5.4 - Application des migrations Prisma
             echo "[INFO - 8.5.4] Application des migrations Prisma..."
