@@ -374,36 +374,35 @@ jobs:
             echo "[INFO - 8.5.2] Création du backup avant migration..."
             docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
 
-            # 8.5.3 - Application des migrations Prisma
+           # 8.5.3 - Application des migrations Prisma
             echo "[INFO - 8.5.3] Application des migrations Prisma..."
 
-            # Vérifier les migrations échouées avant de les appliquer
+            # Identifier les migrations échouées
             FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
 
             if [ -n "$FAILED_MIGRATIONS" ]; then
-              echo "[WARNING] Des migrations échouées ont été détectées : $FAILED_MIGRATIONS"
+              echo "[WARNING] Des migrations échouées détectées : $FAILED_MIGRATIONS"
               for MIGRATION in $FAILED_MIGRATIONS; do
-                echo "[INFO] Résolution de la migration échouée : $MIGRATION"
-                # Marquer la migration comme rollback
+                echo "[INFO] Tentative de résolution pour : $MIGRATION"
+                # Résoudre la migration échouée (rollback ou marquer comme appliquée)
                 docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
                   echo "[ERROR] Échec de la résolution pour $MIGRATION." >&2
                   exit 1
                 }
               done
-              echo "[INFO] Relance des migrations après résolution..."
             fi
 
-            # Appliquer les migrations
+            # Appliquer les migrations restantes
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo "[ERROR] Échec des migrations Prisma. Restauration du backup..." >&2
               docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
-                echo "[ERROR] Échec de la restauration du backup. Une intervention manuelle est requise." >&2
+                echo "[ERROR] Échec de la restauration du backup. Intervention manuelle requise." >&2
                 exit 1
               }
               exit 1
             }
 
-            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."            
+            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."           
 
             # 8.6 - Nettoyage final
             echo "[INFO - 8.6] Nettoyage des anciens conteneurs et images..."
