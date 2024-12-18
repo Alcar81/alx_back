@@ -14,17 +14,17 @@ cd "$REPO_ROOT" || { echo "[ERROR] Impossible de naviguer vers la racine du dép
 LOG_DIR="./logs"
 LOG_FILE="$LOG_DIR/deployment_back.log"
 
+# Vérifier et créer le répertoire des logs s'il n'existe pas encore
+if [ ! -d "$LOG_DIR" ]; then
+  echo "[INFO] Création du répertoire des logs : $LOG_DIR"
+  mkdir -p "$LOG_DIR"
+fi
+
 # Rotation des logs si nécessaire
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 Mo
 if [ -f "$LOG_FILE" ] && [ $(stat -c%s "$LOG_FILE") -ge $MAX_LOG_SIZE ]; then
   echo "[INFO] Rotation du fichier de log : $LOG_FILE -> $LOG_FILE.bak"
   mv "$LOG_FILE" "$LOG_FILE.bak"
-fi
-
-# Créer le répertoire des logs s'il n'existe pas encore
-if [ ! -d "$LOG_DIR" ]; then
-  echo "[INFO] Création du répertoire $LOG_DIR..."
-  mkdir -p "$LOG_DIR"
 fi
 
 # Donner les permissions au répertoire et au fichier log
