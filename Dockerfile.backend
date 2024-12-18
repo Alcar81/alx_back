@@ -1,5 +1,5 @@
 # Dockerfile.backend
-# Utiliser une image Node.js 20 Alpine
+
 # Étape 1 : Utiliser une image Node.js 20 Alpine
 FROM node:20-alpine AS builder
 
@@ -12,47 +12,36 @@ RUN apk add --no-cache \
     bash \
     file
 
-# Étape 3 : Forcer la mise à jour de npm à la dernière version
+# Étape 3 : Mise à jour de npm
 RUN npm install -g npm@latest --force
-
-# Vérifier la version de npm après mise à jour
 RUN echo "npm version : $(npm --version)"
 
 # Étape 4 : Définir le répertoire de travail
 WORKDIR /app
 
-# Étape 5 : Copier les fichiers package.json et package-lock.json
+# Étape 5 : Copier les fichiers package.json et installer les dépendances
 COPY package*.json ./
-
-# Forcer la mise à jour de Prisma et @prisma/client
+RUN npm install --production --loglevel=warn
 RUN npm install --save-dev prisma@latest @prisma/client@latest --force
 
-# Vérifier les versions de Prisma
-RUN npx prisma --version && npm list @prisma/client
-
-# Étape 6 : Installer les dépendances
-RUN npm install --production --loglevel=warn
-
-# Étape 7 : Copier tout le code source
+# Étape 6 : Copier tout le code source (y compris prisma/schema.prisma et .gitignore)
 COPY . .
 
-# Étape 8 : Copier le schéma Prisma et générer le client Prisma
+# Vérification de la copie des fichiers
+RUN echo "=== Vérification des fichiers ===" && ls -la /app
+
+# Étape 7 : Générer le client Prisma
 RUN npx prisma generate
 
-# Étape 9 : Nettoyer le cache npm
+# Étape 8 : Nettoyer le cache npm
 RUN npm cache clean --force
 
-# Étape 10 : Vérifier l'existence de server.js pour le débogage
-RUN ls -l /app/server.js && file /app/server.js
-
-# Étape finale : Créer une image allégée pour l'exécution
+# Étape finale : Créer une image allégée
 FROM node:20-alpine
-
-# Définir le répertoire de travail et copier depuis l'étape builder
 WORKDIR /app
 COPY --from=builder /app /app
 
-# Exposer le port utilisé par le backend
+# Exposer le port utilisé
 EXPOSE 7000
 
 # Lancer le backend

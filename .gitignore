@@ -1,28 +1,27 @@
-# Ignorer le fichier de configuration des variables d'environnement
+# .gitignore
+# Exclure le fichier .env de l'image Docker
 .env
 
-# Ignorer le dossier node_modules
+# Exclure le dossier node_modules
 node_modules/
 
-# Ignorer les logs
+# Exclure les logs
 *.log
-logs/deployment_back.log
+logs/
 
-# Ignorer les fichiers de configuration de l'éditeur (ex: VS Code)
+# Exclure les fichiers de configuration des éditeurs
 .vscode/
-
-# Ignorer les fichiers de configuration de l'IDE (ex: JetBrains)
 .idea/
 
-# Ignorer les fichiers de sauvegarde
-*~ 
+# Exclure les fichiers de sauvegarde
+*~
 *.bak
 
-
-# Ignorer les fichiers de certificats
+# Exclure les fichiers de certificats
 certificates/
 *.pem
 *.key
 
-# Ignorer les fichiers de clé ssh
+# Exclure les fichiers de clé ssh
 known_hosts
+
