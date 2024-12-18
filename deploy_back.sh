@@ -73,8 +73,8 @@ echo '[INFO] Poussée forcée vers la branche master...' | tee -a $LOG_FILE
 git push origin master --force || { echo '[ERROR] Échec de la poussée forcée vers master.' | tee -a $LOG_FILE; exit 1; }
 
 # Ajouter un délai pour éviter les problèmes de propagation
-echo '[INFO] Attente de 5 secondes pour la propagation des modifications...'
-sleep 5
+echo '[INFO] Attente de 30 secondes pour la propagation des modifications...'
+sleep 30
 
 # Mettre à jour les fichiers locaux dans le répertoire master
 echo '[INFO] Mise à jour des fichiers locaux de la branche master...' | tee -a $LOG_FILE
