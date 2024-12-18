@@ -296,6 +296,16 @@ jobs:
           "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' SSH_PORT='$SSH_PORT' bash -s" << 'EOF'
             set -e
 
+            echo "[DEBUG] SSH_PORT=${SSH_PORT:-undefined}"
+            echo "[DEBUG] SSH_USER=${SSH_USER:-undefined}"
+            echo "[DEBUG] SERVER_IP=${SERVER_IP:-undefined}"
+            echo "[DEBUG] MOUNT_PATH=${MOUNT_PATH:-undefined}"
+
+            if [ -z "$SSH_PORT" ] || [ -z "$SSH_USER" ] || [ -z "$SERVER_IP" ] || [ -z "$MOUNT_PATH" ]; then
+              echo "[ERROR] Une ou plusieurs variables SSH ne sont pas définies." >&2
+              exit 1
+            fi
+
             # Sous-étape 8.0 : # Vérification des variables
             echo "[INFO] Vérification des variables chargées..."
             REQUIRED_VARS=(ENV DATABASE_URL SSH_PORT MOUNT_PATH)
