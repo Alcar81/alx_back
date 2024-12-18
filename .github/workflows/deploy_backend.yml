@@ -356,6 +356,26 @@ jobs:
 
           echo "[SUCCESS] Toutes les variables nécessaires sont définies."
 
+          # Sous-étape 8.0.4 : Vérification et copie de la clé SSH
+          echo "[INFO] Vérification de la clé SSH temporaire..."
+          if [ ! -f /tmp/git_id_rsa ]; then
+            echo "[WARNING] Clé SSH manquante. Reconstruction de la clé temporaire..."
+            echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
+            chmod 600 /tmp/git_id_rsa
+          else
+            echo "[INFO] Clé SSH trouvée : /tmp/git_id_rsa"
+          fi
+
+          # Sous-étape 8.0.5 : Synchronisation du fichier schema.prisma
+          echo "[INFO] Synchronisation du fichier schema.prisma vers le serveur..."
+          scp -P "$SSH_PORT" -i /tmp/git_id_rsa \
+            -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+            prisma/schema.prisma "$SSH_USER@$SERVER_IP:$MOUNT_PATH/prisma/schema.prisma" || {
+              echo "[ERROR] Échec de la synchronisation du fichier schema.prisma." >&2
+              exit 1
+            }
+          echo "[SUCCESS] Fichier schema.prisma synchronisé avec succès."
+
             # Sous-étape 8.1 : Suppression de l’ancien conteneur backend
             echo '[INFO - Sous-étape 8.1] Suppression de l’ancien conteneur backend...'
             if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
@@ -554,9 +574,8 @@ jobs:
             
           EOF
 
-          # Nettoyer le fichier temporaire local
-          echo "[INFO] Suppression du fichier temporaire local..."
-          rm -f /tmp/env_vars.sh
+          # Suppression sécurisée des fichiers temporaires même en cas d'erreur
+          trap 'rm -f /tmp/env_vars.sh /tmp/git_id_rsa' EXIT
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
