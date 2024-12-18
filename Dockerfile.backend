@@ -33,12 +33,11 @@ RUN npx prisma --version && npm list @prisma/client
 # Étape 6 : Installer les dépendances
 RUN npm install --production --loglevel=warn
 
-# Étape 7 : Copier le schéma Prisma et générer le client Prisma
-COPY prisma ./prisma
-RUN npx prisma generate
-
-# Étape 8 : Copier tout le code source
+# Étape 7 : Copier tout le code source
 COPY . .
+
+# Étape 8 : Copier le schéma Prisma et générer le client Prisma
+RUN npx prisma generate
 
 # Étape 9 : Nettoyer le cache npm
 RUN npm cache clean --force
