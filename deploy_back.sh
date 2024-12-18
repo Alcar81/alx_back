@@ -1,14 +1,9 @@
 #!/bin/bash
 # deploy_backend.sh
 
-# Naviguer vers la racine du dépôt Git
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-if [ -z "$REPO_ROOT" ]; then
-  echo "[ERROR] Ce script doit être exécuté dans un dépôt Git valide."
-  exit 1
-fi
-
-cd "$REPO_ROOT" || { echo "[ERROR] Impossible de naviguer vers la racine du dépôt Git : $REPO_ROOT."; exit 1; }
+# Configuration des répertoires
+REPO_PROD="/home/alxmultimedia.com/backend"
+REPO_DEV="/home/dev.alxmultimedia.com/backend"
 
 # Définir le répertoire des logs et le fichier log
 LOG_DIR="./logs"
@@ -18,6 +13,13 @@ LOG_FILE="$LOG_DIR/deployment_back.log"
 if [ ! -d "$LOG_DIR" ]; then
   echo "[INFO] Création du répertoire des logs : $LOG_DIR"
   mkdir -p "$LOG_DIR"
+  chmod 755 "$LOG_DIR"
+fi
+
+# Créer le fichier log s'il n'existe pas encore
+if [ ! -f "$LOG_FILE" ]; then
+  echo "[INFO] Création du fichier de log : $LOG_FILE"
+  touch "$LOG_FILE"
 fi
 
 # Rotation des logs si nécessaire
@@ -25,11 +27,10 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 Mo
 if [ -f "$LOG_FILE" ] && [ $(stat -c%s "$LOG_FILE") -ge $MAX_LOG_SIZE ]; then
   echo "[INFO] Rotation du fichier de log : $LOG_FILE -> $LOG_FILE.bak"
   mv "$LOG_FILE" "$LOG_FILE.bak"
+  touch "$LOG_FILE"
 fi
 
-# Donner les permissions au répertoire et au fichier log
-chmod 755 "$LOG_DIR"
-touch "$LOG_FILE"
+# Donner les permissions au fichier log
 chmod 644 "$LOG_FILE"
 
 # Rediriger les sorties vers le fichier log
@@ -37,56 +38,33 @@ exec >> "$LOG_FILE" 2>&1
 
 echo "=== Déploiement Backend commencé : $(date) ==="
 
-# Vérifier si les branches existent
-if ! git show-ref --quiet refs/heads/master; then
-  echo "[ERROR] La branche 'master' n'existe pas. Vérifiez votre dépôt."
+# Fonction pour gérer les erreurs
+error_exit() {
+  echo "[ERROR] $1" | tee -a "$LOG_FILE"
   exit 1
-fi
+}
 
-if ! git show-ref --quiet refs/heads/dev; then
-  echo "[ERROR] La branche 'dev' n'existe pas. Vérifiez votre dépôt."
-  exit 1
-fi
+# Étape 1 : Synchronisation du répertoire de production
+echo "[INFO] Passage à la branche master dans le répertoire de production..."
+cd "$REPO_PROD" || error_exit "Impossible d'accéder au répertoire $REPO_PROD."
 
-# Vérifier les modifications non validées
-if [ "$(git status --porcelain)" ]; then
-  echo "[ERROR] Des modifications locales non validées ont été détectées."
-  echo "Les fichiers suivants ont été modifiés et doivent être validés ou ignorés :"
-  git status --porcelain | awk '{print $2}' # Afficher uniquement les noms de fichiers
-  echo "Veuillez exécuter 'git status' pour plus de détails."
-  echo "Ajoutez les fichiers avec 'git add', validez-les avec 'git commit', ou stash-les avec 'git stash'."
-  exit 1
-fi
+git fetch origin || error_exit "Échec du fetch sur origin."
+git checkout master || error_exit "Échec du checkout de master."
+git reset --hard origin/dev || error_exit "Échec du reset hard avec origin/dev."
+git push origin master --force || error_exit "Échec du push forcé sur master."
 
-# Effectuer un fetch pour garantir que les références distantes sont à jour
-echo '[INFO] Mise à jour des références distantes...' | tee -a $LOG_FILE
-git fetch origin || { echo '[ERROR] Échec du fetch.' | tee -a $LOG_FILE; exit 1; }
-
-# Passer à master, réinitialiser et écraser avec dev
-echo '[INFO] Déploiement : Passage à la branche master...' | tee -a $LOG_FILE
-git checkout master || { echo '[ERROR] Échec du checkout master.' | tee -a $LOG_FILE; exit 1; }
-
-echo '[INFO] Réinitialisation de master avec dev...' | tee -a $LOG_FILE
-git reset --hard origin/dev || { echo '[ERROR] Échec de la réinitialisation de master avec dev.' | tee -a $LOG_FILE; exit 1; }
-
-echo '[INFO] Poussée forcée vers la branche master...' | tee -a $LOG_FILE
-git push origin master --force || { echo '[ERROR] Échec de la poussée forcée vers master.' | tee -a $LOG_FILE; exit 1; }
-
-# Ajouter un délai pour éviter les problèmes de propagation
-echo '[INFO] Attente de 30 secondes pour la propagation des modifications...'
+echo "[INFO] Attente de 30 secondes pour la propagation des changements..."
 sleep 30
 
-# Mettre à jour les fichiers locaux dans le répertoire master
-echo '[INFO] Mise à jour des fichiers locaux de la branche master...' | tee -a $LOG_FILE
-git pull origin master || { echo '[ERROR] Échec du pull sur master.' | tee -a $LOG_FILE; exit 1; }
+echo "[INFO] Mise à jour locale des fichiers pour master..."
+git pull origin master || error_exit "Échec du pull sur master."
 
-# Revenir sur dev pour continuer les travaux de développement
-echo '[INFO] Revenir sur la branche dev...' | tee -a $LOG_FILE
-git checkout dev || { echo '[ERROR] Échec du checkout dev.' | tee -a $LOG_FILE; exit 1; }
+# Étape 2 : Synchronisation du répertoire de développement
+echo "[INFO] Passage à la branche dev dans le répertoire de développement..."
+cd "$REPO_DEV" || error_exit "Impossible d'accéder au répertoire $REPO_DEV."
 
-# Mettre à jour les fichiers locaux dans le répertoire dev
-echo '[INFO] Mise à jour des fichiers locaux de la branche dev...' | tee -a $LOG_FILE
-git pull origin dev || { echo '[ERROR] Échec du pull sur dev.' | tee -a $LOG_FILE; exit 1; }
+git checkout dev || error_exit "Échec du checkout de dev."
+git pull origin dev || error_exit "Échec du pull sur dev."
 
-echo "=== Déploiement Backend terminé : $(date) ==="
-echo "Les logs de ce déploiement sont disponibles dans $LOG_FILE"
+echo "=== Déploiement Backend terminé avec succès : $(date) ==="
+echo "Les logs sont disponibles ici : $LOG_FILE"
