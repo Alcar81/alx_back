@@ -308,6 +308,8 @@ jobs:
               echo "[INFO] $VAR=$VALUE"
             done
 
+            echo "[SUCCESS] Toutes les variables nécessaires sont définies."
+
             # Sous-étape 8.1 : Suppression de l’ancien conteneur backend
             echo '[INFO - Sous-étape 8.1] Suppression de l’ancien conteneur backend...'
             if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
@@ -413,10 +415,13 @@ jobs:
             echo "[INFO - Étape 8.8.0] Mise à jour de npm et Prisma..."
 
             # Nouvelle étape : Synchroniser le fichier schema.prisma
-            echo "[INFO] Synchronisation du fichier schema.prisma..."
+            echo "[INFO] Synchronisation du fichier schema.prisma vers le serveur..."
             scp -P "$SSH_PORT" -i /tmp/git_id_rsa \
-                -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-                prisma/schema.prisma "$SSH_USER@$SERVER_IP:$MOUNT_PATH/prisma/schema.prisma"
+              -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
+              prisma/schema.prisma "$SSH_USER@$SERVER_IP:$MOUNT_PATH/prisma/schema.prisma" || {
+                echo "[ERROR] Échec de la synchronisation du fichier schema.prisma." >&2
+                exit 1
+              }
             echo "[SUCCESS] Fichier schema.prisma synchronisé avec succès."
 
             # Continuer avec les migrations Prisma
