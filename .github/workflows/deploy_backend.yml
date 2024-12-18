@@ -322,8 +322,28 @@ jobs:
             echo "[INFO - 8.5.2] Création du backup avant migration..."
             docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
 
-           # 8.5.3 - Application des migrations Prisma
-            echo "[INFO - 8.5.3] Application des migrations Prisma..."
+            # 8.5.3 - Validation du fichier schema.prisma
+            echo "[INFO - 8.5.3] Vérification du fichier schema.prisma..."
+            SCHEMA_FILE="/app/prisma/schema.prisma"
+            if [ ! -f "$SCHEMA_FILE" ]; then
+              echo "[ERROR] Fichier $SCHEMA_FILE introuvable dans le conteneur !" >&2
+              exit 1
+            fi
+            echo "[SUCCESS] Fichier schema.prisma trouvé."
+            echo "[INFO] Validation syntaxique du schéma..."
+            docker exec "$CONTAINER_NAME" npx prisma validate || {
+              echo "[ERROR] Le fichier schema.prisma est invalide. Corrigez les erreurs avant de continuer." >&2
+              exit 1
+            }
+            echo "[SUCCESS] Le fichier schema.prisma est valide."
+
+            echo "[INFO] Vérification des migrations Prisma en attente..."
+            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
+              echo "[WARNING] Des migrations sont en attente ou ont échoué. Vérifiez avant le déploiement." >&2
+            }
+
+            # 8.5.4 - Application des migrations Prisma
+            echo "[INFO - 8.5.4] Application des migrations Prisma..."
 
             # Identifier les migrations échouées
             FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
