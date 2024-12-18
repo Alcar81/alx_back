@@ -414,6 +414,13 @@ jobs:
             # Étape 8.8.0 : Mise à jour de npm et Prisma
             echo "[INFO - Étape 8.8.0] Mise à jour de npm et Prisma..."
 
+            echo "[INFO] Vérification des variables SSH pour le déploiement..."
+            echo "SSH_PORT=${SSH_PORT:-'non défini'}"
+            echo "SSH_USER=${SSH_USER:-'non défini'}"
+            echo "SERVER_IP=${SERVER_IP:-'non défini'}"
+            echo "MOUNT_PATH=${MOUNT_PATH:-'non défini'}"
+            echo "[INFO] Fin de la vérification."
+
             # Nouvelle étape : Synchroniser le fichier schema.prisma
             echo "[INFO] Synchronisation du fichier schema.prisma vers le serveur..."
             scp -P "$SSH_PORT" -i /tmp/git_id_rsa \
