@@ -315,11 +315,20 @@ jobs:
             exit 1
           fi
 
+          echo "[INFO] Fichier temporaire /tmp/env_vars.sh créé avec succès."
+          
           # Sous-étape 8.0.2 : Copier le fichier temporaire vers le serveur distant
           echo "[INFO - Sous-étape 8.0.2] Envoi du fichier temporaire contenant les variables au serveur distant..."
           scp -P "$SSH_PORT" -i /tmp/git_id_rsa \
             -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
             /tmp/env_vars.sh "$SSH_USER@$SERVER_IP:/tmp/env_vars.sh"
+
+          if [ $? -ne 0 ]; then
+            echo "[ERROR] Échec de l’envoi du fichier temporaire vers le serveur distant." >&2
+            exit 1
+          fi
+
+          echo "[INFO] Fichier temporaire envoyé au serveur distant avec succès."
 
           # Sous-étape 8.0.3 : Connexion SSH et exécution des commandes sur le serveur distant
           ssh -p "$SSH_PORT" -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
@@ -342,7 +351,7 @@ jobs:
               echo "[ERROR] La variable $VAR est manquante ou vide." >&2
               exit 1
             fi
-            echo "[INFO] $VAR=\${!VAR}"
+            echo "[DEBUG] $VAR=\${!VAR}"
           done
 
           echo "[SUCCESS] Toutes les variables nécessaires sont définies."
@@ -363,10 +372,9 @@ jobs:
               -w /app \
               --env-file "$MOUNT_PATH/.env" \
               -p "$BACKEND_PORT:$BACKEND_PORT" \
-              "$DOCKER_NAME" || {
-                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
-                exit 1
-            }
+              "$DOCKER_NAME"
+
+              echo "[SUCCESS] Nouveau conteneur backend lancé avec succès."
 
             # Sous-étape 8.3 : Vérification que le conteneur est actif.
             echo '[INFO - Sous-étape 8.3] Vérification que le conteneur est actif...'
@@ -391,14 +399,7 @@ jobs:
             # Sous-étape 8.4.1 : Nettoyage des logs
             echo '[INFO - Sous-étape 8.6] Vérification et création du répertoire de logs...'
             mkdir -p "$MOUNT_PATH/logs"
-
-            # Étape 8.5 - Suppression de l’ancien conteneur
-            echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
-            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
-              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
-            fi
-
+            
             # Étape 8.6 - Lancement du nouveau conteneur backend
             echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
             docker run -d --name "$CONTAINER_NAME" \
@@ -545,6 +546,10 @@ jobs:
             echo "[SUCCESS] Déploiement backend terminé avec succès !"           
             
           EOF
+
+          # Nettoyer le fichier temporaire local
+          echo "[INFO] Suppression du fichier temporaire local..."
+          rm -f /tmp/env_vars.sh
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
