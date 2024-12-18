@@ -324,7 +324,7 @@ jobs:
 
             # 8.5.3 - Validation du fichier schema.prisma
             echo "[INFO - 8.5.3] Vérification du fichier schema.prisma..."
-            SCHEMA_FILE="/app/prisma/schema.prisma"
+            SCHEMA_FILE="/prisma/schema.prisma"
             if [ ! -f "$SCHEMA_FILE" ]; then
               echo "[ERROR] Fichier $SCHEMA_FILE introuvable dans le conteneur !" >&2
               exit 1
