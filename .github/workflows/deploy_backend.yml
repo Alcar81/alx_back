@@ -296,16 +296,15 @@ jobs:
           "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' SSH_PORT='$SSH_PORT' bash -s" << 'EOF'
             set -e
 
-            # Sous-étape 8.0 : Vérification des variables chargées
-            echo "[INFO - Sous-étape 8.0] Vérification des variables chargées..."
-            MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT MOUNT_PATH)
-            for VAR in "${MANDATORY_VARS[@]}"; do
-              VALUE=$(eval echo "\$$VAR")
-              if [ -z "$VALUE" ]; then
+            # Sous-étape 8.0 : # Vérification des variables
+            echo "[INFO] Vérification des variables chargées..."
+            REQUIRED_VARS=(ENV DATABASE_URL SSH_PORT MOUNT_PATH)
+            for VAR in "${REQUIRED_VARS[@]}"; do
+              if [ -z "\${!VAR}" ]; then
                 echo "[ERROR] La variable $VAR est manquante ou vide." >&2
                 exit 1
               fi
-              echo "[INFO] $VAR=$VALUE"
+              echo "[INFO] $VAR=\${!VAR}"
             done
 
             echo "[SUCCESS] Toutes les variables nécessaires sont définies."
