@@ -357,10 +357,10 @@ jobs:
           echo "[SUCCESS] Toutes les variables nécessaires sont définies."
 
           # Sous-étape 8.0.4 : Vérification et copie de la clé SSH
-          echo "[INFO] Vérification de la clé SSH temporaire..."
+          echo "[INFO] Vérification et création de la clé SSH temporaire..."
           if [ ! -f /tmp/git_id_rsa ]; then
-            echo "[WARNING] Clé SSH manquante. Reconstruction de la clé temporaire..."
-            echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
+            echo "[INFO] Reconstruction de la clé SSH temporaire..."
+            printf "%s" "$SSH_PRIVATE_KEY" | sed 's/\\n/\n/g' > /tmp/git_id_rsa
             chmod 600 /tmp/git_id_rsa
           else
             echo "[INFO] Clé SSH trouvée : /tmp/git_id_rsa"
