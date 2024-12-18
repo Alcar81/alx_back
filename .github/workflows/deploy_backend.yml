@@ -388,8 +388,8 @@ jobs:
             docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
 
             echo "[SUCCESS] Déploiement backend terminé avec succès !"           
-          EOF          
-      
+          EOF
+               
             # 8.7 - Suppression sécurisée des fichiers temporaires
             echo "[INFO - 8.7] Suppression sécurisée des fichiers temporaires..."
             rm -f /tmp/env_vars.sh /tmp/git_id_rsa
