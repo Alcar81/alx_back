@@ -288,98 +288,32 @@ jobs:
       - name: 8 - Déployer le conteneur Backend
         run: |
           echo "=== Étape 8 : Déploiement du backend ==="
-      
-          ## Étape 8.1 : Préparation des fichiers temporaires
-      
-          # 8.1.1 - Création du fichier temporaire contenant les variables nécessaires
-          echo "[INFO - 8.1.1] Création du fichier temporaire contenant les variables..."
-          cat <<EOT > /tmp/env_vars.sh
-          ENV=$ENV
-          DATABASE_URL=$DATABASE_URL
-          JWT_SECRET=$JWT_SECRET
-          BACKEND_PORT=$BACKEND_PORT
-          MOUNT_PATH=$MOUNT_PATH
-          POSTGRES_CONTAINER_NAME=$POSTGRES_CONTAINER_NAME
-          DB_USERNAME=$DB_USERNAME
-          DB_NAME=$DB_NAME
-          CONTAINER_NAME=$CONTAINER_NAME
-          NETWORK=$NETWORK
-          DOCKER_NAME=$DOCKER_NAME
-          DB_PASSWORD=$DB_PASSWORD
-          SSH_PORT=$SSH_PORT
-          SSH_USER=$SSH_USER
-          SERVER_IP=$SERVER_IP
-          EOT
-      
-          # Vérification du fichier temporaire
-          if [ ! -f /tmp/env_vars.sh ]; then
-            echo "[ERROR] Échec de la création du fichier temporaire /tmp/env_vars.sh." >&2
-            exit 1
-          fi
-          echo "[SUCCESS] Fichier temporaire créé avec succès."
-      
-          # 8.1.2 - Envoi du fichier temporaire au serveur distant
-          echo "[INFO - 8.1.2] Envoi du fichier temporaire vers le serveur distant..."
-          scp -P "$SSH_PORT" -i /tmp/git_id_rsa \
-            -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no \
-            /tmp/env_vars.sh "$SSH_USER@$SERVER_IP:/tmp/env_vars.sh"
-      
-          if [ $? -ne 0 ]; then
-            echo "[ERROR] Échec de l’envoi du fichier temporaire vers le serveur distant." >&2
-            exit 1
-          fi
-          echo "[SUCCESS] Fichier temporaire envoyé avec succès."
-      
-          ## Étape 8.2 : Configuration et déploiement sur le serveur distant
-      
-          ssh -p "$SSH_PORT" -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
-          set -e
-      
-          # 8.2.1 - Chargement des variables
-          if [ -f /tmp/env_vars.sh ]; then
-            echo "[INFO - 8.2.1] Chargement des variables depuis /tmp/env_vars.sh..."
-            source /tmp/env_vars.sh
-          else
-            echo "[ERROR] Le fichier /tmp/env_vars.sh est introuvable." >&2
-            exit 1
-          fi
-      
-          # 8.2.2 - Vérification des variables nécessaires
-          echo "[INFO - 8.2.2] Vérification des variables chargées..."
-          REQUIRED_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT MOUNT_PATH CONTAINER_NAME NETWORK DOCKER_NAME)
-          for VAR in "\${REQUIRED_VARS[@]}"; do
-            if [ -z "\${!VAR}" ]; then
-              echo "[ERROR] La variable $VAR est manquante ou vide." >&2
-              exit 1
+          DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT_INT}/${DB_NAME}"
+          echo "[INFO] DATABASE_URL construit : $DATABASE_URL"
+          # Passer toutes les variables comme arguments dans la session SSH
+          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" \
+          "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' bash -s" << 'EOF'
+            set -e
+            # Sous-étape 8.0 : Vérification des variables chargées
+            echo "[INFO - Sous-étape 8.0] Vérification des variables chargées..."
+            MANDATORY_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT MOUNT_PATH)
+            for VAR in "${MANDATORY_VARS[@]}"; do
+              VALUE=$(eval echo "\$$VAR")
+              if [ -z "$VALUE" ]; then
+                echo "[ERROR] La variable $VAR est manquante ou vide." >&2
+                exit 1
+              fi
+              echo "[INFO] $VAR=$VALUE"
+            done
+            # Sous-étape 8.1 : Suppression de l’ancien conteneur backend
+            echo '[INFO - Sous-étape 8.1] Suppression de l’ancien conteneur backend...'
+            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
+              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
             fi
-          done
-          echo "[SUCCESS] Toutes les variables sont correctement définies."
-
-          # Sous-étape 8.2.3 : Création et vérification du fichier .env
-            echo '[INFO - Sous-étape 8.2.3] Création et vérification du fichier .env...'
-            cat <<EOT > "$MOUNT_PATH/.env"
-            DATABASE_URL=$DATABASE_URL
-            NODE_ENV=$ENV
-            JWT_SECRET=$JWT_SECRET
-            SERVER_PORT=$BACKEND_PORT
-          EOT
-            cat "$MOUNT_PATH/.env"
-            # Sous-étape 8.2.1 : Nettoyage des logs
-            echo '[INFO - Sous-étape 8.6] Vérification et création du répertoire de logs...'
-            mkdir -p "$MOUNT_PATH/logs"
-      
-          ## Étape 8.3 : Nettoyage et redéploiement du conteneur Backend
-      
-          # 8.3.1 - Suppression de l'ancien conteneur
-          echo "[INFO - 8.3.1] Suppression de l'ancien conteneur backend..."
-          if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-            docker stop "$CONTAINER_NAME" || echo "[WARNING] Échec de l'arrêt du conteneur."
-            docker rm "$CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
-          fi
-      
-          # 8.3.2 - Lancement du nouveau conteneur backend
-          echo "[INFO - 8.3.2] Lancement du nouveau conteneur backend..."
-          docker run -d --name "$CONTAINER_NAME" \
+            # Sous-étape 8.2 : Lancement du conteneur backend
+            echo '[INFO - Sous-étape 8.2] Lancement du nouveau conteneur backend...'
+            docker run -d --name "$CONTAINER_NAME" \
               --network "$NETWORK" \
               -v "$MOUNT_PATH/.env:/app/.env" \
               -v "$MOUNT_PATH/logs:/app/logs" \
@@ -390,40 +324,141 @@ jobs:
                 echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
                 exit 1
             }
+            # Sous-étape 8.3 : Vérification que le conteneur est actif
+            echo '[INFO - Sous-étape 8.3] Vérification que le conteneur est actif...'
+            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
+            else
+              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            fi
+            # Sous-étape 8.4 : Création et vérification du fichier .env
+            echo '[INFO - Sous-étape 8.4] Création et vérification du fichier .env...'
+            cat <<EOT > "$MOUNT_PATH/.env"
+            DATABASE_URL=$DATABASE_URL
+            NODE_ENV=$ENV
+            JWT_SECRET=$JWT_SECRET
+            SERVER_PORT=$BACKEND_PORT
+          EOT
+            cat "$MOUNT_PATH/.env"
+            # Sous-étape 8.4.1 : Nettoyage des logs
+            echo '[INFO - Sous-étape 8.6] Vérification et création du répertoire de logs...'
+            mkdir -p "$MOUNT_PATH/logs"
+            # Étape 8.5 - Suppression de l’ancien conteneur
+            echo '[INFO - Étape 8.5] Suppression de l’ancien conteneur...'
+            if docker ps -a --filter "name=$CONTAINER_NAME" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              docker stop "$CONTAINER_NAME" || echo '[WARNING] Échec de l’arrêt du conteneur.'
+              docker rm "$CONTAINER_NAME" || echo '[WARNING] Échec de la suppression du conteneur.'
+            fi
+            # Étape 8.6 - Lancement du nouveau conteneur backend
+            echo '[INFO - Étape 8.6] Lancement du conteneur backend...'
+            docker run -d --name "$CONTAINER_NAME" \
+              --network "$NETWORK" \
+              -v "$MOUNT_PATH/.env:/app/.env" \
+              -v "$MOUNT_PATH/logs:/app/logs" \
+              -w /app \
+              --env-file "$MOUNT_PATH/.env" \
+              -p "$BACKEND_PORT:$BACKEND_PORT" \
+              "$DOCKER_NAME" || {
+                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+                exit 1
+            }
+            # Étape 8.7 - Vérification que le conteneur est actif.
+            echo '[INFO - Étape 8.7] Vérification que le conteneur est actif...'
+            if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
+              echo '[SUCCESS] Le conteneur backend est actif et opérationnel.'
+            else
+              echo '[ERROR] Le conteneur backend n’est pas opérationnel.' >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            fi
+            # Étape 8.8 : Mise à jour de npm et Prisma avant les migrations
+            echo "[INFO - Étape 8.8.0] Mise à jour de npm et Prisma..."
+            # Mise à jour de npm à la dernière version
+            echo "[INFO] Mise à jour de npm à la dernière version..."
+            docker exec "$CONTAINER_NAME" npm install -g npm@latest --force
+            # Mise à jour de Prisma et @prisma/client
+            echo "[INFO] Mise à jour de Prisma et @prisma/client..."
+            docker exec "$CONTAINER_NAME" npm install --save-dev prisma@latest @prisma/client@latest --force --legacy-peer-deps
+            # Vérification des versions mises à jour
+            echo "[INFO] Vérification des versions de npm et Prisma..."
+            docker exec "$CONTAINER_NAME" npm --version
+            docker exec "$CONTAINER_NAME" npx prisma --version
+            docker exec "$CONTAINER_NAME" npm list @prisma/client
+            # Continuer avec les migrations Prisma
+            echo "[INFO - Étape 8.8.1] Définition du répertoire de backup..."
+            # Étape 8.8.1 - Définir le répertoire de backup
+            echo '[INFO - Étape 8.8.1] Définition du répertoire de backup...'
+            BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
+            # Vérification stricte de BACKUP_DIR
+            if [ -z "$BACKUP_DIR" ] || [ "$BACKUP_DIR" = "/" ]; then
+              echo "[ERROR] Impossible de déterminer BACKUP_DIR à partir de MOUNT_PATH." >&2
+              exit 1
+            fi
+            # Création du répertoire de backup s'il n'existe pas
+            echo "[INFO] Création du répertoire de backup : $BACKUP_DIR"
+            mkdir -p "$BACKUP_DIR" || {
+              echo "[ERROR] Échec de la création du répertoire de backup : $BACKUP_DIR" >&2
+              exit 1
+            }
+            echo "[SUCCESS] Répertoire de backup prêt : $BACKUP_DIR"
+              # Étape 8.8.2 - Backup de la base de données avant les migrations
+              echo '[INFO - Étape 8.8.2] Création d’un backup de la base de données avant migration...'
+              BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
+              docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE" || {
+                echo '[ERROR] Échec de la création du backup. Migration annulée.' >&2
+                exit 1
+              }
+              echo "[INFO] Backup créé : $BACKUP_FILE"
       
-          echo "[SUCCESS] Nouveau conteneur backend lancé avec succès."
+            # Étape 8.8.3 - Vérification des migrations échouées
+            echo '[INFO - Étape 8.8.3] Vérification des migrations échouées...'
+            FAILED_MIGRATION=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
+
+            if [ -n "$FAILED_MIGRATION" ]; then
+              echo "[WARNING] Migration échouée détectée : $FAILED_MIGRATION"
+              for MIGRATION in $FAILED_MIGRATION; do
+                echo "[INFO - Étape 8.8.3.1] Résolution de la migration échouée : $MIGRATION"
+                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --applied "$MIGRATION" || {
+                  echo "[ERROR] Échec de la résolution de la migration : $MIGRATION" >&2
+                  exit 1
+                }
+              done
+            else
+              echo "[INFO] Aucune migration échouée détectée."
+            fi
       
-          # 8.3.3 - Vérification que le conteneur est actif
-          echo "[INFO - 8.3.3] Vérification que le conteneur est actif..."
-          if ! docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" --format '{{.Names}}' | grep -w "$CONTAINER_NAME"; then
-            echo "[ERROR] Le conteneur backend n'est pas opérationnel." >&2
-            docker logs "$CONTAINER_NAME"
-            exit 1
-          fi
-          echo "[SUCCESS] Le conteneur backend est opérationnel."
+            # Étape 8.8.4 - Application des migrations Prisma
+            echo '[INFO - Étape 8.8.4] Application des migrations Prisma...'
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
+              echo '[ERROR] Échec du déploiement des migrations Prisma. Restauration du backup...' >&2
+              docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
+                echo "[ERROR] Échec de la restauration du backup. Vérification manuelle requise." >&2
+                exit 1
+              }
+              exit 1
+            }
+            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."
       
-          ## Étape 8.4 : Application des migrations Prisma
+            # Étape 8.8.5 - Vérification finale des migrations
+            echo '[INFO - Étape 8.8.5] Vérification finale de l’état des migrations Prisma...'
+            docker exec "$CONTAINER_NAME" npx prisma migrate status || {
+              echo '[ERROR] Les migrations ne sont pas dans un état cohérent.' >&2
+              exit 1
+            }
+            echo "[SUCCESS] Vérification des migrations terminée avec succès."
       
-          # 8.4.1 - Mise à jour de npm et Prisma
-          echo "[INFO - 8.4.1] Mise à jour de npm et Prisma..."
-          docker exec "$CONTAINER_NAME" npm install -g npm@latest --force
-          docker exec "$CONTAINER_NAME" npm install --save-dev prisma@latest @prisma/client@latest --force --legacy-peer-deps
+            # Étape 8.8.6 - Nettoyage des anciens conteneurs et images
+            echo '[INFO - Étape 8.8.6] Nettoyage des anciens conteneurs et des images non utilisées...'
+            docker container prune -f || echo "[WARNING] Nettoyage des conteneurs échoué."
+            docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
       
-          # 8.4.2 - Application des migrations Prisma
-          echo "[INFO - 8.4.2] Application des migrations Prisma..."
-          docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
-            echo "[ERROR] Échec des migrations Prisma." >&2
-            exit 1
-          }
-          echo "[SUCCESS] Migrations Prisma appliquées avec succès."
-      
-          ## Étape 8.5 : Nettoyage des ressources inutilisées
-          echo "[INFO - 8.5] Nettoyage des anciens conteneurs et images Docker..."
-          docker container prune -f || echo "[WARNING] Nettoyage des conteneurs échoué."
-          docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
-      
-          echo "[SUCCESS] Déploiement backend terminé avec succès !"
-          EOF
+            # Étape 8.8.7 - Confirmation finale
+            echo '[SUCCESS - Étape 8.8.7] Migrations Prisma appliquées avec succès, backup sauvegardé dans un répertoire dédié.' 
+            echo "[SUCCESS] Déploiement backend terminé avec succès !"           
+            
+          EOF          
       
           # Suppression sécurisée des fichiers temporaires
           echo "[INFO] Suppression sécurisée des fichiers temporaires..."
