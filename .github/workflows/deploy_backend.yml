@@ -384,35 +384,26 @@ jobs:
               echo "[WARNING] Des migrations échouées ont été détectées : $FAILED_MIGRATIONS"
               for MIGRATION in $FAILED_MIGRATIONS; do
                 echo "[INFO] Résolution de la migration échouée : $MIGRATION"
+                # Marquer la migration comme rollback
                 docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
                   echo "[ERROR] Échec de la résolution pour $MIGRATION." >&2
                   exit 1
                 }
               done
-
               echo "[INFO] Relance des migrations après résolution..."
-              docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
-                echo "[ERROR] Échec final des migrations après tentative de résolution." >&2
-                echo "[INFO] Restauration du backup..."
-                docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
-                  echo "[ERROR] Échec de la restauration du backup. Une intervention manuelle est requise." >&2
-                  exit 1
-                }
-                exit 1
-              }
-            else
-              echo "[INFO] Aucune migration échouée détectée. Application des migrations en cours..."
-              docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
-                echo "[ERROR] Échec des migrations Prisma. Restauration du backup..." >&2
-                docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
-                  echo "[ERROR] Échec de la restauration du backup. Une intervention manuelle est requise." >&2
-                  exit 1
-                }
-                exit 1
-              }
             fi
 
-            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."
+            # Appliquer les migrations
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
+              echo "[ERROR] Échec des migrations Prisma. Restauration du backup..." >&2
+              docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
+                echo "[ERROR] Échec de la restauration du backup. Une intervention manuelle est requise." >&2
+                exit 1
+              }
+              exit 1
+            }
+
+            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."            
 
             # 8.6 - Nettoyage final
             echo "[INFO - 8.6] Nettoyage des anciens conteneurs et images..."
