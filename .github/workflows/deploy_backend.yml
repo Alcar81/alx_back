@@ -354,6 +354,19 @@ jobs:
             fi
           done
           echo "[SUCCESS] Toutes les variables sont correctement définies."
+
+          # Sous-étape 8.2.3 : Création et vérification du fichier .env
+            echo '[INFO - Sous-étape 8.2.3] Création et vérification du fichier .env...'
+            cat <<EOT > "$MOUNT_PATH/.env"
+            DATABASE_URL=$DATABASE_URL
+            NODE_ENV=$ENV
+            JWT_SECRET=$JWT_SECRET
+            SERVER_PORT=$BACKEND_PORT
+          EOT
+            cat "$MOUNT_PATH/.env"
+            # Sous-étape 8.2.1 : Nettoyage des logs
+            echo '[INFO - Sous-étape 8.6] Vérification et création du répertoire de logs...'
+            mkdir -p "$MOUNT_PATH/logs"
       
           ## Étape 8.3 : Nettoyage et redéploiement du conteneur Backend
       
@@ -367,13 +380,16 @@ jobs:
           # 8.3.2 - Lancement du nouveau conteneur backend
           echo "[INFO - 8.3.2] Lancement du nouveau conteneur backend..."
           docker run -d --name "$CONTAINER_NAME" \
-            --network "$NETWORK" \
-            -v "$MOUNT_PATH/.env:/app/.env" \
-            -v "$MOUNT_PATH/logs:/app/logs" \
-            -w /app \
-            --env-file "$MOUNT_PATH/.env" \
-            -p "$BACKEND_PORT:$BACKEND_PORT" \
-            "$DOCKER_NAME"
+              --network "$NETWORK" \
+              -v "$MOUNT_PATH/.env:/app/.env" \
+              -v "$MOUNT_PATH/logs:/app/logs" \
+              -w /app \
+              --env-file "$MOUNT_PATH/.env" \
+              -p "$BACKEND_PORT:$BACKEND_PORT" \
+              "$DOCKER_NAME" || {
+                echo '[ERROR] Échec du démarrage du conteneur backend.' >&2
+                exit 1
+            }
       
           echo "[SUCCESS] Nouveau conteneur backend lancé avec succès."
       
