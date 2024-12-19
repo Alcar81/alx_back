@@ -96,14 +96,6 @@ echo "[INFO] 3.1 Fetch des références distantes..." | tee -a "$LOG_FILE"
 git fetch origin || error_exit "Échec du fetch sur origin."
 echo "[SUCCESS] Fetch réussi." | tee -a "$LOG_FILE"
 
-echo "[INFO] 3.2 Réinitialisation de master avec origin/master..." | tee -a "$LOG_FILE"
-git reset --hard origin/master || error_exit "Échec du reset hard avec origin/master."
-echo "[SUCCESS] Réinitialisation réussie." | tee -a "$LOG_FILE"
-
-echo "[INFO] 3.3 Suppression des fichiers non suivis et ignorés..." | tee -a "$LOG_FILE"
-git clean -fdx || error_exit "Échec du nettoyage avec git clean."
-echo "[SUCCESS] Nettoyage des fichiers non suivis et ignorés réussi." | tee -a "$LOG_FILE"
-
 # Étape 4 : Synchronisation du répertoire de développement (dev)
 echo "=== Étape 4 : Synchronisation du répertoire de développement (dev) ===" | tee -a "$LOG_FILE"
 cd "$REPO_DEV" || error_exit "Impossible d'accéder au répertoire $REPO_DEV."
