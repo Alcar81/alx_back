@@ -91,22 +91,25 @@ jobs:
           PROD_DIR="/home/${DOMAIN}/backend"
           LOG_FILE="backend/logs/backend_deploy_$ENV.log"
 
-          echo "[INFO 2.1.2.1] Suppression de l'ancien répertoire de production..." | tee -a $LOG_FILE
-          if [ -d "$PROD_DIR" ]; then
-            rm -rf "$PROD_DIR" || (echo "[ERROR 2.1.2.1] Impossible de supprimer l'ancien répertoire." && exit 1)
+          # Vérification stricte de l'environnement avant suppression
+          if [ "$ENV" == "prod" ]; then
+            echo "[INFO 2.1.2.1] Suppression de l'ancien répertoire de production..." | tee -a $LOG_FILE
+            if [ -d "$PROD_DIR" ]; then
+              rm -rf "$PROD_DIR" || (echo "[ERROR 2.1.2.1] Impossible de supprimer l'ancien répertoire." && exit 1)
+            fi
+            echo "[SUCCESS 2.1.2.1] Ancien répertoire supprimé." | tee -a $LOG_FILE
+
+            echo "[INFO 2.1.2.2] Clonage du dépôt..." | tee -a $LOG_FILE
+            git clone $GIT_REPO_URL "$PROD_DIR" || (echo "[ERROR 2.1.2.2] Échec du clonage du dépôt." && exit 1)
+            echo "[SUCCESS 2.1.2.2] Dépôt cloné dans $PROD_DIR." | tee -a $LOG_FILE
+
+            echo "[INFO 2.1.2.3] Passage à la branche master..." | tee -a $LOG_FILE
+            cd "$PROD_DIR" || (echo "[ERROR 2.1.2.3] Impossible d'accéder au répertoire de production." && exit 1)
+            git checkout master || (echo "[ERROR 2.1.2.3] Échec du checkout de master." && exit 1)
+            echo "[SUCCESS 2.1.2.3] Répertoire de production prêt." | tee -a $LOG_FILE
           else
-            echo "[INFO 2.1.2.1] Aucun répertoire de production trouvé à supprimer." | tee -a $LOG_FILE
+            echo "[INFO] Environnement non-production détecté, aucune action nécessaire sur le répertoire prod." | tee -a $LOG_FILE
           fi
-          echo "[SUCCESS 2.1.2.1] Préparation du répertoire terminée." | tee -a $LOG_FILE
-
-          echo "[INFO 2.1.2.2] Clonage du dépôt..." | tee -a $LOG_FILE
-          git clone $GIT_REPO_URL "$PROD_DIR" || (echo "[ERROR 2.1.2.2] Échec du clonage du dépôt." && exit 1)
-          echo "[SUCCESS 2.1.2.2] Dépôt cloné dans $PROD_DIR." | tee -a $LOG_FILE
-
-          echo "[INFO 2.1.2.3] Passage à la branche master..." | tee -a $LOG_FILE
-          cd "$PROD_DIR" || (echo "[ERROR 2.1.2.3] Impossible d'accéder au répertoire de production." && exit 1)
-          git checkout master || (echo "[ERROR 2.1.2.3] Échec du checkout de master." && exit 1)
-          echo "[SUCCESS 2.1.2.3] Répertoire de production prêt." | tee -a $LOG_FILE
           
       # Étape 2.2 - Configurer la version de Node.js
       - name: 2.2 - Configurer Node.js
