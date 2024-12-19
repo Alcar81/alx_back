@@ -33,6 +33,8 @@ jobs:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       DOCKER_NAME: back_node:latest
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      DOMAIN: ${{ secrets.DOMAIN }}
+      GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
 
     steps:
       # Étape 1 : Préparation initiale
@@ -48,7 +50,7 @@ jobs:
       - name: 1.1 - Afficher les variables générées
         run: |
           echo "[INFO] Affichage des variables générées : " | tee -a $LOG_FILE
-          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET)
+          MANDATORY_VARS=(ENV DB_NAME DB_USERNAME DB_PASSWORD DB_HOST DATABASE_URL MOUNT_PATH CONTAINER_NAME DB_PORT_INT DB_PORT_EXT BACKEND_PORT NETWORK JWT_SECRET DOMAIN )
           for VAR in "${MANDATORY_VARS[@]}"; do
             if [ -z "${!VAR}" ]; then
               echo "[ERROR] La variable $VAR est manquante ou vide." | tee -a $LOG_FILE
@@ -69,6 +71,43 @@ jobs:
           if [ ! -f package.json ]; then
             echo "[ERROR] Fichier package.json introuvable à la racine. Vérifiez la structure du dépôt." && exit 1
           fi
+
+      # Étape 2.1.1 - Configurer l'agent SSH pour le clonage
+      - name: 2.1.1 - Configurer l'agent SSH
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: |
+          echo "=== Étape 2.1.1 : Configuration de l'agent SSH ==="
+          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
+          chmod 600 /tmp/git_id_rsa
+          eval $(ssh-agent -s)
+          ssh-add /tmp/git_id_rsa || (echo "[ERROR] Clé SSH invalide." && exit 1)
+          echo "[SUCCESS] Agent SSH configuré avec succès."
+
+      # Étape 2.1.2 - Préparation pour la production (uniquement pour prod)
+      - name: 2.1.2 - Cloner le dépôt pour la production
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: |
+          echo "=== Étape 2.1.2 : Clonage du dépôt pour la production ==="
+          PROD_DIR="/home/${DOMAIN}/backend"
+          LOG_FILE="backend/logs/backend_deploy_$ENV.log"
+
+          echo "[INFO 2.1.2.1] Suppression de l'ancien répertoire de production..." | tee -a $LOG_FILE
+          if [ -d "$PROD_DIR" ]; then
+            rm -rf "$PROD_DIR" || (echo "[ERROR 2.1.2.1] Impossible de supprimer l'ancien répertoire." && exit 1)
+          else
+            echo "[INFO 2.1.2.1] Aucun répertoire de production trouvé à supprimer." | tee -a $LOG_FILE
+          fi
+          echo "[SUCCESS 2.1.2.1] Préparation du répertoire terminée." | tee -a $LOG_FILE
+
+          echo "[INFO 2.1.2.2] Clonage du dépôt..." | tee -a $LOG_FILE
+          git clone $GIT_REPO_URL "$PROD_DIR" || (echo "[ERROR 2.1.2.2] Échec du clonage du dépôt." && exit 1)
+          echo "[SUCCESS 2.1.2.2] Dépôt cloné dans $PROD_DIR." | tee -a $LOG_FILE
+
+          echo "[INFO 2.1.2.3] Passage à la branche master..." | tee -a $LOG_FILE
+          cd "$PROD_DIR" || (echo "[ERROR 2.1.2.3] Impossible d'accéder au répertoire de production." && exit 1)
+          git checkout master || (echo "[ERROR 2.1.2.3] Échec du checkout de master." && exit 1)
+          echo "[SUCCESS 2.1.2.3] Répertoire de production prêt." | tee -a $LOG_FILE
+          
       # Étape 2.2 - Configurer la version de Node.js
       - name: 2.2 - Configurer Node.js
         uses: actions/setup-node@v3
