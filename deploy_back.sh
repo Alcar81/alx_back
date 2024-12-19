@@ -49,7 +49,7 @@ chmod 755 "$LOG_DIR"
 touch "$LOG_FILE"
 chmod 644 "$LOG_FILE"
 
-echo "[INFO] 1.2.5 Donner les permissions au répertoire et au fichier log..." | tee -a "$LOG_FILE"
+echo "[INFO] 1.2.5 Rediriger les sorties vers le fichier log..." | tee -a "$LOG_FILE"
 # Rediriger les sorties vers le fichier log
 exec >> "$LOG_FILE" 2>&1
 
