@@ -4,9 +4,10 @@
 # Configuration des répertoires
 REPO_PROD="/home/alxmultimedia.com/backend"
 REPO_DEV="/home/dev.alxmultimedia.com/backend"
+REPO_GIT_URL="git@github.com:VotreDépôt.git"
 
 # Définir le répertoire des logs et le fichier log
-LOG_DIR="./logs"
+LOG_DIR="../logs"
 LOG_FILE="$LOG_DIR/deployment_back.log"
 
 # Étape 0 : Préparation des logs
@@ -39,47 +40,39 @@ error_exit() {
 
 # Étape 1 : Synchronisation du répertoire de production (master)
 echo "=== Étape 1 : Synchronisation du répertoire de production (master) ===" | tee -a "$LOG_FILE"
+
+if [ -d "$REPO_PROD" ]; then
+  echo "[INFO] 1.1 Suppression de l'ancien répertoire de production..." | tee -a "$LOG_FILE"
+  rm -rf "$REPO_PROD" || error_exit "Échec de la suppression de l'ancien répertoire de production."
+  echo "[SUCCESS] Ancien répertoire de production supprimé." | tee -a "$LOG_FILE"
+fi
+
+echo "[INFO] 1.2 Clonage du dépôt pour la production..." | tee -a "$LOG_FILE"
+git clone "$REPO_GIT_URL" "$REPO_PROD" || error_exit "Échec du clonage pour la production."
+echo "[SUCCESS] Clonage pour la production réussi." | tee -a "$LOG_FILE"
+
+echo "[INFO] 1.3 Passage à la branche master..." | tee -a "$LOG_FILE"
 cd "$REPO_PROD" || error_exit "Impossible d'accéder au répertoire $REPO_PROD."
-
-echo "[INFO] 1.1 Fetch des références distantes..." | tee -a "$LOG_FILE"
-git fetch origin || error_exit "Échec du fetch sur origin."
-echo "[SUCCESS] Fetch réussi." | tee -a "$LOG_FILE"
-
-echo "[INFO] 1.2 Passage à la branche master..." | tee -a "$LOG_FILE"
 git checkout master || error_exit "Échec du checkout de master."
 echo "[SUCCESS] Passage à master réussi." | tee -a "$LOG_FILE"
 
-echo "[INFO] 1.3 Réinitialisation de master avec origin/dev..." | tee -a "$LOG_FILE"
-git reset --hard origin/dev || error_exit "Échec du reset hard avec origin/dev."
-echo "[SUCCESS] Réinitialisation réussie." | tee -a "$LOG_FILE"
-
-echo "[INFO] 1.4 Poussée forcée vers master..." | tee -a "$LOG_FILE"
-git push origin master --force || error_exit "Échec du push forcé sur master."
-echo "[SUCCESS] Push vers master réussi." | tee -a "$LOG_FILE"
-
-echo "[INFO] 1.5 Attente pour la propagation des changements..." | tee -a "$LOG_FILE"
-sleep 30
-echo "[SUCCESS] Attente terminée." | tee -a "$LOG_FILE"
-
-echo "[INFO] 1.6 Pull des mises à jour de master..." | tee -a "$LOG_FILE"
-git pull origin master || error_exit "Échec du pull sur master."
-echo "[SUCCESS] Pull sur master réussi." | tee -a "$LOG_FILE"
-
-echo "[INFO] 1.7 Pull des mises à jour de dev..." | tee -a "$LOG_FILE"
-git pull origin dev || error_exit "Échec du pull sur dev."
-echo "[SUCCESS] Pull sur dev réussi." | tee -a "$LOG_FILE"
-
 # Étape 2 : Synchronisation du répertoire de développement (dev)
 echo "=== Étape 2 : Synchronisation du répertoire de développement (dev) ===" | tee -a "$LOG_FILE"
-cd "$REPO_DEV" || error_exit "Impossible d'accéder au répertoire $REPO_DEV."
 
-echo "[INFO] 2.1 Passage à la branche dev..." | tee -a "$LOG_FILE"
+if [ -d "$REPO_DEV" ]; then
+  echo "[INFO] 2.1 Suppression de l'ancien répertoire de développement..." | tee -a "$LOG_FILE"
+  rm -rf "$REPO_DEV" || error_exit "Échec de la suppression de l'ancien répertoire de développement."
+  echo "[SUCCESS] Ancien répertoire de développement supprimé." | tee -a "$LOG_FILE"
+fi
+
+echo "[INFO] 2.2 Clonage du dépôt pour le développement..." | tee -a "$LOG_FILE"
+git clone "$REPO_GIT_URL" "$REPO_DEV" || error_exit "Échec du clonage pour le développement."
+echo "[SUCCESS] Clonage pour le développement réussi." | tee -a "$LOG_FILE"
+
+echo "[INFO] 2.3 Passage à la branche dev..." | tee -a "$LOG_FILE"
+cd "$REPO_DEV" || error_exit "Impossible d'accéder au répertoire $REPO_DEV."
 git checkout dev || error_exit "Échec du checkout de dev."
 echo "[SUCCESS] Passage à dev réussi." | tee -a "$LOG_FILE"
-
-echo "[INFO] 2.2 Pull des mises à jour de dev..." | tee -a "$LOG_FILE"
-git pull origin dev || error_exit "Échec du pull sur dev."
-echo "[SUCCESS] Pull sur dev réussi." | tee -a "$LOG_FILE"
 
 echo "=== Déploiement Backend terminé avec succès : $(date) ===" | tee -a "$LOG_FILE"
 echo "Les logs sont disponibles ici : $LOG_FILE" | tee -a "$LOG_FILE"
