@@ -90,9 +90,17 @@ echo "[INFO] 2.3.3 Poussée forcée vers la branche master... Déclanche le depl
 git push origin master --force || { echo "[ERROR] Échec de la poussée forcée vers master."; exit 1; }
 
 echo "=== Étape 3 : Synchronisation du répertoire de production (master) ===" | tee -a "$LOG_FILE"
+
+echo "[INFO 3.0] Vérification de l'existence du répertoire de production : $REPO_PROD"
+if [ ! -d "$REPO_PROD" ]; then
+  echo "[INFO 3.0] Le répertoire $REPO_PROD n'existe pas. Création en cours..."
+  mkdir -p "$REPO_PROD" || error_exit "Échec de la création du répertoire $REPO_PROD."
+  echo "[SUCCESS] Répertoire créé : $REPO_PROD"
+fi
+echo "[INFO] 3.1 Naviguer vers le répertoire de production..." | tee -a "$LOG_FILE"
 cd "$REPO_PROD" || error_exit "Impossible d'accéder au répertoire $REPO_PROD."
 
-echo "[INFO] 3.1 Fetch des références distantes..." | tee -a "$LOG_FILE"
+echo "[INFO] 3.2 Fetch des références distantes..." | tee -a "$LOG_FILE"
 git fetch origin || error_exit "Échec du fetch sur origin."
 echo "[SUCCESS] Fetch réussi." | tee -a "$LOG_FILE"
 
