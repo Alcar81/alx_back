@@ -189,13 +189,20 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 # Étape 3.2 : Préparation du répertoire de production
   echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
 
+  # Étape 3.2.1 : Suppression du contenu sauf .git
   if [ -d "$REPO_PROD" ]; then
     echo "[INFO 3.2.1] Le répertoire $REPO_PROD existe. Suppression de son contenu sauf .git..."
-    find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + || { echo "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD."; exit 1; }
+    find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + 2>/dev/null || {
+      echo "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD. Certaines entrées peuvent être inaccessibles.";
+      exit 1;
+    }
     echo "[SUCCESS 3.2.1] Contenu du répertoire $REPO_PROD supprimé avec succès."
   else
     echo "[INFO 3.2.2] Le répertoire $REPO_PROD n'existe pas. Création en cours..."
-    mkdir -p "$REPO_PROD" || { echo "[ERROR 3.2.2] Échec de la création du répertoire $REPO_PROD."; exit 1; }
+    mkdir -p "$REPO_PROD" || {
+      echo "[ERROR 3.2.2] Échec de la création du répertoire $REPO_PROD.";
+      exit 1;
+    }
     echo "[SUCCESS 3.2.2] Répertoire $REPO_PROD créé avec succès."
   fi
 
