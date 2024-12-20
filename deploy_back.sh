@@ -186,24 +186,30 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   echo "=== Sauvegarde terminée avec succès ==="
   echo "=============================================================================="
 
-# Étape 3.2 : Suppression du contenu existant ou création du répertoire de production  
+# Étape 3.2 : Préparation du répertoire de production
   echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
-# Vérifie si le répertoire cible existe
+
   if [ -d "$REPO_PROD" ]; then
-    echo "[INFO 3.2.1] Le répertoire $REPO_PROD existe. Suppression de son contenu..."
-    rm -rf "$REPO_PROD"/* || error_exit "Échec de la suppression du contenu existant dans $REPO_PROD."
+    echo "[INFO 3.2.1] Le répertoire $REPO_PROD existe. Suppression de son contenu sauf .git..."
+    find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + || { echo "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD."; exit 1; }
     echo "[SUCCESS 3.2.1] Contenu du répertoire $REPO_PROD supprimé avec succès."
   else
     echo "[INFO 3.2.2] Le répertoire $REPO_PROD n'existe pas. Création en cours..."
-    mkdir -p "$REPO_PROD" || error_exit "Échec de la création du répertoire $REPO_PROD."
+    mkdir -p "$REPO_PROD" || { echo "[ERROR 3.2.2] Échec de la création du répertoire $REPO_PROD."; exit 1; }
     echo "[SUCCESS 3.2.2] Répertoire $REPO_PROD créé avec succès."
   fi
 
-# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible.
+# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible
   echo "[INFO 3.3] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
   START_TIME=$(date +%s) # Démarrer le chronométrage
 
   rsync -a --delete "$REPO_DEV/" "$REPO_PROD/" 2>/dev/null || { echo "[ERROR 3.3] Échec de la synchronisation des fichiers."; exit 1; }
+
+# Vérification du dépôt Git dans le répertoire de production
+  if [ ! -d "$REPO_PROD/.git" ]; then
+    echo "[ERROR 3.3] Le répertoire $REPO_PROD n'est pas un dépôt Git valide. Synchronisation Git impossible."
+    exit 1
+  fi
 
   END_TIME=$(date +%s) # Arrêter le chronométrage
   DURATION=$((END_TIME - START_TIME))
