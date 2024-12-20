@@ -200,17 +200,25 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   fi
 
 # Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible
-  echo "[INFO 3.3] Copie des fichiers de $REPO_DEV vers $REPO_PROD..."
-  rsync -avh --progress "$REPO_DEV/" "$REPO_PROD/" || error_exit "Échec de la synchronisation vers le répertoire de production."
-  echo "[SUCCESS] Étape 3.3 Synchronisation terminée."
+  echo "[INFO 3.3] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
+  START_TIME=$(date +%s) # Démarrer le chronométrage
 
-# Étape 3.3 : Naviguer vers le répertoire de production
-  echo "[INFO 3.3] Naviguer vers le répertoire de production..."
-  cd "$REPO_PROD" || error_exit "Impossible d'accéder au répertoire $REPO_PROD."
+  rsync -a --delete "$REPO_DEV/" "$REPO_PROD/" 2>/dev/null || { echo "[ERROR 3.3] Échec de la synchronisation des fichiers."; exit 1; }
+
+  END_TIME=$(date +%s) # Arrêter le chronométrage
+  DURATION=$((END_TIME - START_TIME))
+  echo "[SUCCESS] Étape 3.3 Synchronisation terminée en $DURATION secondes."
 
 # Étape 3.4 : Fetch des références distantes
-  echo "[INFO] 3.4 Fetch des références distantes..."
-  git fetch origin || error_exit "Échec du fetch sur origin."
+  echo "[INFO 3.4] Fetch des références distantes dans $REPO_PROD..."
+  cd "$REPO_PROD" || { echo "[ERROR] Impossible d'accéder au répertoire $REPO_PROD."; exit 1; }
+
+# 3.5 Vérification si $REPO_PROD est un dépôt Git
+  if [ ! -d ".git" ]; then
+    echo "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide."; exit 1;
+  fi
+
+  git fetch origin || { echo "[ERROR 3.4] Échec du fetch des références distantes."; exit 1; }
   echo "[SUCCESS] Fetch réussi."
 
 # Étape 4 : Synchronisation du répertoire de développement (dev)
