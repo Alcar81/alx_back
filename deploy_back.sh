@@ -199,7 +199,7 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     echo "[SUCCESS 3.2.2] Répertoire $REPO_PROD créé avec succès."
   fi
 
-# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible
+# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible.
   echo "[INFO 3.3] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
   START_TIME=$(date +%s) # Démarrer le chronométrage
 
