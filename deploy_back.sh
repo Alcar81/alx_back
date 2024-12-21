@@ -278,7 +278,7 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     echo "[SUCCESS] Le serveur backend est actif sur le port 3001."
   fi
 
-# 3.3.2 Nettoyage des sauvegardes temporaires  
+# 3.3.2 Nettoyage des sauvegardes temporaires.  
   echo "[INFO 3.3.2] Nettoyage des sauvegardes temporaires..."
   rm -rf "$GIT_BACKUP" "$ENV_BACKUP" || echo "[WARNING 3.3.2] Impossible de supprimer les sauvegardes temporaires."
   echo "[SUCCESS 3.3.2] Nettoyage terminé."
