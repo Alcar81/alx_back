@@ -253,31 +253,6 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     echo "[WARNING] Aucun fichier .env à restaurer. Vérifiez manuellement si nécessaire."
   fi
 
-  echo "[INFO] Vérification et installation des dépendances..."
-  cd "$REPO_PROD" || error_exit "[ERROR] Impossible d'accéder au répertoire $REPO_PROD."
-
-# Comparer les hash du package-lock.json pour vérifier les modifications
-  if [ -f package-lock.json ] && [ -f /tmp/package-lock-backup ]; then
-    if ! diff package-lock.json /tmp/package-lock-backup > /dev/null; then
-      echo "[INFO] Changements détectés dans package-lock.json. Installation des dépendances..."
-      npm install --production || error_exit "[ERROR] Échec de l'installation des dépendances."
-      echo "[SUCCESS] Dépendances installées avec succès."
-    else
-      echo "[INFO] Aucun changement détecté dans package-lock.json. Pas d'installation nécessaire."
-    fi
-  else
-    echo "[WARNING] Fichier package-lock.json manquant. Installation des dépendances par précaution..."
-    npm install --production || error_exit "[ERROR] Échec de l'installation des dépendances."
-  fi
-
-  echo "[INFO] Vérification du service backend..."
-  curl -I http://localhost:3001 > /dev/null 2>&1
-  if [ $? -ne 0 ]; then
-    error_exit "[ERROR] Le serveur backend ne répond pas sur le port 3001."
-  else
-    echo "[SUCCESS] Le serveur backend est actif sur le port 3001."
-  fi
-
 # 3.3.2 Nettoyage des sauvegardes temporaires.  
   echo "[INFO 3.3.2] Nettoyage des sauvegardes temporaires..."
   rm -rf "$GIT_BACKUP" "$ENV_BACKUP" || echo "[WARNING 3.3.2] Impossible de supprimer les sauvegardes temporaires."
@@ -310,6 +285,9 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   df -h | grep "/$" || echo "[ERROR] Impossible d'obtenir l'état des disques."
   free -h || echo "[ERROR] Impossible d'obtenir l'état de la mémoire."
   uptime || echo "[ERROR] Impossible d'obtenir les informations système."
+
+echo "[INFO] Le redémarrage du serveur backend est géré par GitHub Actions après déploiement."
+echo "[INFO] Surveillez les journaux GitHub Actions pour confirmer que le serveur est bien relancé."
 
 echo "=== Déploiement Backend terminé avec succès : $(date) ==="
 echo "Les logs sont disponibles ici : $LOG_FILE"
