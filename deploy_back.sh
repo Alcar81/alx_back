@@ -189,33 +189,34 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 # Étape 3.2 : Préparation du répertoire de production
   echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
 
-  # Étape 3.2.1 : Suppression du contenu sauf .git
   if [ -d "$REPO_PROD" ]; then
     echo "[INFO 3.2.1] Le répertoire $REPO_PROD existe. Suppression de son contenu sauf .git..."
-    find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + 2>/dev/null || {
-      echo "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD. Certaines entrées peuvent être inaccessibles.";
-      exit 1;
-    }
+    find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + 2>/dev/null || error_exit "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD."
     echo "[SUCCESS 3.2.1] Contenu du répertoire $REPO_PROD supprimé avec succès."
   else
     echo "[INFO 3.2.2] Le répertoire $REPO_PROD n'existe pas. Création en cours..."
-    mkdir -p "$REPO_PROD" || {
-      echo "[ERROR 3.2.2] Échec de la création du répertoire $REPO_PROD.";
-      exit 1;
-    }
+    mkdir -p "$REPO_PROD" || error_exit "[ERROR 3.2.2] Échec de la création du répertoire $REPO_PROD."
     echo "[SUCCESS 3.2.2] Répertoire $REPO_PROD créé avec succès."
   fi
 
-# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible.
-  echo "[INFO 3.3] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
-  START_TIME=$(date +%s) # Démarrer le chronométrage
-
-  rsync -a --delete "$REPO_DEV/" "$REPO_PROD/" 2>/dev/null || { echo "[ERROR 3.3] Échec de la synchronisation des fichiers."; exit 1; }
-
-# Vérification du dépôt Git dans le répertoire de production
+# Validation explicite que .git est présent
   if [ ! -d "$REPO_PROD/.git" ]; then
-    echo "[ERROR 3.3] Le répertoire $REPO_PROD n'est pas un dépôt Git valide. Synchronisation Git impossible."
-    exit 1
+    error_exit "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide après suppression. Abandon."
+  fi
+
+# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible
+  echo "[INFO 3.3] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
+  START_TIME=$(date +%s)
+
+  rsync -a --delete "$REPO_DEV/" "$REPO_PROD/" 2>/dev/null || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
+
+  END_TIME=$(date +%s)
+  DURATION=$((END_TIME - START_TIME))
+  echo "[SUCCESS] Étape 3.3 Synchronisation terminée en $DURATION secondes."
+
+# Validation explicite que .git est toujours valide après synchronisation
+  if [ ! -d "$REPO_PROD/.git" ]; then
+    error_exit "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide après synchronisation. Abandon."
   fi
 
   END_TIME=$(date +%s) # Arrêter le chronométrage
@@ -234,7 +235,7 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   git fetch origin || { echo "[ERROR 3.4] Échec du fetch des références distantes."; exit 1; }
   echo "[SUCCESS] Fetch réussi."
 
-# Étape 4 : Synchronisation du répertoire de développement (dev)
+# Étape 4 : Synchronisation du répertoire de développement (dev).
   echo "=== Étape 4 : Synchronisation du répertoire de développement (dev)"
   cd "$REPO_DEV" || error_exit "Impossible d'accéder au répertoire $REPO_DEV."
 
