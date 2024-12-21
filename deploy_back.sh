@@ -195,12 +195,21 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
 
 # 3.2.1 Sauvegarde temporaire des fichiers sensibles (.git et .env)
-  echo "[INFO 3.2.1] Sauvegarde temporaire du répertoire .git et du fichier .env..."
+  echo "[INFO 3.2.1] Sauvegarde temporaire des fichiers sensibles (.git et .env)..."
+
+# Définir les chemins de sauvegarde temporaire
   GIT_BACKUP="/tmp/git_backup_$(date +'%Y%m%d_%H%M%S')"
   ENV_BACKUP="/tmp/env_backup_$(date +'%Y%m%d_%H%M%S')"
 
-  cp -r "$REPO_PROD/.git" "$GIT_BACKUP" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .git."
+# Sauvegarde du répertoire .git
+  if [ -d "$REPO_PROD/.git" ]; then
+    cp -r "$REPO_PROD/.git" "$GIT_BACKUP" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .git."
+    echo "[SUCCESS] Sauvegarde de .git réalisée avec succès."
+  else
+    echo "[WARNING] Aucun répertoire .git trouvé. Vérifiez manuellement si nécessaire."
+  fi
 
+# Sauvegarde du fichier .env
   if [ -f "$REPO_PROD/.env" ]; then
     cp "$REPO_PROD/.env" "$ENV_BACKUP" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .env."
     echo "[SUCCESS] Sauvegarde de .env réalisée avec succès."
@@ -208,14 +217,7 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     echo "[WARNING] Aucun fichier .env trouvé. Vérifiez manuellement si nécessaire."
   fi
 
-# Vérifier et sauvegarder .env s'il existe
-  if [ -f "$REPO_PROD/.env" ]; then
-    cp "$REPO_PROD/.env" "/tmp/env_backup_$(date +'%Y%m%d_%H%M%S')" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .env."
-    echo "[SUCCESS] Sauvegarde de .env réalisée avec succès."
-  else
-    echo "[WARNING] Aucun fichier .env trouvé. Vérifiez manuellement si nécessaire."
-  fi
-
+  # Confirmation finale des sauvegardes
   echo "[SUCCESS 3.2.1] Sauvegarde des fichiers sensibles réalisée avec succès."
 
 # 3.2.2 Nettoyage du répertoire tout en préservant les fichiers sensibles
