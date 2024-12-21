@@ -94,6 +94,11 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     error_exit "La branche 'dev' n'existe pas. Vérifiez votre dépôt."
   fi
 
+# 2.1.1 Vérifier la connexion au dépôt distant
+  echo "[INFO 2.1.1] Vérification de la connexion au dépôt distant..."
+  git remote -v || error_exit "[ERROR] Impossible de se connecter au dépôt distant."
+
+
 # 2.2 Vérifier les modifications non validées
   echo "[INFO 2.2] Vérifier les modifications non validées..."
   if [ "$(git status --porcelain)" ]; then
@@ -189,61 +194,84 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 # Étape 3.2 : Préparation du répertoire de production
   echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
 
-# 3.2.1 Sauvegarde temporaire du répertoire .git
-  echo "[INFO 3.2.1] Sauvegarde temporaire du répertoire .git..."
-  cp -r "$REPO_PROD/.git" "/tmp/git_backup_$(date +'%Y%m%d_%H%M%S')" || error_exit "[ERROR 3.1] Échec de la sauvegarde de .git."
-  echo "[SUCCESS] Sauvegarde de .git réalisée avec succès."
+# 3.2.1 Sauvegarde temporaire des fichiers sensibles (.git et .env)
+  echo "[INFO 3.2.1] Sauvegarde temporaire du répertoire .git et du fichier .env..."
+  cp -r "$REPO_PROD/.git" "/tmp/git_backup_$(date +'%Y%m%d_%H%M%S')" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .git."
 
-  if [ -d "$REPO_PROD" ]; then
-    echo "[INFO 3.2.1] Le répertoire $REPO_PROD existe. Suppression de son contenu sauf .git..."
-    find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + 2>/dev/null || error_exit "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD."
-    echo "[SUCCESS 3.2.1] Contenu du répertoire $REPO_PROD supprimé avec succès."
+# Vérifier et sauvegarder .env s'il existe
+  if [ -f "$REPO_PROD/.env" ]; then
+    cp "$REPO_PROD/.env" "/tmp/env_backup_$(date +'%Y%m%d_%H%M%S')" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .env."
+    echo "[SUCCESS] Sauvegarde de .env réalisée avec succès."
   else
-    echo "[INFO 3.2.2] Le répertoire $REPO_PROD n'existe pas. Création en cours..."
-    mkdir -p "$REPO_PROD" || error_exit "[ERROR 3.2.2] Échec de la création du répertoire $REPO_PROD."
-    echo "[SUCCESS 3.2.2] Répertoire $REPO_PROD créé avec succès."
+    echo "[WARNING] Aucun fichier .env trouvé. Vérifiez manuellement si nécessaire."
   fi
 
+  echo "[SUCCESS 3.2.1] Sauvegarde des fichiers sensibles réalisée avec succès."
 
-# 3.2.2 Validation explicite que .git est présent
+# 3.2.2 Nettoyage du répertoire tout en préservant les fichiers sensibles
+  echo "[INFO 3.2.2] Suppression du contenu existant dans $REPO_PROD sauf .git et .env..."
+  find "$REPO_PROD" -mindepth 1 -not -name ".git" -not -name ".env" -exec rm -rf {} + 2>/dev/null || error_exit "[ERROR 3.2.2] Échec de la suppression du contenu existant."
+  echo "[SUCCESS 3.2.2] Nettoyage effectué avec succès."
+
+# 3.2.3 Validation explicite de la présence de .git
   if [ ! -d "$REPO_PROD/.git" ]; then
-    error_exit "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide après suppression. Abandon."
+    error_exit "[ERROR 3.2.3] Le répertoire $REPO_PROD n'est pas un dépôt Git valide après suppression. Abandon."
   fi
 
-# 3.3.1 : Copier le contenu du répertoire source vers le répertoire cible
-  echo "[INFO 3.3.1] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
+  # Vérification explicite de la présence de .env
+  if [ ! -f "$REPO_PROD/.env" ]; then
+    echo "[WARNING 3.2.3] Aucun fichier .env présent après suppression. Il sera restauré si sauvegardé."
+  fi
+
+# Étape 3.3 : Synchronisation des fichiers
+  echo "[INFO 3.3] Début de la synchronisation des fichiers..."
   START_TIME=$(date +%s)
 
-  echo "[INFO 3.3.1] Synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
-  rsync -a --delete --exclude=".git" "$REPO_DEV/" "$REPO_PROD/" || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
-  echo "[SUCCESS 3.3.1] Synchronisation terminée avec succès."
-
+  rsync -a --delete --exclude=".git" --exclude=".env" "$REPO_DEV/" "$REPO_PROD/" || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
   END_TIME=$(date +%s)
   DURATION=$((END_TIME - START_TIME))
-  echo "[SUCCESS] Étape 3.3.1 Synchronisation terminée en $DURATION secondes."
-
-# 3.3.2 : Restauration du répertoire .git
-  echo "[INFO 3.3.2] Restauration du répertoire .git..."
-  cp -r "/tmp/git_backup_*" "$REPO_PROD/.git" || error_exit "[ERROR 3.3.2] Échec de la restauration de .git."
-  echo "[SUCCESS] Restauration de .git réussie."
-
-  if [ ! -r "$REPO_PROD/.git" ] || [ ! -w "$REPO_PROD/.git" ]; then
-      error_exit "[ERROR] Permissions incorrectes sur .git. Vérifiez manuellement."
-  fi
-
-# 3.3.3 : Nettoyage des sauvegardes temporaires
-  echo "[INFO 3.3.3] Nettoyage des sauvegardes temporaires..."
-  rm -rf /tmp/git_backup_* || echo "[WARNING] Impossible de supprimer les sauvegardes temporaires. Vérifiez manuellement."
-  echo "[SUCCESS] Nettoyage terminé."
-
-# 3.3.4 Validation explicite que .git est toujours valide après synchronisation
-  if [ ! -d "$REPO_PROD/.git" ]; then
-    error_exit "[ERROR] 3.3.4 Le répertoire $REPO_PROD n'est pas un dépôt Git valide après synchronisation. Abandon."
-  fi
-
-  END_TIME=$(date +%s) # Arrêter le chronométrage
-  DURATION=$((END_TIME - START_TIME))
   echo "[SUCCESS] Étape 3.3 Synchronisation terminée en $DURATION secondes."
+
+# 3.3.1 Restauration des fichiers sensibles (.git et .env)
+  echo "[INFO 3.3.1] Restauration des fichiers sensibles (.git et .env)..."
+  cp -r "/tmp/git_backup_*" "$REPO_PROD/.git" || error_exit "[ERROR 3.3.1] Échec de la restauration de .git."
+
+  if [ -f "/tmp/env_backup_*" ]; then
+    cp "/tmp/env_backup_*" "$REPO_PROD/.env" || error_exit "[ERROR 3.3.1] Échec de la restauration de .env."
+    echo "[SUCCESS] Restauration de .env réussie."
+  else
+    echo "[WARNING] Aucun fichier .env à restaurer. Vérifiez manuellement si nécessaire."
+  fi
+
+  echo "[INFO] Vérification et installation des dépendances..."
+  cd "$REPO_PROD" || error_exit "[ERROR] Impossible d'accéder au répertoire $REPO_PROD."
+
+# Comparer les hash du package-lock.json pour vérifier les modifications
+  if [ -f package-lock.json ] && [ -f /tmp/package-lock-backup ]; then
+    if ! diff package-lock.json /tmp/package-lock-backup > /dev/null; then
+      echo "[INFO] Changements détectés dans package-lock.json. Installation des dépendances..."
+      npm install --production || error_exit "[ERROR] Échec de l'installation des dépendances."
+      echo "[SUCCESS] Dépendances installées avec succès."
+    else
+      echo "[INFO] Aucun changement détecté dans package-lock.json. Pas d'installation nécessaire."
+    fi
+  else
+    echo "[WARNING] Fichier package-lock.json manquant. Installation des dépendances par précaution..."
+    npm install --production || error_exit "[ERROR] Échec de l'installation des dépendances."
+  fi
+
+  echo "[INFO] Vérification du service backend..."
+  curl -I http://localhost:3001 > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    error_exit "[ERROR] Le serveur backend ne répond pas sur le port 3001."
+  else
+    echo "[SUCCESS] Le serveur backend est actif sur le port 3001."
+  fi
+
+# 3.3.2 Nettoyage des sauvegardes temporaires
+  echo "[INFO 3.3.2] Nettoyage des sauvegardes temporaires..."
+  rm -rf /tmp/git_backup_* /tmp/env_backup_* || echo "[WARNING 3.3.2] Impossible de supprimer les sauvegardes temporaires."
+  echo "[SUCCESS 3.3.2] Nettoyage terminé."
 
 # Étape 3.4 : Fetch des références distantes
   echo "[INFO 3.4] Fetch des références distantes dans $REPO_PROD..."
@@ -266,6 +294,12 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   echo "[INFO] 4.1 Passage à la branche dev..."
   git checkout dev || error_exit "Échec du checkout de dev."
   echo "[SUCCESS] Passage à dev réussi. : $(date)"
+
+# 4.2 : Utilisation des ressources après déploiement
+  echo "[INFO] Utilisation des ressources après déploiement :"
+  df -h | grep "/$" || echo "[ERROR] Impossible d'obtenir l'état des disques."
+  free -h || echo "[ERROR] Impossible d'obtenir l'état de la mémoire."
+  uptime || echo "[ERROR] Impossible d'obtenir les informations système."
 
 echo "=== Déploiement Backend terminé avec succès : $(date) ==="
 echo "Les logs sont disponibles ici : $LOG_FILE"
