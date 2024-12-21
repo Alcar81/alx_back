@@ -196,7 +196,17 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 
 # 3.2.1 Sauvegarde temporaire des fichiers sensibles (.git et .env)
   echo "[INFO 3.2.1] Sauvegarde temporaire du répertoire .git et du fichier .env..."
-  cp -r "$REPO_PROD/.git" "/tmp/git_backup_$(date +'%Y%m%d_%H%M%S')" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .git."
+  GIT_BACKUP="/tmp/git_backup_$(date +'%Y%m%d_%H%M%S')"
+  ENV_BACKUP="/tmp/env_backup_$(date +'%Y%m%d_%H%M%S')"
+
+  cp -r "$REPO_PROD/.git" "$GIT_BACKUP" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .git."
+
+  if [ -f "$REPO_PROD/.env" ]; then
+    cp "$REPO_PROD/.env" "$ENV_BACKUP" || error_exit "[ERROR 3.2.1] Échec de la sauvegarde de .env."
+    echo "[SUCCESS] Sauvegarde de .env réalisée avec succès."
+  else
+    echo "[WARNING] Aucun fichier .env trouvé. Vérifiez manuellement si nécessaire."
+  fi
 
 # Vérifier et sauvegarder .env s'il existe
   if [ -f "$REPO_PROD/.env" ]; then
@@ -234,10 +244,10 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 
 # 3.3.1 Restauration des fichiers sensibles (.git et .env)
   echo "[INFO 3.3.1] Restauration des fichiers sensibles (.git et .env)..."
-  cp -r "/tmp/git_backup_*" "$REPO_PROD/.git" || error_exit "[ERROR 3.3.1] Échec de la restauration de .git."
+  cp -r "$GIT_BACKUP" "$REPO_PROD/.git" || error_exit "[ERROR 3.3.1] Échec de la restauration de .git."
 
-  if [ -f "/tmp/env_backup_*" ]; then
-    cp "/tmp/env_backup_*" "$REPO_PROD/.env" || error_exit "[ERROR 3.3.1] Échec de la restauration de .env."
+  if [ -f "$ENV_BACKUP" ]; then
+    cp "$ENV_BACKUP" "$REPO_PROD/.env" || error_exit "[ERROR 3.3.1] Échec de la restauration de .env."
     echo "[SUCCESS] Restauration de .env réussie."
   else
     echo "[WARNING] Aucun fichier .env à restaurer. Vérifiez manuellement si nécessaire."
@@ -268,9 +278,9 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     echo "[SUCCESS] Le serveur backend est actif sur le port 3001."
   fi
 
-# 3.3.2 Nettoyage des sauvegardes temporaires
+# 3.3.2 Nettoyage des sauvegardes temporaires  
   echo "[INFO 3.3.2] Nettoyage des sauvegardes temporaires..."
-  rm -rf /tmp/git_backup_* /tmp/env_backup_* || echo "[WARNING 3.3.2] Impossible de supprimer les sauvegardes temporaires."
+  rm -rf "$GIT_BACKUP" "$ENV_BACKUP" || echo "[WARNING 3.3.2] Impossible de supprimer les sauvegardes temporaires."
   echo "[SUCCESS 3.3.2] Nettoyage terminé."
 
 # Étape 3.4 : Fetch des références distantes
