@@ -189,6 +189,11 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 # Étape 3.2 : Préparation du répertoire de production
   echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
 
+# 3.2.1 Sauvegarde temporaire du répertoire .git
+  echo "[INFO 3.2.1] Sauvegarde temporaire du répertoire .git..."
+  cp -r "$REPO_PROD/.git" "/tmp/git_backup_$(date +'%Y%m%d_%H%M%S')" || error_exit "[ERROR 3.1] Échec de la sauvegarde de .git."
+  echo "[SUCCESS] Sauvegarde de .git réalisée avec succès."
+
   if [ -d "$REPO_PROD" ]; then
     echo "[INFO 3.2.1] Le répertoire $REPO_PROD existe. Suppression de son contenu sauf .git..."
     find "$REPO_PROD" -mindepth 1 -not -name ".git" -exec rm -rf {} + 2>/dev/null || error_exit "[ERROR 3.2.1] Échec de la suppression du contenu existant dans $REPO_PROD."
@@ -199,24 +204,41 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     echo "[SUCCESS 3.2.2] Répertoire $REPO_PROD créé avec succès."
   fi
 
-# Validation explicite que .git est présent
+
+# 3.2.2 Validation explicite que .git est présent
   if [ ! -d "$REPO_PROD/.git" ]; then
     error_exit "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide après suppression. Abandon."
   fi
 
-# Étape 3.3 : Copier le contenu du répertoire source vers le répertoire cible
-  echo "[INFO 3.3] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
+# 3.3.1 : Copier le contenu du répertoire source vers le répertoire cible
+  echo "[INFO 3.3.1] Début de la synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
   START_TIME=$(date +%s)
 
-  rsync -a --delete "$REPO_DEV/" "$REPO_PROD/" 2>/dev/null || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
+  echo "[INFO 3.3.1] Synchronisation des fichiers de $REPO_DEV vers $REPO_PROD..."
+  rsync -a --delete --exclude=".git" "$REPO_DEV/" "$REPO_PROD/" || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
+  echo "[SUCCESS 3.3.1] Synchronisation terminée avec succès."
 
   END_TIME=$(date +%s)
   DURATION=$((END_TIME - START_TIME))
-  echo "[SUCCESS] Étape 3.3 Synchronisation terminée en $DURATION secondes."
+  echo "[SUCCESS] Étape 3.3.1 Synchronisation terminée en $DURATION secondes."
 
-# Validation explicite que .git est toujours valide après synchronisation
+# 3.3.2 : Restauration du répertoire .git
+  echo "[INFO 3.3.2] Restauration du répertoire .git..."
+  cp -r "/tmp/git_backup_*" "$REPO_PROD/.git" || error_exit "[ERROR 3.3.2] Échec de la restauration de .git."
+  echo "[SUCCESS] Restauration de .git réussie."
+
+  if [ ! -r "$REPO_PROD/.git" ] || [ ! -w "$REPO_PROD/.git" ]; then
+      error_exit "[ERROR] Permissions incorrectes sur .git. Vérifiez manuellement."
+  fi
+
+# 3.3.3 : Nettoyage des sauvegardes temporaires
+  echo "[INFO 3.3.3] Nettoyage des sauvegardes temporaires..."
+  rm -rf /tmp/git_backup_* || echo "[WARNING] Impossible de supprimer les sauvegardes temporaires. Vérifiez manuellement."
+  echo "[SUCCESS] Nettoyage terminé."
+
+# 3.3.4 Validation explicite que .git est toujours valide après synchronisation
   if [ ! -d "$REPO_PROD/.git" ]; then
-    error_exit "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide après synchronisation. Abandon."
+    error_exit "[ERROR] 3.3.4 Le répertoire $REPO_PROD n'est pas un dépôt Git valide après synchronisation. Abandon."
   fi
 
   END_TIME=$(date +%s) # Arrêter le chronométrage
@@ -225,15 +247,16 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 
 # Étape 3.4 : Fetch des références distantes
   echo "[INFO 3.4] Fetch des références distantes dans $REPO_PROD..."
-  cd "$REPO_PROD" || { echo "[ERROR] Impossible d'accéder au répertoire $REPO_PROD."; exit 1; }
+  cd "$REPO_PROD" || error_exit "[ERROR] 3.4 Impossible d'accéder au répertoire $REPO_PROD."
 
 # 3.5 Vérification si $REPO_PROD est un dépôt Git
   if [ ! -d ".git" ]; then
-    echo "[ERROR] Le répertoire $REPO_PROD n'est pas un dépôt Git valide."; exit 1;
+    error_exit "[ERROR] 3.5 Le répertoire $REPO_PROD n'est pas un dépôt Git valide."
   fi
 
-  git fetch origin || { echo "[ERROR 3.4] Échec du fetch des références distantes."; exit 1; }
-  echo "[SUCCESS] Fetch réussi."
+# 3.6 Fetch des références distantes
+  git fetch origin || error_exit "[ERROR 3.6] Échec du fetch des références distantes."
+  echo "[SUCCESS] 3.6 Fetch réussi."
 
 # Étape 4 : Synchronisation du répertoire de développement (dev).
   echo "=== Étape 4 : Synchronisation du répertoire de développement (dev)"
