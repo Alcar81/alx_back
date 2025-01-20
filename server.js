@@ -50,11 +50,12 @@ app.use((req, res, next) => {
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".html")) {
-        res.setHeader(
-          "Content-Security-Policy",
-          res.getHeader("Content-Security-Policy")
-        );
+      if (filePath.endsWith(".css")) {
+        res.setHeader("Content-Type", "text/css");
+      } else if (filePath.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript");
+      } else if (filePath.endsWith(".html")) {
+        res.setHeader("Content-Type", "text/html");
       }
     },
   })
