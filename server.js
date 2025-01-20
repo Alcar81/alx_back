@@ -25,12 +25,22 @@ const prisma = new PrismaClient({
 // Middleware pour générer un nonce et configurer la CSP
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64"); // Génère un nonce unique
-  res.locals.nonce = nonce; // Stocke le nonce pour le transmettre au frontend
+  res.locals.nonce = nonce; // Stocke le nonce pour utilisation côté frontend
 
-  // Ajout de l'en-tête CSP
+  // Configuration complète de l'en-tête CSP
   res.setHeader(
     "Content-Security-Policy",
-    `default-src 'self'; style-src 'self' 'nonce-${nonce}'; script-src 'self' 'nonce-${nonce}';`
+    `
+      default-src 'self';
+      script-src 'self' 'nonce-${nonce}' 'unsafe-eval';
+      style-src 'self' 'nonce-${nonce}';
+      img-src 'self' data:;
+      connect-src 'self';
+      object-src 'none';
+      frame-ancestors 'self';
+      base-uri 'self';
+      form-action 'self';
+    `.replace(/\s{2,}/g, " ").trim() // Nettoie les espaces pour compresser l'en-tête
   );
 
   next();
