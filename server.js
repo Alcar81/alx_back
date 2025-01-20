@@ -50,12 +50,11 @@ app.use((req, res, next) => {
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".css")) {
-        res.setHeader("Content-Type", "text/css");
-      } else if (filePath.endsWith(".js")) {
-        res.setHeader("Content-Type", "application/javascript");
-      } else if (filePath.endsWith(".html")) {
-        res.setHeader("Content-Type", "text/html");
+      if (filePath.endsWith(".html")) {
+        res.setHeader(
+          "Content-Security-Policy",
+          res.getHeader("Content-Security-Policy")
+        );
       }
     },
   })
@@ -75,10 +74,6 @@ app.get("/health", async (req, res) => {
     res.status(500).send("Erreur interne");
   }
 });
-
-// Routes principales
-app.use("/api/users", userRoutes);
-app.use("/api/auth", authRoutes);
 
 // Injection dynamique du nonce dans le fichier HTML
 app.get("*", (req, res) => {
@@ -106,6 +101,10 @@ app.get("*", (req, res) => {
     res.send(updatedHtml);
   });
 });
+
+// Routes principales
+app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
 
 // Lancer le serveur HTTP
 app.listen(PORT, () => {
