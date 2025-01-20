@@ -1,3 +1,4 @@
+//serveur.js
 const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
@@ -46,15 +47,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware pour servir les fichiers statiques (CSS, JS, images)
+// Middleware pour servir les fichiers statiques (CSS, JS, images) avec types MIME corrigés
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".html")) {
-        res.setHeader(
-          "Content-Security-Policy",
-          res.getHeader("Content-Security-Policy")
-        );
+      if (filePath.endsWith(".css")) {
+        res.setHeader("Content-Type", "text/css");
+      } else if (filePath.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript");
+      } else if (filePath.endsWith(".html")) {
+        res.setHeader("Content-Type", "text/html");
       }
     },
   })
@@ -94,8 +96,10 @@ app.get("*", (req, res) => {
       return;
     }
 
-    // Remplace le placeholder par le nonce
-    const updatedHtml = data.replace(/__NONCE_PLACEHOLDER__/g, nonce);
+    // Remplace les placeholders pour le nonce
+    const updatedHtml = data
+      .replace(/<script /g, `<script nonce="${nonce}" `)
+      .replace(/<link /g, `<link nonce="${nonce}" `);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
