@@ -4,6 +4,8 @@ const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
 const crypto = require("crypto"); // Utilisé pour générer un nonce
+const fs = require("fs");
+const path = require("path");
 const userRoutes = require("./routes/users");
 const authRoutes = require("./routes/auth");
 
@@ -59,6 +61,26 @@ app.get("/health", async (req, res) => {
     console.error("Erreur de santé :", error);
     res.status(500).send("Erreur interne");
   }
+});
+
+// Injection dynamique du nonce dans le fichier HTML
+app.get("*", (req, res) => {
+  const nonce = res.locals.nonce; // Récupère le nonce généré
+  const indexPath = path.join(__dirname, "../public_html/build/index.html"); // Chemin vers index.html
+
+  fs.readFile(indexPath, "utf8", (err, data) => {
+    if (err) {
+      console.error("Erreur lors de la lecture du fichier index.html :", err);
+      res.status(500).send("Erreur interne");
+      return;
+    }
+
+    // Remplace le placeholder par le nonce
+    const updatedHtml = data.replace("__NONCE_PLACEHOLDER__", nonce);
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(updatedHtml);
+  });
 });
 
 // Routes principales
