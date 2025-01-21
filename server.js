@@ -110,7 +110,7 @@ app.get("*", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 
-// Lancer le serveur HTTP
+// Lancer le serveur HTTP .
 app.listen(PORT, () => {
   console.log(`Le serveur est en cours d'exécution sur le port ${PORT}`);
 });
