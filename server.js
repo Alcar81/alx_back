@@ -19,12 +19,13 @@ app.use((req, res, next) => {
       default-src 'self';
       script-src 'self' 'nonce-${nonce}';
       style-src 'self' 'nonce-${nonce}';
-      img-src 'self' data:;
+      img-src 'self' data: https:;
       connect-src 'self';
       object-src 'none';
       frame-ancestors 'none';
       base-uri 'self';
-    `.trim()
+      form-action 'self';
+    `.replace(/\s{2,}/g, " ").trim() // Nettoyage des espaces inutiles
   );
 
   next();
@@ -40,6 +41,8 @@ app.use(
         res.setHeader("Content-Type", "application/javascript");
       } else if (filePath.endsWith(".json")) {
         res.setHeader("Content-Type", "application/json");
+      } else if (filePath.endsWith(".html")) {
+        res.setHeader("Content-Type", "text/html");
       }
     },
   })
@@ -52,15 +55,24 @@ app.get("*", (req, res) => {
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
+      console.error("Erreur lors de la lecture du fichier HTML :", err);
       res.status(500).send("Erreur lors de la lecture du fichier HTML.");
       return;
     }
 
-    const updatedHtml = data.replace(/__NONCE__/g, nonce);
+    // Remplace les placeholders __NONCE_PLACEHOLDER__ par le nonce généré
+    const updatedHtml = data.replace(/__NONCE_PLACEHOLDER__/g, nonce);
+
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
   });
 });
+
+// Activation de CORS si nécessaire (en développement ou configuration spécifique)
+if (process.env.NODE_ENV === "development") {
+  app.use(cors());
+  console.log("CORS activé pour le développement.");
+}
 
 // Lancer le serveur
 app.listen(PORT, () => {
