@@ -228,8 +228,13 @@ jobs:
 
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
             set -e
-            echo '[INFO - Étape 7] Création des utilisateurs et de la base de données...' | tee -a "$LOG_FILE"
-            
+            echo '[INFO - Étape 7] Création des utilisateurs et de la base de données...'
+
+            # Assurez-vous que le répertoire des logs existe
+            LOG_DIR=\$(dirname "$LOG_FILE")
+            mkdir -p "\$LOG_DIR"
+            echo '[INFO] Répertoire des logs vérifié/créé : \$LOG_DIR' | tee -a "$LOG_FILE"
+
             # Vérification et création du rôle si absent
             docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USERNAME'" | grep -q 1 || {
               docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "CREATE ROLE \"$DB_USERNAME\" WITH LOGIN PASSWORD '$DB_PASSWORD';"
