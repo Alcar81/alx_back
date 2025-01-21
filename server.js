@@ -17,15 +17,14 @@ app.use((req, res, next) => {
     "Content-Security-Policy",
     `
       default-src 'self';
-      script-src 'self' 'nonce-${nonce}';
-      style-src 'self' 'nonce-${nonce}';
-      img-src 'self' data: https:;
+      script-src 'self' 'nonce-${nonce}' 'unsafe-inline';
+      style-src 'self' 'nonce-${nonce}' 'unsafe-inline';
+      img-src 'self' data:;
       connect-src 'self';
       object-src 'none';
       frame-ancestors 'none';
       base-uri 'self';
-      form-action 'self';
-    `.replace(/\s{2,}/g, " ").trim() // Nettoyage des espaces inutiles
+    `.trim()
   );
 
   next();
