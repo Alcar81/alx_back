@@ -35,6 +35,7 @@ jobs:
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       DOMAIN: ${{ secrets.DOMAIN }}
       GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
+      REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
 
     steps:
       # Étape 1 : Préparation initiale
@@ -285,7 +286,8 @@ jobs:
             DATABASE_URL=$DATABASE_URL
             NODE_ENV=$ENV
             JWT_SECRET=$JWT_SECRET
-            SERVER_PORT=$BACKEND_PORT
+            SERVER_PORT=$BACKEND_PORT            
+            REACT_APP_API_URL=$REACT_APP_API_URL
           EOT
             cat "$MOUNT_PATH/.env"
 

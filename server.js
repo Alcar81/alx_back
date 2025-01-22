@@ -6,7 +6,17 @@ const path = require("path");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || 7000;
+
+// Charger les variables depuis .env
+const PORT = process.env.SERVER_PORT || 7000;
+const API_URL = process.env.REACT_APP_API_URL;
+const ENV = process.env.NODE_ENV || "development";
+
+// Valider la configuration obligatoire
+if (!API_URL) {
+  console.error("Erreur : La variable d'environnement REACT_APP_API_URL est manquante !");
+  process.exit(1); // Arrêtez le serveur si une configuration essentielle manque
+}
 
 // Middleware pour générer un nonce et configurer la CSP
 app.use((req, res, next) => {
@@ -20,7 +30,7 @@ app.use((req, res, next) => {
       script-src 'self' 'nonce-${nonce}' 'unsafe-inline';
       style-src 'self' 'nonce-${nonce}' 'unsafe-inline';
       img-src 'self' data:;
-      connect-src 'self';
+      connect-src 'self' ${API_URL};
       object-src 'none';
       frame-ancestors 'none';
       base-uri 'self';
@@ -59,7 +69,7 @@ app.get("*", (req, res) => {
       return;
     }
 
-    // Remplace les placeholders __NONCE_PLACEHOLDER__ par le nonce généré
+    // Remplacement des placeholders __NONCE_PLACEHOLDER__ par le nonce généré
     const updatedHtml = data.replace(/__NONCE_PLACEHOLDER__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
@@ -68,12 +78,23 @@ app.get("*", (req, res) => {
 });
 
 // Activation de CORS si nécessaire (en développement ou configuration spécifique)
-if (process.env.NODE_ENV === "development") {
+if (ENV === "development") {
   app.use(cors());
   console.log("CORS activé pour le développement.");
 }
 
+// Endpoint pour déboguer les variables d'environnement
+app.get("/debug", (req, res) => {
+  res.json({
+    serverPort: PORT,
+    apiUrl: API_URL,
+    environment: ENV,
+  });
+});
+
 // Lancer le serveur
 app.listen(PORT, () => {
   console.log(`Serveur en cours d'exécution sur le port ${PORT}`);
+  console.log(`Environnement : ${ENV}`);
+  console.log(`API URL : ${API_URL}`);
 });
