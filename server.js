@@ -70,8 +70,8 @@ app.get("*", (req, res) => {
       return;
     }
 
-    // Remplacement des placeholders __NONCE_PLACEHOLDER__ par le nonce généré
-    const updatedHtml = data.replace(/__NONCE_PLACEHOLDER__/g, nonce);
+    // Remplacement des placeholders __NONCE__ par le nonce généré
+    const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
