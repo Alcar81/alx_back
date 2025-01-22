@@ -9,14 +9,15 @@ const app = express();
 
 // Charger les variables depuis .env
 const PORT = process.env.SERVER_PORT || 7000;
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 const ENV = process.env.NODE_ENV || "development";
 
-// Valider la configuration obligatoire
-if (!API_URL) {
-  console.error("Erreur : La variable d'environnement REACT_APP_API_URL est manquante !");
-  process.exit(1); // Arrêtez le serveur si une configuration essentielle manque
-}
+// Débogage : Affichage des variables d'environnement
+console.log({
+  SERVER_PORT: process.env.SERVER_PORT,
+  API_URL: process.env.REACT_APP_API_URL,
+  NODE_ENV: process.env.NODE_ENV,
+});
 
 // Middleware pour générer un nonce et configurer la CSP
 app.use((req, res, next) => {
