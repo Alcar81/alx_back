@@ -31,6 +31,7 @@ app.use((req, res, next) => {
 app.use(
   helmet({
     contentSecurityPolicy: {
+      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-inline'"],
@@ -48,16 +49,17 @@ app.use(
 
 // Middleware pour servir les fichiers statiques
 app.use(
-  express.static(path.join(__dirname, "../public_html/build"), {
+  express.static(path.join(__dirname, "../../frontend/public_html/build"), {
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".css")) {
-        res.setHeader("Content-Type", "text/css");
-      } else if (filePath.endsWith(".js")) {
-        res.setHeader("Content-Type", "application/javascript");
-      } else if (filePath.endsWith(".json")) {
-        res.setHeader("Content-Type", "application/json");
-      } else if (filePath.endsWith(".html")) {
-        res.setHeader("Content-Type", "text/html");
+      const ext = path.extname(filePath);
+      const mimeTypes = {
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".html": "text/html",
+      };
+      if (mimeTypes[ext]) {
+        res.setHeader("Content-Type", mimeTypes[ext]);
       }
     },
   })
@@ -66,20 +68,30 @@ app.use(
 // Endpoint pour servir le fichier HTML avec injection de nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
-  const indexPath = path.join(__dirname, "../public_html/build/index.html");
+  const indexPath = path.join(__dirname, "../../frontend/public_html/build/index.html");
 
-  fs.readFile(indexPath, "utf8", (err, data) => {
+  // Vérification que le fichier existe
+  fs.access(indexPath, fs.constants.F_OK, (err) => {
     if (err) {
-      console.error("Erreur lors de la lecture du fichier HTML :", err);
-      res.status(500).send("Erreur lors de la lecture du fichier HTML.");
+      console.error("Fichier index.html introuvable :", indexPath);
+      res.status(404).send("Fichier index.html introuvable.");
       return;
     }
 
-    // Remplacement des placeholders __NONCE__ par le nonce généré
-    const updatedHtml = data.replace(/__NONCE__/g, nonce);
+    // Lecture et injection du nonce
+    fs.readFile(indexPath, "utf8", (readErr, data) => {
+      if (readErr) {
+        console.error("Erreur lors de la lecture du fichier index.html :", readErr);
+        res.status(500).send("Erreur lors de la lecture du fichier index.html.");
+        return;
+      }
 
-    res.setHeader("Content-Type", "text/html");
-    res.send(updatedHtml);
+      // Remplacement des placeholders __NONCE__ par le nonce généré
+      const updatedHtml = data.replace(/__NONCE__/g, nonce);
+
+      res.setHeader("Content-Type", "text/html");
+      res.send(updatedHtml);
+    });
   });
 });
 
