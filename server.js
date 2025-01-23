@@ -34,8 +34,16 @@ app.use(
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-inline'"],
-        styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-inline'"],
+        scriptSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+          "'unsafe-inline'",
+        ],
+        styleSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+          "'unsafe-inline'",
+        ],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
         objectSrc: ["'none'"],
@@ -43,13 +51,13 @@ app.use(
         baseUri: ["'self'"],
       },
     },
-    crossOriginEmbedderPolicy: false, // Ajustez selon vos besoins
+    crossOriginEmbedderPolicy: false, // Désactiver si nécessaire
   })
 );
 
 // Middleware pour servir les fichiers statiques
 app.use(
-  express.static(path.join(__dirname, "../../frontend/public_html/build"), {
+  express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath);
       const mimeTypes = {
@@ -68,7 +76,7 @@ app.use(
 // Endpoint pour servir le fichier HTML avec injection de nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
-  const indexPath = path.join(__dirname, "../../frontend/public_html/build/index.html");
+  const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
   // Vérification que le fichier existe
   fs.access(indexPath, fs.constants.F_OK, (err) => {
