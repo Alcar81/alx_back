@@ -1,4 +1,5 @@
 const express = require("express");
+const helmet = require("helmet");
 const cors = require("cors");
 const crypto = require("crypto"); // Utilisé pour générer un nonce
 const fs = require("fs");
@@ -19,27 +20,31 @@ console.log({
   NODE_ENV: process.env.NODE_ENV,
 });
 
-// Middleware pour générer un nonce et configurer la CSP
+// Middleware pour générer un nonce
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64");
   res.locals.nonce = nonce;
-
-  res.setHeader(
-    "Content-Security-Policy",
-    `
-      default-src 'self';
-      script-src 'self' 'nonce-${nonce}' 'unsafe-inline';
-      style-src 'self' 'nonce-${nonce}' 'unsafe-inline';
-      img-src 'self' data:;
-      connect-src 'self' ${API_URL};
-      object-src 'none';
-      frame-ancestors 'none';
-      base-uri 'self';
-    `.trim()
-  );
-
   next();
 });
+
+// Configurer Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-inline'"],
+        styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", API_URL],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Ajustez selon vos besoins
+  })
+);
 
 // Middleware pour servir les fichiers statiques
 app.use(
