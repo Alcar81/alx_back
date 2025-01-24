@@ -27,7 +27,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configurer Helmet
+// Configurer Helmet avec une CSP dynamique
 app.use(
   helmet({
     contentSecurityPolicy: {
