@@ -27,14 +27,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configurer Helmet avec une CSP dynamique
+// Configurer Helmet
 app.use(
   helmet({
     contentSecurityPolicy: {
+      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
-        styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+        scriptSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+          "'unsafe-inline'",
+        ],
+        styleSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+          "'unsafe-inline'",
+        ],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
         objectSrc: ["'none'"],
@@ -42,10 +51,11 @@ app.use(
         baseUri: ["'self'"],
       },
     },
+    crossOriginEmbedderPolicy: false, // Désactiver si nécessaire
   })
 );
 
-// Middleware pour servir les fichiers statiques
+// Middleware pour servir les fichiers statiques avec cache
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -56,8 +66,19 @@ app.use(
         ".json": "application/json",
         ".html": "text/html",
       };
+
+      // Définir le type MIME approprié
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
+      }
+
+      // Ajouter les en-têtes de cache
+      if (ext === ".html") {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       }
     },
   })
