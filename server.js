@@ -37,12 +37,10 @@ app.use(
         scriptSrc: [
           "'self'",
           (req, res) => `'nonce-${res.locals.nonce}'`,
-          "'unsafe-inline'",
         ],
         styleSrc: [
           "'self'",
           (req, res) => `'nonce-${res.locals.nonce}'`,
-          "'unsafe-inline'",
         ],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
