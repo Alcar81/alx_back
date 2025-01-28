@@ -7,7 +7,7 @@ require("dotenv").config();
 
 const app = express();
 
-// Charger les variables d'environnement
+// Charger les variables depuis .env
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 
@@ -25,18 +25,13 @@ app.use(
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
-        ],
-        styleSrc: [
-          "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
-        ],
+        scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+        styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -55,26 +50,38 @@ app.use(
         ".html": "text/html",
       };
 
+      // Définir le type MIME approprié
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
+      }
+
+      // Ajout de l'en-tête de cache pour les fichiers statiques
+      if (ext === ".html") {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       }
     },
   })
 );
 
-// Endpoint pour servir index.html avec nonce
+// Endpoint pour servir index.html avec injection de nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
-      console.error("Erreur lors de la lecture de index.html :", err);
-      res.status(500).send("Erreur serveur.");
+      console.error("Erreur lors de la lecture du fichier HTML :", err);
+      res.status(500).send("Erreur lors de la lecture du fichier HTML.");
       return;
     }
 
+    // Remplacement du placeholder __NONCE__ par le nonce généré
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
+
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
   });
@@ -83,4 +90,5 @@ app.get("*", (req, res) => {
 // Lancer le serveur
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
+  console.log(`API URL configurée : ${API_URL}`);
 });
