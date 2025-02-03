@@ -7,14 +7,15 @@ require("dotenv").config();
 
 const app = express();
 
-// Charger les variables depuis .env
+// Charger les variables d'environnement
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 
-// Middleware pour générer un nonce
+// Middleware pour générer un nonce sécurisé
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64");
   res.locals.nonce = nonce;
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=()");
   next();
 });
 
@@ -25,13 +26,18 @@ app.use(
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
-        styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+        scriptSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+        ],
+        styleSrc: [
+          "'self'",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+        ],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
-        baseUri: ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -55,7 +61,7 @@ app.use(
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Ajout de l'en-tête de cache pour les fichiers statiques
+      // Ajout de l'en-tête de cache pour optimiser le chargement des fichiers statiques
       if (ext === ".html") {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.setHeader("Pragma", "no-cache");
@@ -79,7 +85,7 @@ app.get("*", (req, res) => {
       return;
     }
 
-    // Remplacement du placeholder __NONCE__ par le nonce généré
+    // Vérification que le nonce est bien remplacé
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
@@ -89,6 +95,6 @@ app.get("*", (req, res) => {
 
 // Lancer le serveur
 app.listen(PORT, () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
-  console.log(`API URL configurée : ${API_URL}`);
+  console.log(`✅ Serveur démarré sur le port ${PORT}`);
+  console.log(`✅ API URL configurée : ${API_URL}`);
 });
