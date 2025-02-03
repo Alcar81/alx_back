@@ -15,7 +15,7 @@ const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64");
   res.locals.nonce = nonce;
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=()");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=(self)");
   next();
 });
 
