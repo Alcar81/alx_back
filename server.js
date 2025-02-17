@@ -15,7 +15,10 @@ const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64");
   res.locals.nonce = nonce;
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=(self)");
+
+  // Configuration de Permissions-Policy avec format correct
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=()");
+
   next();
 });
 
@@ -28,11 +31,13 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
+          "'strict-dynamic'",
+          (req, res) => `'nonce-${res.locals.nonce}'`
         ],
         styleSrc: [
           "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
+          "'unsafe-inline'", // Obligatoire pour Emotion.js (ou utiliser un nonce ici)
+          (req, res) => `'nonce-${res.locals.nonce}'`
         ],
         imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
@@ -44,7 +49,7 @@ app.use(
   })
 );
 
-// Servir les fichiers statiques
+// Servir les fichiers statiques avec bonnes entêtes MIME et cache
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -61,7 +66,7 @@ app.use(
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Ajout de l'en-tête de cache pour optimiser le chargement des fichiers statiques
+      // Optimisation du cache pour performances
       if (ext === ".html") {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.setHeader("Pragma", "no-cache");
@@ -80,12 +85,12 @@ app.get("*", (req, res) => {
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
-      console.error("Erreur lors de la lecture du fichier HTML :", err);
+      console.error("❌ Erreur : Impossible de lire index.html :", err);
       res.status(500).send("Erreur lors de la lecture du fichier HTML.");
       return;
     }
 
-    // Vérification que le nonce est bien remplacé
+    // Injection correcte du nonce
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
