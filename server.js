@@ -78,7 +78,7 @@ app.use(
   })
 );
 
-// Endpoint pour servir index.html avec injection de nonce
+// Endpoint pour servir index.html avec injection de nonce pour CSP
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
