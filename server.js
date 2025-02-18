@@ -17,7 +17,7 @@ app.use((req, res, next) => {
   res.locals.nonce = nonce;
 
   // Configuration de Permissions-Policy avec format correct
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=()");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=self");
 
   next();
 });
@@ -78,19 +78,24 @@ app.use(
   })
 );
 
-// Endpoint pour servir index.html avec injection de nonce pour CSP
+// Endpoint pour servir index.html avec injection dynamique du nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
+  // Vérifier si le fichier index.html original est toujours là
+  if (!fs.existsSync(indexPath)) {
+    console.error("❌ Erreur : index.html introuvable après build !");
+    return res.status(500).send("Erreur : Fichier index.html introuvable.");
+  }
+
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
       console.error("❌ Erreur : Impossible de lire index.html :", err);
-      res.status(500).send("Erreur lors de la lecture du fichier HTML.");
-      return;
+      return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // Injection correcte du nonce
+    // 🛠 Injection dynamique du nonce AVANT envoi de la réponse
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
