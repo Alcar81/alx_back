@@ -17,7 +17,8 @@ app.use((req, res, next) => {
   res.locals.nonce = nonce;
 
   // Configuration de Permissions-Policy avec format correct
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=(), usb=self");
+  res.setHeader("Permissions-Policy", "geolocation=(self); microphone=(self); camera=(self); fullscreen=(self)");
+
 
   next();
 });
