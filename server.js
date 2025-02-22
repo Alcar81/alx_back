@@ -13,16 +13,24 @@ const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/
 
 // Middleware pour injecter le nonce
 app.use((req, res, next) => {
-  res.locals.nonce = crypto.randomBytes(16).toString("base64");
+  const nonce = crypto.randomBytes(16).toString("base64");
+  res.locals.nonce = nonce;
+  console.log(`✅ Nonce généré : ${nonce}`); // Debug nonce
   next();
 });
 
-// Middleware pour définir les en-têtes CSP
+// Middleware pour définir les en-têtes CSP et Permissions-Policy
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
     `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}' 'strict-dynamic'; style-src 'self' 'nonce-${res.locals.nonce}'; object-src 'none'; img-src 'self' data:; connect-src 'self' ${API_URL}; frame-ancestors 'none';`
   );
+
+  res.setHeader(
+    "Permissions-Policy",
+    "geolocation=(self), microphone=(self), camera=(self), fullscreen=(self)"
+  );
+
   next();
 });
 
@@ -34,31 +42,26 @@ app.use(
   })
 );
 
-// Servir les fichiers statiques avec bonnes entêtes MIME et désactiver le cache temporairement
+// Servir les fichiers statiques avec correction du type MIME
 app.use(
   express.static(path.join(__dirname, "../frontend/build"), {
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath);
       const mimeTypes = {
         ".css": "text/css",
-        ".js": "application/javascript",
+        ".js": "application/javascript", // Forcer le type MIME JS
         ".json": "application/json",
         ".html": "text/html",
       };
 
-      // Forcer le type MIME approprié
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Gestion du cache : désactivation temporaire
-      if (ext === ".html") {
-        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-      } else {
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      }
+      // Désactiver le cache pour s'assurer que tout se recharge
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
     },
   })
 );
