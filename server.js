@@ -11,15 +11,18 @@ const app = express();
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 
-// Middleware pour générer un nonce sécurisé
+// Middleware pour injecter le nonce
 app.use((req, res, next) => {
-  const nonce = crypto.randomBytes(16).toString("base64");
-  res.locals.nonce = nonce;
+  res.locals.nonce = crypto.randomBytes(16).toString("base64");
+  next();
+});
 
-  // Configuration de Permissions-Policy avec format correct
-  res.setHeader("Permissions-Policy", "geolocation=(self); microphone=(self); camera=(self); fullscreen=(self)");
-
-
+// Middleware pour définir les en-têtes CSP
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}'; style-src 'self' 'nonce-${res.locals.nonce}';`
+  );
   next();
 });
 
