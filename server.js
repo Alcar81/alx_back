@@ -36,7 +36,7 @@ app.use(
 
 // Servir les fichiers statiques avec bonnes entêtes MIME et désactiver le cache temporairement
 app.use(
-  express.static(path.join(__dirname, "../public_html/build"), {
+  express.static(path.join(__dirname, "../frontend/build"), {
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath);
       const mimeTypes = {
