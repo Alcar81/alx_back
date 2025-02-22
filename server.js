@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}'; style-src 'self' 'nonce-${res.locals.nonce}';`
+    `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}' 'strict-dynamic'; style-src 'self' 'nonce-${res.locals.nonce}'; object-src 'none'; img-src 'self' data:; connect-src 'self' ${API_URL}; frame-ancestors 'none';`
   );
   next();
 });
@@ -29,31 +29,12 @@ app.use((req, res, next) => {
 // Configurer Helmet avec CSP
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'strict-dynamic'",
-          (req, res) => `'nonce-${res.locals.nonce}'`
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'", // Obligatoire pour Emotion.js (ou utiliser un nonce ici)
-          (req, res) => `'nonce-${res.locals.nonce}'`
-        ],
-        imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", API_URL],
-        objectSrc: ["'none'"],
-        frameAncestors: ["'none'"],
-      },
-    },
+    contentSecurityPolicy: false, // Désactiver pour éviter les conflits avec l'en-tête manuel
     crossOriginEmbedderPolicy: false,
   })
 );
 
-// Servir les fichiers statiques avec bonnes entêtes MIME et cache
+// Servir les fichiers statiques avec bonnes entêtes MIME et désactiver le cache temporairement
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -65,19 +46,14 @@ app.use(
         ".html": "text/html",
       };
 
-      // Définir le type MIME approprié
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Optimisation du cache pour performances
-      if (ext === ".html") {
-        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-      } else {
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      }
+      // Désactiver le cache temporairement
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
     },
   })
 );
@@ -87,7 +63,6 @@ app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
-  // Vérifier si le fichier index.html original est toujours là
   if (!fs.existsSync(indexPath)) {
     console.error("❌ Erreur : index.html introuvable après build !");
     return res.status(500).send("Erreur : Fichier index.html introuvable.");
@@ -99,7 +74,7 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // 🛠 Injection dynamique du nonce AVANT envoi de la réponse
+    // Injection dynamique du nonce
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
