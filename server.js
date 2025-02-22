@@ -46,14 +46,19 @@ app.use(
         ".html": "text/html",
       };
 
+      // Forcer le type MIME approprié
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Désactiver le cache temporairement
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
+      // Gestion du cache : désactivation temporaire
+      if (ext === ".html") {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
     },
   })
 );
@@ -61,7 +66,7 @@ app.use(
 // Endpoint pour servir index.html avec injection dynamique du nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
-  const indexPath = path.join(__dirname, "../public_html/build/index.html");
+  const indexPath = path.join(__dirname, "../frontend/build/index.html");
 
   if (!fs.existsSync(indexPath)) {
     console.error("❌ Erreur : index.html introuvable après build !");
