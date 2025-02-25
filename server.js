@@ -19,37 +19,49 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware pour définir les en-têtes CSP et Permissions-Policy
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}' 'strict-dynamic'; style-src 'self' 'nonce-${res.locals.nonce}'; object-src 'none'; img-src 'self' data:; connect-src 'self' ${API_URL}; frame-ancestors 'none';`
-  );
-
-  res.setHeader(
-    "Permissions-Policy",
-    "geolocation=(self), microphone=(self), camera=(self), fullscreen=(self)"
-  );
-
-  next();
-});
-
-// Configurer Helmet avec CSP
+// ✅ Utiliser Helmet avec CSP bien configuré
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Désactiver pour éviter les conflits avec l'en-tête manuel
-    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          `'nonce-${res.locals.nonce}'`, // Autorisation du nonce pour les scripts
+          "'strict-dynamic'",
+          "*.google.com",
+          "*.googletagmanager.com",
+          "*.google-analytics.com",
+          "*.gstatic.com",
+          "*.youtube.com",
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // ✅ Nécessaire pour les styles MUI
+          "https://fonts.googleapis.com", // ✅ Ajouté pour Material-UI
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com", // ✅ Nécessaire pour Material-UI
+        ],
+        imgSrc: ["'self'", "data:", "*.google-analytics.com"],
+        connectSrc: ["'self'", API_URL],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Désactiver si nécessaire pour éviter les erreurs avec certaines ressources
   })
 );
 
-// Servir les fichiers statiques avec correction du type MIME
+// ✅ Servir les fichiers statiques avec les bons types MIME
 app.use(
   express.static(path.join(__dirname, "../frontend/build"), {
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath);
       const mimeTypes = {
         ".css": "text/css",
-        ".js": "application/javascript", // Forcer le type MIME JS
+        ".js": "application/javascript",
         ".json": "application/json",
         ".html": "text/html",
       };
@@ -58,7 +70,7 @@ app.use(
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Désactiver le cache pour s'assurer que tout se recharge
+      // Désactiver la mise en cache
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
@@ -66,7 +78,7 @@ app.use(
   })
 );
 
-// Endpoint pour servir index.html avec injection dynamique du nonce
+// ✅ Endpoint pour servir index.html avec injection du nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../frontend/build/index.html");
@@ -90,7 +102,7 @@ app.get("*", (req, res) => {
   });
 });
 
-// Lancer le serveur
+// ✅ Lancer le serveur
 app.listen(PORT, () => {
   console.log(`✅ Serveur démarré sur le port ${PORT}`);
   console.log(`✅ API URL configurée : ${API_URL}`);
