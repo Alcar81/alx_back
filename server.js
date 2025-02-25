@@ -28,7 +28,7 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          `'nonce-${res.locals.nonce}'`, // Autorisation du nonce pour les scripts
+          `'nonce-${res.locals.nonce}'`, 
           "'strict-dynamic'",
           "*.google.com",
           "*.googletagmanager.com",
@@ -38,19 +38,25 @@ app.use(
         ],
         styleSrc: [
           "'self'",
-          "'unsafe-inline'", // ✅ Nécessaire pour les styles MUI
-          "https://fonts.googleapis.com", // ✅ Ajouté pour Material-UI
+          "'unsafe-inline'", 
+          "https://fonts.googleapis.com",
         ],
         fontSrc: [
           "'self'",
-          "https://fonts.gstatic.com", // ✅ Nécessaire pour Material-UI
+          "https://fonts.gstatic.com",
         ],
         imgSrc: ["'self'", "data:", "*.google-analytics.com"],
         connectSrc: ["'self'", API_URL],
         frameAncestors: ["'none'"],
       },
     },
-    crossOriginEmbedderPolicy: false, // Désactiver si nécessaire pour éviter les erreurs avec certaines ressources
+    hsts: {
+      maxAge: 31536000, // 1 an
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    crossOriginEmbedderPolicy: false,
   })
 );
 
