@@ -65,6 +65,9 @@ app.use(
   "/static",
   express.static(path.join(__dirname, "../public_html/build/static"), {
     setHeaders: (res, filePath) => {
+      const staticPath = path.join(__dirname, "../public_html/build/static");
+      console.log(`📁 Serving static files from: ${staticPath}`);
+      console.log(`📂 Contents:`, fs.readdirSync(staticPath));
       const ext = path.extname(filePath);
       const mimeTypes = {
         ".css": "text/css",
