@@ -63,7 +63,7 @@ app.use(
 // ✅ Servir les fichiers statiques sans conflit avec Helmet
 app.use(
   "/static",
-  express.static(path.join(__dirname, "../frontend/build/static"), {
+  express.static(path.join(__dirname, "../public_html/build/static"), {
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath);
       const mimeTypes = {
