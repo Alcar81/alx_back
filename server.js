@@ -83,15 +83,24 @@ app.use(
   })
 );
 
-// ✅ Endpoint pour servir index.html avec injection du nonce
+// ✅ Endpoint pour servir index.html avec injection du nonce et remplacement des fichiers
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
-  const indexPath = path.join(__dirname, "../frontend/build/index.html");
+  const indexPath = path.join(__dirname, "../public_html/build/index.html");
+  const manifestPath = path.join(__dirname, "../public_html/build/asset-manifest.json");
 
   if (!fs.existsSync(indexPath)) {
     console.error("❌ Erreur : index.html introuvable après build !");
     return res.status(500).send("Erreur : Fichier index.html introuvable.");
   }
+
+  if (!fs.existsSync(manifestPath)) {
+    console.error("❌ Erreur : asset-manifest.json introuvable !");
+    return res.status(500).send("Erreur : Manifest introuvable.");
+  }
+
+  // Lire le fichier manifest pour récupérer les bons fichiers
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
@@ -99,8 +108,11 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // ✅ Injection dynamique du nonce
-    const updatedHtml = data.replace(/__NONCE__/g, nonce);
+    // Remplacement des fichiers CSS et JS avec les versions hashées
+    let updatedHtml = data
+      .replace(/__NONCE__/g, nonce)
+      .replace("/static/css/main.[hash].css", manifest.files["main.css"])
+      .replace("/static/js/main.[hash].js", manifest.files["main.js"]);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
