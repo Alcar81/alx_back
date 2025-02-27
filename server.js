@@ -11,25 +11,24 @@ const app = express();
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 
-// Middleware pour injecter le nonce
+// ✅ Middleware pour injecter le nonce et éviter les conflits
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64");
   res.locals.nonce = nonce;
-  console.log(`✅ Nonce généré : ${nonce}`); // Debug nonce
+  res.setHeader("X-Nonce", nonce); // ✅ Aide au debugging
   next();
 });
 
-// ✅ Utiliser Helmet avec CSP bien configuré
+// ✅ Utiliser Helmet avec une CSP qui autorise bien les styles et scripts
 app.use(
   helmet({
     contentSecurityPolicy: {
-      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        frameSrc: ["'self'"], // Bloque les iframes externes
+        frameSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          `'nonce-${res.locals.nonce}'`, 
+          (req, res) => `'nonce-${res.locals.nonce}'`, // ✅ Génération dynamique
           "'strict-dynamic'",
           "*.google.com",
           "*.googletagmanager.com",
@@ -39,7 +38,7 @@ app.use(
         ],
         styleSrc: [
           "'self'",
-          "'unsafe-inline'", 
+          "'unsafe-inline'", // ✅ Nécessaire pour Material-UI
           "https://fonts.googleapis.com",
         ],
         fontSrc: [
@@ -52,7 +51,7 @@ app.use(
       },
     },
     hsts: {
-      maxAge: 31536000, // 1 an
+      maxAge: 31536000,
       includeSubDomains: true,
       preload: true,
     },
@@ -61,7 +60,7 @@ app.use(
   })
 );
 
-// ✅ Servir les fichiers statiques avec les bons types MIME
+// ✅ Servir les fichiers statiques sans conflit avec Helmet
 app.use(
   express.static(path.join(__dirname, "../frontend/build"), {
     setHeaders: (res, filePath) => {
@@ -76,11 +75,6 @@ app.use(
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
-
-      // Désactiver la mise en cache
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
     },
   })
 );
@@ -101,7 +95,7 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // Injection dynamique du nonce
+    // ✅ Injection dynamique du nonce
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
