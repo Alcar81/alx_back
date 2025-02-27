@@ -79,7 +79,7 @@ app.use(
   })
 );
 
-// ✅ Endpoint pour servir index.html avec injection du nonce et remplacement dynamique des fichiers CSS & JS
+// ✅ Endpoint pour servir index.html avec injection du nonce et remplacement des fichiers
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
@@ -95,18 +95,8 @@ app.get("*", (req, res) => {
     return res.status(500).send("Erreur : Manifest introuvable.");
   }
 
-  // Lire le fichier manifest et extraire les bons chemins
+  // Lire le fichier manifest pour récupérer les bons fichiers
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-
-  const mainCSS = manifest["files"]?.["main.css"] || manifest["entrypoints"]?.[0];
-  const mainJS = manifest["files"]?.["main.js"] || manifest["entrypoints"]?.[1];
-
-  if (!mainCSS || !mainJS) {
-    console.error("❌ Erreur : Impossible de récupérer les fichiers CSS et JS dans le manifest !");
-    return res.status(500).send("Erreur : Fichiers CSS et JS non trouvés.");
-  }
-
-  console.log(`🔄 Remplacement des fichiers :\nCSS: ${mainCSS}\nJS: ${mainJS}`);
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
@@ -114,16 +104,17 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // Remplacement dynamique des fichiers CSS et JS
+    // ✅ Remplacement des variables par les vrais fichiers du manifest
     let updatedHtml = data
       .replace(/__NONCE__/g, nonce)
-      .replace(/%HASH_CSS%/g, mainCSS)
-      .replace(/%HASH_JS%/g, mainJS);
+      .replace(/%HASH_CSS%/g, manifest.files["main.css"])
+      .replace(/%HASH_JS%/g, manifest.files["main.js"]);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
   });
 });
+
 
 // ✅ Lancer le serveur
 app.listen(PORT, () => {
