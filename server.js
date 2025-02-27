@@ -60,14 +60,11 @@ app.use(
   })
 );
 
-// ✅ Servir les fichiers statiques sans conflit avec Helmet
+// ✅ Servir les fichiers statiques
 app.use(
   "/static",
   express.static(path.join(__dirname, "../public_html/build/static"), {
     setHeaders: (res, filePath) => {
-      const staticPath = path.join(__dirname, "../public_html/build/static");
-      console.log(`📁 Serving static files from: ${staticPath}`);
-      console.log(`📂 Contents:`, fs.readdirSync(staticPath));
       const ext = path.extname(filePath);
       const mimeTypes = {
         ".css": "text/css",
@@ -75,7 +72,6 @@ app.use(
         ".json": "application/json",
         ".html": "text/html",
       };
-
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
@@ -83,7 +79,7 @@ app.use(
   })
 );
 
-// ✅ Endpoint pour servir index.html avec injection du nonce et remplacement des fichiers hashés
+// ✅ Endpoint pour servir index.html avec injection du nonce et remplacement dynamique des fichiers CSS & JS
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
@@ -102,13 +98,15 @@ app.get("*", (req, res) => {
   // Lire le fichier manifest et extraire les bons chemins
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
-  const mainCSS = manifest["files"]?.["main.css"] || manifest["main.css"] || manifest["entrypoints"]?.[0];
-  const mainJS = manifest["files"]?.["main.js"] || manifest["main.js"] || manifest["entrypoints"]?.[1];
+  const mainCSS = manifest["files"]?.["main.css"] || manifest["entrypoints"]?.[0];
+  const mainJS = manifest["files"]?.["main.js"] || manifest["entrypoints"]?.[1];
 
   if (!mainCSS || !mainJS) {
     console.error("❌ Erreur : Impossible de récupérer les fichiers CSS et JS dans le manifest !");
     return res.status(500).send("Erreur : Fichiers CSS et JS non trouvés.");
   }
+
+  console.log(`🔄 Remplacement des fichiers :\nCSS: ${mainCSS}\nJS: ${mainJS}`);
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
@@ -116,13 +114,11 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    console.log(`🔄 Remplacement des fichiers :\nCSS: ${mainCSS}\nJS: ${mainJS}`);
-
     // Remplacement dynamique des fichiers CSS et JS
     let updatedHtml = data
       .replace(/__NONCE__/g, nonce)
-      .replace(/\/static\/css\/main\.\[hash\]\.css/g, mainCSS)
-      .replace(/\/static\/js\/main\.\[hash\]\.js/g, mainJS);
+      .replace(/%HASH_CSS%/g, mainCSS)
+      .replace(/%HASH_JS%/g, mainJS);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
