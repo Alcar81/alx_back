@@ -26,6 +26,7 @@ app.use(
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
+        frameSrc: ["'self'"], // Bloque les iframes externes
         scriptSrc: [
           "'self'",
           `'nonce-${res.locals.nonce}'`, 
