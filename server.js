@@ -11,69 +11,83 @@ const app = express();
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 
-// Charger le manifest JSON pour récupérer les fichiers hashés
-const manifestPath = path.join(__dirname, "../public_html/build/asset-manifest.json");
-
-let hashedCSS = "/static/css/main.css"; // Valeurs par défaut
-let hashedJS = "/static/js/main.js";
-
-if (fs.existsSync(manifestPath)) {
-  try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    hashedCSS = manifest.files["static/css/main.css"] || hashedCSS;
-    hashedJS = manifest.files["static/js/main.js"] || hashedJS;
-  } catch (error) {
-    console.error("❌ Erreur lors de la lecture du fichier manifest :", error);
-  }
-}
-
-// ✅ Middleware pour injecter le nonce
+// Middleware pour injecter le nonce
 app.use((req, res, next) => {
-  const nonce = crypto.randomBytes(16).toString("base64");
-  res.locals.nonce = nonce;
-  res.setHeader("X-Nonce", nonce);
-  console.log("✅ Nonce généré :", res.locals.nonce);
+  res.locals.nonce = crypto.randomBytes(16).toString("base64");
   next();
 });
 
-// ✅ Helmet avec une CSP alignée avec vhost.conf
+// Middleware pour définir les en-têtes CSP
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}'; style-src 'self' 'nonce-${res.locals.nonce}';`
+  );
+  next();
+});
+
+// Configurer Helmet avec CSP
 app.use(
   helmet({
     contentSecurityPolicy: {
+      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
           "'strict-dynamic'",
-          "*.google.com",
-          "*.googletagmanager.com",
-          "*.google-analytics.com",
-          "*.gstatic.com",
-          "*.youtube.com",
+          (req, res) => `'nonce-${res.locals.nonce}'`
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "*.google-analytics.com"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // Obligatoire pour Emotion.js (ou utiliser un nonce ici)
+          (req, res) => `'nonce-${res.locals.nonce}'`
+        ],
+        imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", API_URL],
+        objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
       },
     },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     crossOriginEmbedderPolicy: false,
   })
 );
 
-// ✅ Servir le fichier `index.html` avec les bons fichiers hashés
+// Servir les fichiers statiques avec bonnes entêtes MIME et cache
+app.use(
+  express.static(path.join(__dirname, "../public_html/build"), {
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath);
+      const mimeTypes = {
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".html": "text/html",
+      };
+
+      // Définir le type MIME approprié
+      if (mimeTypes[ext]) {
+        res.setHeader("Content-Type", mimeTypes[ext]);
+      }
+
+      // Optimisation du cache pour performances
+      if (ext === ".html") {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    },
+  })
+);
+
+// Endpoint pour servir index.html avec injection dynamique du nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
+  // Vérifier si le fichier index.html original est toujours là
   if (!fs.existsSync(indexPath)) {
     console.error("❌ Erreur : index.html introuvable après build !");
     return res.status(500).send("Erreur : Fichier index.html introuvable.");
@@ -85,23 +99,15 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // Injection du nonce et remplacement des fichiers CSS et JS
-    let updatedHtml = data
-      .replace(/__NONCE__/g, nonce)
-      .replace("/static/css/main.[hash].css", hashedCSS)
-      .replace("/static/js/main.[hash].js", hashedJS);
+    // 🛠 Injection dynamique du nonce AVANT envoi de la réponse
+    const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
   });
 });
 
-// ✅ API de test
-app.get("/api/test", (req, res) => {
-  res.json({ message: "API en ligne ✅" });
-});
-
-// ✅ Lancer le serveur
+// Lancer le serveur
 app.listen(PORT, () => {
   console.log(`✅ Serveur démarré sur le port ${PORT}`);
   console.log(`✅ API URL configurée : ${API_URL}`);
