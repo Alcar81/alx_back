@@ -11,24 +11,23 @@ const app = express();
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 
-// ✅ Middleware pour injecter le nonce et éviter les conflits
+// ✅ Middleware pour injecter le nonce
 app.use((req, res, next) => {
   const nonce = crypto.randomBytes(16).toString("base64");
   res.locals.nonce = nonce;
-  res.setHeader("X-Nonce", nonce); // ✅ Aide au debugging
+  res.setHeader("X-Nonce", nonce);
   next();
 });
 
-// ✅ Utiliser Helmet avec une CSP qui autorise bien les styles et scripts
+// ✅ Helmet avec une CSP alignée avec vhost.conf
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        frameSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`, // ✅ Génération dynamique
+          (req, res) => `'nonce-${res.locals.nonce}'`,
           "'strict-dynamic'",
           "*.google.com",
           "*.googletagmanager.com",
@@ -36,15 +35,8 @@ app.use(
           "*.gstatic.com",
           "*.youtube.com",
         ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'", // ✅ Nécessaire pour Material-UI
-          "https://fonts.googleapis.com",
-        ],
-        fontSrc: [
-          "'self'",
-          "https://fonts.gstatic.com",
-        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "*.google-analytics.com"],
         connectSrc: ["'self'", API_URL],
         frameAncestors: ["'none'"],
@@ -60,43 +52,15 @@ app.use(
   })
 );
 
-// ✅ Servir les fichiers statiques
-app.use(
-  "/static",
-  express.static(path.join(__dirname, "../public_html/build/static"), {
-    setHeaders: (res, filePath) => {
-      const ext = path.extname(filePath);
-      const mimeTypes = {
-        ".css": "text/css",
-        ".js": "application/javascript",
-        ".json": "application/json",
-        ".html": "text/html",
-      };
-      if (mimeTypes[ext]) {
-        res.setHeader("Content-Type", mimeTypes[ext]);
-      }
-    },
-  })
-);
-
-// ✅ Endpoint pour servir index.html avec injection du nonce et remplacement des fichiers
+// ✅ Endpoint pour servir `index.html`
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
-  const manifestPath = path.join(__dirname, "../public_html/build/asset-manifest.json");
 
   if (!fs.existsSync(indexPath)) {
     console.error("❌ Erreur : index.html introuvable après build !");
     return res.status(500).send("Erreur : Fichier index.html introuvable.");
   }
-
-  if (!fs.existsSync(manifestPath)) {
-    console.error("❌ Erreur : asset-manifest.json introuvable !");
-    return res.status(500).send("Erreur : Manifest introuvable.");
-  }
-
-  // Lire le fichier manifest pour récupérer les bons fichiers
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
@@ -104,17 +68,13 @@ app.get("*", (req, res) => {
       return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
     }
 
-    // ✅ Remplacement des variables par les vrais fichiers du manifest
-    let updatedHtml = data
-      .replace(/__NONCE__/g, nonce)
-      .replace(/%HASH_CSS%/g, manifest.files["main.css"])
-      .replace(/%HASH_JS%/g, manifest.files["main.js"]);
+    // ✅ Injection dynamique du nonce
+    const updatedHtml = data.replace(/__NONCE__/g, nonce);
 
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
   });
 });
-
 
 // ✅ Lancer le serveur
 app.listen(PORT, () => {
