@@ -3,9 +3,11 @@ const bcrypt = require("bcryptjs");
 const prisma = require("../prisma/client");
 
 exports.registerUser = async (req, res) => {
-  const { nom, email, motDePasse } = req.body;
+  const { firstName, lastName, email, password } = req.body;
 
-  if (!nom || !email || !motDePasse) {
+  console.log("📩 Données reçues pour l'inscription :", req.body);
+
+  if (!firstName || !lastName || !email || !password) {
     return res.status(400).json({ message: "Tous les champs sont requis." });
   }
 
@@ -16,11 +18,9 @@ exports.registerUser = async (req, res) => {
       return res.status(409).json({ message: "Cet email est déjà utilisé." });
     }
 
-    const hashedPassword = await bcrypt.hash(motDePasse, 10);
-    const [firstName, ...lastNameParts] = nom.trim().split(" ");
-    const lastName = lastNameParts.join(" ") || "";
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const nouveau = await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         firstName,
         lastName,
@@ -29,9 +29,12 @@ exports.registerUser = async (req, res) => {
       },
     });
 
-    return res.status(201).json({ message: "Inscription réussie", userId: nouveau.id });
+    return res.status(201).json({
+      message: "Inscription réussie",
+      userId: newUser.id,
+    });
   } catch (err) {
-    console.error("Erreur d'inscription :", err);
-    return res.status(500).json({ message: "Erreur serveur" });
+    console.error("❌ Erreur d'inscription :", err);
+    return res.status(500).json({ message: "Erreur serveur", details: err.message });
   }
 };
