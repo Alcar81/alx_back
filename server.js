@@ -1,3 +1,4 @@
+// 📌 backend/server.js
 const express = require("express");
 const helmet = require("helmet");
 const crypto = require("crypto");
@@ -6,54 +7,25 @@ const path = require("path");
 require("dotenv").config();
 
 const app = express();
+app.set("trust proxy", 1); // 🔐 Docker + Reverse proxy
+app.use(express.json());
 
-// Charger les variables d'environnement
-const PORT = process.env.SERVER_PORT || 7000;
-const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
+const authRoutes = require("./routes/auth");
+const errorHandler = require("./middleware/errorHandler");
 
-// Middleware pour injecter le nonce
+// 🔐 Génération d’un nonce pour tes composants frontend (React inline)
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
   next();
 });
 
-// Middleware pour définir les en-têtes CSP
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    `default-src 'self'; script-src 'self' 'nonce-${res.locals.nonce}'; style-src 'self' 'nonce-${res.locals.nonce}';`
-  );
-  next();
-});
+// 🔐 Helmet (sans CSP ici car déjà défini dans OpenLiteSpeed)
+app.use(helmet());
 
-// Configurer Helmet avec CSP
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: true,
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'strict-dynamic'",
-          (req, res) => `'nonce-${res.locals.nonce}'`
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'", // Obligatoire pour Emotion.js (ou utiliser un nonce ici)
-          (req, res) => `'nonce-${res.locals.nonce}'`
-        ],
-        imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", API_URL],
-        objectSrc: ["'none'"],
-        frameAncestors: ["'none'"],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-  })
-);
+// ✅ Routes API
+app.use("/api", authRoutes);
 
-// Servir les fichiers statiques avec bonnes entêtes MIME et cache
+// 📦 Servir le frontend build
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -65,12 +37,10 @@ app.use(
         ".html": "text/html",
       };
 
-      // Définir le type MIME approprié
       if (mimeTypes[ext]) {
         res.setHeader("Content-Type", mimeTypes[ext]);
       }
 
-      // Optimisation du cache pour performances
       if (ext === ".html") {
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
         res.setHeader("Pragma", "no-cache");
@@ -82,33 +52,35 @@ app.use(
   })
 );
 
-// Endpoint pour servir index.html avec injection dynamique du nonce
+// 🌐 Servir index.html (avec injection de nonce si nécessaire)
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
-  // Vérifier si le fichier index.html original est toujours là
   if (!fs.existsSync(indexPath)) {
-    console.error("❌ Erreur : index.html introuvable après build !");
-    return res.status(500).send("Erreur : Fichier index.html introuvable.");
+    console.error("❌ index.html introuvable !");
+    return res.status(500).send("Erreur : Fichier index.html manquant.");
   }
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
-      console.error("❌ Erreur : Impossible de lire index.html :", err);
-      return res.status(500).send("Erreur lors de la lecture du fichier HTML.");
+      console.error("❌ Erreur de lecture index.html :", err);
+      return res.status(500).send("Erreur lecture HTML.");
     }
 
-    // 🛠 Injection dynamique du nonce AVANT envoi de la réponse
     const updatedHtml = data.replace(/__NONCE__/g, nonce);
-
     res.setHeader("Content-Type", "text/html");
     res.send(updatedHtml);
   });
 });
 
-// Lancer le serveur
+// 🔁 Gestion des erreurs globales
+app.use(errorHandler);
+
+// 🚀 Démarrage
+const PORT = process.env.SERVER_PORT || 7000;
+const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
 app.listen(PORT, () => {
-  console.log(`✅ Serveur démarré sur le port ${PORT}`);
-  console.log(`✅ API URL configurée : ${API_URL}`);
+  console.log(`✅ Serveur backend prêt sur le port ${PORT}`);
+  console.log(`🌍 API exposée : ${API_URL}`);
 });
