@@ -5,7 +5,9 @@ const helmet = require("helmet");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config({ path: path.resolve(__dirname, ".env") }); // ✅ Chargement fiable du .env
+
+// ✅ Chargement fiable du fichier .env avec chemin explicite
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 app.set("trust proxy", 1); // 🔐 Docker + Reverse proxy
@@ -19,7 +21,18 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+// ✅ Middleware : Vérification JSON valide
+app.use(express.json({
+  strict: true,
+  verify: (req, res, buf) => {
+    try {
+      JSON.parse(buf.toString());
+    } catch (err) {
+      res.status(400).json({ message: "Requête JSON invalide" });
+      throw new Error("Requête JSON mal formée");
+    }
+  }
+}));
 
 // 🔐 Helmet (sans CSP ici car déjà défini dans OpenLiteSpeed)
 app.use(helmet());
@@ -33,6 +46,11 @@ app.use((req, res, next) => {
 // ✅ Routes API
 const authRoutes = require("./routes/auth");
 app.use("/api", authRoutes);
+
+// ✅ Route de test santé API (utile pour Docker/monitoring)
+app.get("/health", (req, res) => {
+  res.status(200).send("🟢 API OK");
+});
 
 // 📦 Servir les fichiers statiques frontend
 app.use(
@@ -88,13 +106,20 @@ const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
 // 🚀 Démarrage du serveur
-const PORT = process.env.SERVER_PORT || 7000;
+const rawPort = process.env.SERVER_PORT;
+const PORT = parseInt(rawPort, 10);
+
+if (!PORT) {
+  console.error("❌ PORT invalide ou manquant dans .env (SERVER_PORT)");
+  process.exit(1);
+}
+
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost/api";
 
 app.listen(PORT, () => {
   console.log("🚀===============================");
   console.log(`✅ Serveur backend lancé sur le port ${PORT}`);
-  console.log("📌 process.env.SERVER_PORT =", process.env.SERVER_PORT);
+  console.log("📌 process.env.SERVER_PORT =", rawPort);
   console.log("📌 PORT utilisé =", PORT);
   console.log(`🌐 API disponible à : ${API_URL}`);
   console.log("🛡️  Middleware de sécurité actif (Helmet + Nonce)");

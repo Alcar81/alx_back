@@ -1,9 +1,11 @@
-# Dockerfile.backend
+# 📁 backend/Dockerfile.backend
 
-# Étape 1 : Utiliser une image Node.js 20 Alpine
+# =============================
+# 🏗 Étape 1 : Construction
+# =============================
 FROM node:20-alpine AS builder
 
-# Étape 2 : Installer les dépendances système
+# 🔧 Installation des outils nécessaires à la compilation
 RUN apk add --no-cache \
     python3 \
     make \
@@ -12,37 +14,51 @@ RUN apk add --no-cache \
     bash \
     file
 
-# Étape 3 : Mise à jour de npm
+# ⬆️ Mise à jour de npm
 RUN npm install -g npm@latest --force
-RUN echo "npm version : $(npm --version)"
+RUN echo "📦 Version de npm : $(npm --version)"
 
-# Étape 4 : Définir le répertoire de travail
+# 📁 Répertoire de travail
 WORKDIR /app
 
-# Étape 5 : Copier les fichiers package.json et installer les dépendances
+# 📦 Copier les fichiers de dépendances
 COPY package*.json ./
+
+# 📥 Installer les dépendances de production
 RUN npm install --production --loglevel=warn
+
+# ➕ Ajouter Prisma en dev pour le build
 RUN npm install --save-dev prisma@latest @prisma/client@latest --force
 
-# Étape 6 : Copier tout le code source (y compris prisma/schema.prisma et .gitignore)
+# 📁 Copier le reste de l'application (incluant prisma/schema.prisma, .gitignore, etc.)
 COPY . .
 
-# Vérification de la copie des fichiers
-RUN echo "=== Vérification des fichiers ===" && ls -la /app
+# 🔍 Vérification de la copie
+RUN echo "📂 Contenu du dossier /app :" && ls -la /app
 
-# Étape 7 : Générer le client Prisma
+# ⚙️ Générer le client Prisma
 RUN npx prisma generate
 
-# Étape 8 : Nettoyer le cache npm
+# 🧼 Nettoyage du cache npm
 RUN npm cache clean --force
 
-# Étape finale : Créer une image allégée
+# =============================
+# 🚀 Étape 2 : Image finale légère
+# =============================
 FROM node:20-alpine
+
+# 📁 Répertoire de travail
 WORKDIR /app
+
+# 📦 Copier uniquement l’application depuis l’étape de build
 COPY --from=builder /app /app
 
-# Exposer le port utilisé
-EXPOSE 7000
+# 🟢 Définir le port via ENV (sera surchargé dynamiquement à l'exécution via `.env`)
+ARG SERVER_PORT=7001
+ENV SERVER_PORT=$SERVER_PORT
 
-# Lancer le backend
+# 📣 Ce port est exposé pour référence (non obligatoire mais utile pour la doc)
+EXPOSE $SERVER_PORT
+
+# 🏁 Démarrer le serveur
 CMD ["node", "server.js"]

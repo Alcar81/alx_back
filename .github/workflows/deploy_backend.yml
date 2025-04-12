@@ -286,9 +286,15 @@ jobs:
             cat <<EOT > "$MOUNT_PATH/.env"
             DATABASE_URL=$DATABASE_URL
             NODE_ENV=$ENV
+            APP_ENV=$ENV
+            APP_NAME=alxmultimedia_backend
             JWT_SECRET=$JWT_SECRET
-            SERVER_PORT=$BACKEND_PORT            
+            SERVER_PORT=$BACKEND_PORT
+            PORT=$BACKEND_PORT
             REACT_APP_API_URL=$REACT_APP_API_URL
+            TRUST_PROXY=1
+            LOG_LEVEL=info
+            ENABLE_CACHE=false
           EOT
             cat "$MOUNT_PATH/.env"
 
