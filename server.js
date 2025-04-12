@@ -5,7 +5,7 @@ const helmet = require("helmet");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config();
+require("dotenv").config({ path: path.resolve(__dirname, ".env") }); // ✅ Chargement fiable du .env
 
 const app = express();
 app.set("trust proxy", 1); // 🔐 Docker + Reverse proxy
@@ -89,11 +89,13 @@ app.use(errorHandler);
 
 // 🚀 Démarrage du serveur
 const PORT = process.env.SERVER_PORT || 7000;
-const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost/api";
 
 app.listen(PORT, () => {
   console.log("🚀===============================");
   console.log(`✅ Serveur backend lancé sur le port ${PORT}`);
+  console.log("📌 process.env.SERVER_PORT =", process.env.SERVER_PORT);
+  console.log("📌 PORT utilisé =", PORT);
   console.log(`🌐 API disponible à : ${API_URL}`);
   console.log("🛡️  Middleware de sécurité actif (Helmet + Nonce)");
   console.log("🧪 Logs de requêtes activés");
