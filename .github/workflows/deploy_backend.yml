@@ -296,7 +296,16 @@ jobs:
             LOG_LEVEL=info
             ENABLE_CACHE=false
           EOT
+
+            echo "[INFO - 8.2] Contenu généré de $MOUNT_PATH/.env :"
             cat "$MOUNT_PATH/.env"
+
+            echo "[INFO - 8.2] Vérification des variables d'environnement passées :"
+            echo "ENV=$ENV"
+            echo "BACKEND_PORT=$BACKEND_PORT"
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "REACT_APP_API_URL=$REACT_APP_API_URL"
 
             # 8.3 - Préparation du conteneur backend
             echo "[INFO - 8.3.1] Nettoyage des logs existants..."
