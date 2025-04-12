@@ -1,4 +1,5 @@
-// 📌 backend/server.js
+// 📁 backend/server.js
+
 const express = require("express");
 const helmet = require("helmet");
 const crypto = require("crypto");
@@ -8,10 +9,20 @@ require("dotenv").config();
 
 const app = express();
 app.set("trust proxy", 1); // 🔐 Docker + Reverse proxy
+
+// 🧪 Middleware pour journaliser chaque requête entrante
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.url} | IP: ${req.ip}`);
+  if (req.method === "POST" || req.method === "PUT") {
+    console.log("📦 Données reçues :", req.body);
+  }
+  next();
+});
+
 app.use(express.json());
 
-const authRoutes = require("./routes/auth");
-const errorHandler = require("./middleware/errorHandler");
+// 🔐 Helmet (sans CSP ici car déjà défini dans OpenLiteSpeed)
+app.use(helmet());
 
 // 🔐 Génération d’un nonce pour tes composants frontend (React inline)
 app.use((req, res, next) => {
@@ -19,13 +30,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔐 Helmet (sans CSP ici car déjà défini dans OpenLiteSpeed)
-app.use(helmet());
-
 // ✅ Routes API
+const authRoutes = require("./routes/auth");
 app.use("/api", authRoutes);
 
-// 📦 Servir le frontend build
+// 📦 Servir les fichiers statiques frontend
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -52,7 +61,7 @@ app.use(
   })
 );
 
-// 🌐 Servir index.html (avec injection de nonce si nécessaire)
+// 🌐 Servir index.html avec injection de nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
@@ -75,12 +84,18 @@ app.get("*", (req, res) => {
 });
 
 // 🔁 Gestion des erreurs globales
+const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
-// 🚀 Démarrage
+// 🚀 Démarrage du serveur
 const PORT = process.env.SERVER_PORT || 7000;
 const API_URL = process.env.REACT_APP_API_URL || "https://dev.alxmultimedia.com/api";
+
 app.listen(PORT, () => {
-  console.log(`✅ Serveur backend prêt sur le port ${PORT}`);
-  console.log(`🌍 API exposée : ${API_URL}`);
+  console.log("🚀===============================");
+  console.log(`✅ Serveur backend lancé sur le port ${PORT}`);
+  console.log(`🌐 API disponible à : ${API_URL}`);
+  console.log("🛡️  Middleware de sécurité actif (Helmet + Nonce)");
+  console.log("🧪 Logs de requêtes activés");
+  console.log("🚀===============================");
 });
