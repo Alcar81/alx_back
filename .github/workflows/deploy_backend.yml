@@ -371,7 +371,10 @@ jobs:
                 echo "[WAIT] Serveur non prêt (tentative $i/10)..."
                 sleep 1
               fi
-            done
+            done            
+            echo "[INFO] Vérification de l'endpoint /health..."
+            docker exec "$CONTAINER_NAME" wget --spider -q http://localhost:7001/health && echo "[OK] Endpoint /health disponible" || echo "[WARNING] L'endpoint /health n'est pas accessible"
+
           
              # 8.4 - Mise à jour de npm et Prisma
             echo "[INFO - 8.4] Mise à jour de npm et Prisma..."
