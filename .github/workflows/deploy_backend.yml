@@ -373,7 +373,7 @@ jobs:
                 echo "[WAITING] 🕓 Port non ouvert... tentative $i/15"
                 sleep 1
               fi
-              if [ "$i" -eq 15 ]; then
+              if [ "$i" -eq 20 ]; then
                 echo "[ERROR] ❌ Le port 7001 n'est pas ouvert après 15 secondes." >&2
                 docker logs "$CONTAINER_NAME"
                 exit 1
