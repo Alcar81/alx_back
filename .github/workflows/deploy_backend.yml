@@ -395,7 +395,7 @@ jobs:
 
             # 🚀 Lancement de l'application manuellement
             echo "[INFO - 8.3.3.2] Démarrage manuel du serveur backend..."
-            docker exec "$CONTAINER_NAME" npm start | tee "$MOUNT_PATH/logs/npm_start_output.log" || {
+            docker exec -d "$CONTAINER_NAME" sh -c "npm start >> logs/npm_start_output.log 2>&1" || {
               echo "[ERROR] Échec du démarrage du serveur." >&2
               docker logs "$CONTAINER_NAME"
               exit 1
