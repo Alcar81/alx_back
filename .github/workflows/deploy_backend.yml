@@ -398,19 +398,19 @@ jobs:
             # 🕒 Attente que le serveur soit prêt sur le port 7001
             echo "[INFO - 8.3.5] Attente que le port $BACKEND_PORT soit ouvert dans le conteneur..."
             PORT_OK=0
-            for i in {1..30}; do
+            for i in {1..60}; do
               if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
                 echo "[SUCCESS] ✅ Le serveur écoute bien sur le port $BACKEND_PORT"
                 PORT_OK=1
                 break
               else
-                echo "[WAITING] 🕓 Port non ouvert... tentative $i/30"
+                echo "[WAITING] 🕓 Port non ouvert... tentative $i/60"
                 sleep 1
               fi
             done
 
             if [ "$PORT_OK" -eq 0 ]; then
-              echo "[WARNING] ❌ Le port $BACKEND_PORT n’est pas ouvert après 30 secondes."
+              echo "[WARNING] ❌ Le port $BACKEND_PORT n’est pas ouvert après 60 secondes."
               echo "[INFO] Le déploiement continue pour permettre l'inspection des logs et de Prisma."
             fi
 
