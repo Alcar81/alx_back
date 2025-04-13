@@ -77,6 +77,11 @@ app.use(
   })
 );
 
+// ✅ Endpoint /health pour tests de disponibilité
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 // 🌐 Fallback React avec injection du nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
