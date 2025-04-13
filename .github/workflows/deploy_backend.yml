@@ -530,9 +530,9 @@ jobs:
 
                 clean();
             EOF'
-            else
-              echo "[INFO - 8.3.9] ENV=$ENV – Aucun nettoyage effectué (réservé à l'environnement de dev)"
-            fi
+              else
+                echo "[INFO - 8.3.9] ENV=$ENV – Aucun nettoyage effectué (réservé à l'environnement de dev)"
+              fi
 
 
              # 8.4 - Mise à jour de npm et Prisma
