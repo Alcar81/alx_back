@@ -478,38 +478,58 @@ jobs:
               echo "[WARNING] ⚠️ La route /api/me est inaccessible (peut être normal si pas encore connectée)"
             fi
 
-                # 8.3.8 - Vérification post-déploiement de l'API
-                echo "[INFO - 8.3.8] Test post-déploiement de Prisma, /health et /api/register..."
+            # 8.3.8 - Vérification post-déploiement de l'API
+            echo "[INFO - 8.3.8] Test post-déploiement de Prisma, /health et /api/register..."
 
-                echo "[TEST] 📦 Lancement de testPrisma.js..."
-                if docker exec "$CONTAINER_NAME" node testPrisma.js; then
-                  echo "[SUCCESS] ✅ testPrisma.js a réussi la connexion à la base de données"
-                else
-                  echo "[ERROR] ❌ testPrisma.js a échoué. Vérifiez la connexion Prisma." >&2
-                  exit 1
-                fi
+            echo "[TEST] 📦 Lancement de testPrisma.js..."
+            if docker exec "$CONTAINER_NAME" node /app/testPrisma.js; then
+              echo "[SUCCESS] ✅ testPrisma.js a réussi la connexion à la base de données"
+            else
+              echo "[ERROR] ❌ testPrisma.js a échoué. Vérifiez la connexion Prisma." >&2
+              exit 1
+            fi
 
-                echo "[TEST] 🌐 Vérification de /health via curl..."
-                if docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health | grep -q "200"; then
-                  echo "[SUCCESS] ✅ L'endpoint /health répond correctement"
-                else
-                  echo "[ERROR] ❌ /health ne répond pas comme attendu." >&2
-                  exit 1
-                fi
+            echo "[TEST] 🌐 Vérification de /health via curl..."
+            if docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health | grep -q "200"; then
+              echo "[SUCCESS] ✅ L'endpoint /health répond correctement"
+            else
+              echo "[ERROR] ❌ /health ne répond pas comme attendu." >&2
+              exit 1
+            fi
 
-                echo "[TEST] 👤 Vérification de /api/register avec un appel fictif..."
-                RESPONSE=$(docker exec "$CONTAINER_NAME" curl -s -X POST http://localhost:$BACKEND_PORT/api/register \
-                  -H "Content-Type: application/json" \
-                  -d '{"firstName":"Test","lastName":"Bot","email":"fakebot@example.com","password":"Fake1234!"}')
+            echo "[TEST] 👤 Vérification de /api/register avec un appel fictif..."
+            RESPONSE=$(docker exec "$CONTAINER_NAME" curl -s -X POST http://localhost:$BACKEND_PORT/api/register \
+              -H "Content-Type: application/json" \
+              -d '{"firstName":"Test","lastName":"Bot","email":"fakebot@example.com","password":"Fake1234!"}')
 
-                if echo "$RESPONSE" | grep -q "email déjà utilisé\|created\|erreur attendue"; then
-                  echo "[SUCCESS] ✅ /api/register répond bien à une requête de test"
-                else
-                  echo "[WARNING] ⚠️ Réponse inattendue de /api/register :"
-                  echo "$RESPONSE"
-                fi
+            if echo "$RESPONSE" | grep -q "email déjà utilisé\|created\|erreur attendue"; then
+              echo "[SUCCESS] ✅ /api/register répond bien à une requête de test"
+            else
+              echo "[WARNING] ⚠️ Réponse inattendue de /api/register :"
+              echo "$RESPONSE"
+            fi
 
-          
+            # 8.3.9 - Nettoyage de l'utilisateur de test créé via /api/register
+            if [ "$ENV" = "dev" ]; then
+              echo "[INFO - 8.3.9] Nettoyage de l'utilisateur de test dans la base de données..."
+              docker exec "$CONTAINER_NAME" node -e "
+                const { PrismaClient } = require('@prisma/client');
+                const prisma = new PrismaClient();
+                prisma.user.deleteMany({ where: { email: 'fakebot@example.com' } })
+                  .then(() => {
+                    console.log('🗑️ Utilisateur fakebot@example.com supprimé');
+                    prisma.$disconnect();
+                  })
+                  .catch((e) => {
+                    console.error('❌ Échec suppression fakebot:', e.message);
+                    prisma.$disconnect();
+                  });
+              "
+            else
+              echo "[INFO - 8.3.9] ENV=$ENV – Aucun nettoyage effectué (réservé à l'environnement de dev)"
+            fi
+
+
              # 8.4 - Mise à jour de npm et Prisma
             echo "[INFO - 8.4] Mise à jour de npm et Prisma..."
             docker exec "$CONTAINER_NAME" npm install -g npm@latest --force
