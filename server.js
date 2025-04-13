@@ -132,6 +132,7 @@ app.listen(PORT, async () => {
   } catch (error) {
     console.error("🗃️ Connexion à la base de données : ❌ ÉCHEC");
     console.error(error);
+    process.exit(1); // 💣 Ajout de l'arrêt du serveur en cas d'échec
   }
 
   // 🌐 Test de ping vers le frontend (si API URL définie)
