@@ -37,8 +37,17 @@ jobs:
       DOMAIN: ${{ secrets.DOMAIN }}
       GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
       REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+      LOGS_DIR: backend/logs
 
     steps:
+      # Étape 0 - Configurer l'agent SSH global
+      - name: 0 - Configurer l'agent SSH (globale)
+        run: |
+          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
+          chmod 600 /tmp/git_id_rsa
+          eval $(ssh-agent -s)
+          ssh-add /tmp/git_id_rsa || (echo "Erreur : Clé SSH invalide." && exit 1)
+
       # Étape 1 : Préparation initiale
       - name: 1 - Préparation initiale
         run: |
@@ -48,6 +57,7 @@ jobs:
           chmod -R 777 backend/logs
           echo "Répertoire de logs créé avec succès."
           echo "=== Fin de la préparation initiale ==="  
+      
       # Étape 1.1 - Afficher les variables générées et valider leur présence
       - name: 1.1 - Afficher les variables générées
         run: |
@@ -60,6 +70,7 @@ jobs:
             fi
             echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
           done
+      
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
         uses: actions/checkout@v3
@@ -114,8 +125,8 @@ jobs:
           else
             echo "[INFO - 3.4] Arbre de dépendances valide."
           fi
-          echo "[SUCCESS - 3.5] Dépendances prêtes pour le build Docker."
-      
+          echo "[SUCCESS - 3.5] Dépendances prêtes pour le build Docker."   
+
       # Étape 4 - Copier le code backend sur le serveur
       - name: 4 - Copier le code backend sur le serveur
         run: |
@@ -131,16 +142,7 @@ jobs:
           echo "🧼 Nettoyage du répertoire temporaire local..."
           rm -rf backend_sync
 
-          echo "✅ Backend copié avec succès vers $MOUNT_PATH sur le serveur."
-      
-        
-      # Étape 5 - Démarrer l'agent SSH et ajouter la clé 
-      - name: 5 - Démarrer l'agent SSH et ajouter la clé
-        run: |
-          echo "$SSH_PRIVATE_KEY" > /tmp/git_id_rsa
-          chmod 600 /tmp/git_id_rsa
-          eval $(ssh-agent -s)
-          ssh-add /tmp/git_id_rsa || (echo "Erreur : Clé SSH invalide." && exit 1)
+          echo "✅ Backend copié avec succès vers $MOUNT_PATH sur le serveur."  
         
       # Étape 6 - Configuration du conteneur PostgreSQL      
       - name: 6 - Configuration du conteneur PostgreSQL
