@@ -362,18 +362,41 @@ jobs:
               exit 1
             fi
             echo "[SUCCESS] Le conteneur backend est actif."
-            echo "[INFO] Attente que le port 7001 soit ouvert..."
-            for i in {1..10}; do
+
+            # 🕒 Attente que le serveur soit prêt sur le port 7001
+            echo "[INFO - 8.3.5] Attente que le port 7001 soit ouvert dans le conteneur..."
+            for i in {1..15}; do
               if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":7001"; then
-                echo "[SUCCESS] Le serveur écoute bien sur le port 7001"
+                echo "[SUCCESS] ✅ Le serveur écoute bien sur le port 7001"
                 break
               else
-                echo "[WAIT] Serveur non prêt (tentative $i/10)..."
+                echo "[WAITING] 🕓 Port non ouvert... tentative $i/15"
                 sleep 1
               fi
-            done            
-            echo "[INFO] Vérification de l'endpoint /health..."
-            docker exec "$CONTAINER_NAME" wget --spider -q http://localhost:7001/health && echo "[OK] Endpoint /health disponible" || echo "[WARNING] L'endpoint /health n'est pas accessible"
+              if [ "$i" -eq 15 ]; then
+                echo "[ERROR] ❌ Le port 7001 n'est pas ouvert après 15 secondes." >&2
+                docker logs "$CONTAINER_NAME"
+                exit 1
+              fi
+            done
+
+            # 🌐 Vérification bloquante de l'endpoint /health
+            echo "[INFO - 8.3.6] Vérification de l'endpoint /health..."
+            if docker exec "$CONTAINER_NAME" wget --spider -q http://localhost:7001/health; then
+              echo "[SUCCESS] ✅ Endpoint /health disponible"
+            else
+              echo "[ERROR] ❌ L'endpoint /health est inaccessible." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            fi
+
+            # (Optionnel) 🔐 Vérification d'une route protégée ou critique
+            echo "[INFO - 8.3.7] Vérification d'une route API clé (/api/me)..."
+            if docker exec "$CONTAINER_NAME" wget --spider -q http://localhost:7001/api/me; then
+              echo "[SUCCESS] ✅ La route /api/me est disponible"
+            else
+              echo "[WARNING] ⚠️ La route /api/me est inaccessible (peut être normal si pas encore connectée)"
+            fi
 
           
              # 8.4 - Mise à jour de npm et Prisma
