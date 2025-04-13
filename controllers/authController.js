@@ -1,6 +1,7 @@
 // 📌 backend/controllers/authController.js
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 exports.registerUser = async (req, res) => {
   console.log("🟡 [registerUser] ➜ Requête reçue");
