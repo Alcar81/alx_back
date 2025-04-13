@@ -1,5 +1,4 @@
 # 📁 backend/Dockerfile.backend
-
 # =============================
 # 🏗 Étape 1 : Construction
 # =============================
@@ -30,10 +29,13 @@ RUN npm install --production --loglevel=warn
 # ➕ Ajouter Prisma en dev pour le build
 RUN npm install --save-dev prisma@latest @prisma/client@latest --force
 
-# 📁 Copier le reste de l'application (incluant prisma/schema.prisma, .gitignore, etc.)
+# 📁 Copier le reste de l'application
 COPY . .
 
-# 🔍 Vérification de la copie
+# 🧪 Debug temporaire pour valider que le bon server.js est utilisé
+RUN echo "🧪 Contenu de server.js après COPY :" && head -n 20 server.js
+
+# 🔍 Vérification de la copie complète
 RUN echo "📂 Contenu du dossier /app :" && ls -la /app
 
 # ⚙️ Générer le client Prisma
@@ -62,3 +64,4 @@ EXPOSE $SERVER_PORT
 
 # 🏁 Démarrer le serveur
 CMD ["node", "server.js"]
+
