@@ -5,14 +5,15 @@ const helmet = require("helmet");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const { PrismaClient } = require("@prisma/client");
+const fetch = require("node-fetch");
 
-// ✅ Chargement fiable du fichier .env avec chemin explicite
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
-app.set("trust proxy", 1); // 🔐 Docker + Reverse proxy
+app.set("trust proxy", 1);
 
-// 🧪 Middleware pour journaliser chaque requête entrante
+// Middleware de logs
 app.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.url} | IP: ${req.ip}`);
   if (req.method === "POST" || req.method === "PUT") {
@@ -21,38 +22,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Middleware : Vérification JSON valide
-app.use(express.json({
-  strict: true,
-  verify: (req, res, buf) => {
-    try {
-      JSON.parse(buf.toString());
-    } catch (err) {
-      res.status(400).json({ message: "Requête JSON invalide" });
-      throw new Error("Requête JSON mal formée");
-    }
-  }
-}));
-
-// 🔐 Helmet (sans CSP ici car déjà défini dans OpenLiteSpeed)
+app.use(express.json());
 app.use(helmet());
 
-// 🔐 Génération d’un nonce pour tes composants frontend (React inline)
+// Génération d’un nonce pour le CSP inline
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
   next();
 });
 
-// ✅ Routes API
+// Routes API
 const authRoutes = require("./routes/auth");
 app.use("/api", authRoutes);
 
-// ✅ Route de test santé API (utile pour Docker/monitoring)
-app.get("/health", (req, res) => {
-  res.status(200).send("🟢 API OK");
-});
-
-// 📦 Servir les fichiers statiques frontend
+// Fichiers statiques
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -79,7 +62,7 @@ app.use(
   })
 );
 
-// 🌐 Servir index.html avec injection de nonce
+// Servir index.html avec injection de nonce
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
@@ -101,28 +84,56 @@ app.get("*", (req, res) => {
   });
 });
 
-// 🔁 Gestion des erreurs globales
+// Gestion globale des erreurs
 const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
-// 🚀 Démarrage du serveur
+// ================================
+// 🚀 Lancement du serveur
+// ================================
 const rawPort = process.env.SERVER_PORT;
 const PORT = parseInt(rawPort, 10);
-
 if (!PORT) {
   console.error("❌ PORT invalide ou manquant dans .env (SERVER_PORT)");
   process.exit(1);
 }
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost/api";
+const prisma = new PrismaClient();
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  const launchTime = new Date().toLocaleString("fr-CA");
+
   console.log("🚀===============================");
+  console.log(`🕒 Démarrage à : ${launchTime}`);
   console.log(`✅ Serveur backend lancé sur le port ${PORT}`);
   console.log("📌 process.env.SERVER_PORT =", rawPort);
-  console.log("📌 PORT utilisé =", PORT);
-  console.log(`🌐 API disponible à : ${API_URL}`);
+  console.log(`🌐 API accessible à : ${API_URL}`);
   console.log("🛡️  Middleware de sécurité actif (Helmet + Nonce)");
+
+  // 🔌 Test de connexion à la base de données
+  try {
+    await prisma.$connect();
+    console.log("🗃️ Connexion à la base de données : ✅ SUCCÈS");
+  } catch (error) {
+    console.error("🗃️ Connexion à la base de données : ❌ ÉCHEC");
+    console.error(error);
+  }
+
+  // 🌐 Test de ping vers le frontend (si API URL définie)
+  if (API_URL && API_URL.startsWith("http")) {
+    try {
+      const res = await fetch(API_URL, { method: "HEAD" });
+      if (res.ok) {
+        console.log(`🌍 Frontend réactif à ${API_URL} : ✅ ${res.status}`);
+      } else {
+        console.warn(`🌍 Frontend à ${API_URL} : ⚠️ Code ${res.status}`);
+      }
+    } catch (err) {
+      console.warn(`🌍 Impossible d’atteindre le frontend (${API_URL})`);
+    }
+  }
+
   console.log("🧪 Logs de requêtes activés");
   console.log("🚀===============================");
 });
