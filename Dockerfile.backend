@@ -1,4 +1,5 @@
 # 📁 backend/Dockerfile.backend
+
 # =============================
 # 🏗 Étape 1 : Construction
 # =============================
@@ -55,13 +56,12 @@ WORKDIR /app
 # 📦 Copier uniquement l’application depuis l’étape de build
 COPY --from=builder /app /app
 
-# 🟢 Définir le port via ENV (sera surchargé dynamiquement à l'exécution via `.env`)
-ARG SERVER_PORT=7001
-ENV SERVER_PORT=$SERVER_PORT
+# 🟢 Forcer le port dans l’environnement
+ENV BACKEND_PORT=7001
+ENV SERVER_PORT=7001
 
-# 📣 Ce port est exposé pour référence (non obligatoire mais utile pour la doc)
-EXPOSE $SERVER_PORT
+# 📣 Ce port est exposé pour référence
+EXPOSE 7001
 
 # 🏁 Démarrer le serveur
 CMD ["node", "server.js"]
-
