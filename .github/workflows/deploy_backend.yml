@@ -370,11 +370,11 @@ jobs:
                 echo "[SUCCESS] ✅ Le serveur écoute bien sur le port 7001"
                 break
               else
-                echo "[WAITING] 🕓 Port non ouvert... tentative $i/15"
+                echo "[WAITING] 🕓 Port non ouvert... tentative $i/30"
                 sleep 1
               fi
-              if [ "$i" -eq 20 ]; then
-                echo "[ERROR] ❌ Le port 7001 n'est pas ouvert après 15 secondes." >&2
+              if [ "$i" -eq 30 ]; then
+                echo "[ERROR] ❌ Le port 7001 n'est pas ouvert après 30 secondes." >&2
                 docker logs "$CONTAINER_NAME"
                 exit 1
               fi
