@@ -330,7 +330,7 @@ jobs:
               docker rm "$CONTAINER_NAME" || echo "[WARNING] Échec de la suppression du conteneur."
             fi
 
-            echo "[INFO - 8.3.3] Lancement du nouveau conteneur backend..."
+            echo "[INFO - 8.3.3] Lancement du nouveau conteneur backend..." 
             docker run -d --name "$CONTAINER_NAME" \
               --network "$NETWORK" \
               -v "$MOUNT_PATH:/app" \
@@ -340,21 +340,41 @@ jobs:
               node:20 \
               tail -f /dev/null
 
-            # 📦 Installation des dépendances dans le conteneur
-            echo "[INFO - 8.3.3.1] Installation de npm dans le conteneur..."
+            # 📦 Installation des dépendances Node.js dans le conteneur
+            echo "[INFO - 8.3.3.1] Installation des dépendances npm dans le conteneur..."
             docker exec "$CONTAINER_NAME" npm install --omit=dev --loglevel=warn || {
               echo "[ERROR] npm install a échoué." >&2
               docker logs "$CONTAINER_NAME"
               exit 1
             }
-            
-            # 📦 Installation de wget et net-tools
-            echo "[INFO - 8.3.3.1.1] Installation de wget et net-tools..."
-            docker exec "$CONTAINER_NAME" apt-get update && \
-            docker exec "$CONTAINER_NAME" apt-get install -y wget net-tools || {
-              echo "[ERROR] L'installation de wget/net-tools a échoué." >&2
+
+            # 📦 Installation explicite de node-fetch@2 (pour compatibilité avec require)
+            echo "[INFO - 8.3.3.1.1] Installation spécifique de node-fetch@2 dans le conteneur..."
+            docker exec "$CONTAINER_NAME" npm install node-fetch@2 --loglevel=warn || {
+              echo "[ERROR] L'installation de node-fetch@2 a échoué." >&2
               docker logs "$CONTAINER_NAME"
               exit 1
+            }
+
+            # 📦 Installation de wget, net-tools, et curl pour les vérifications réseau
+            echo "[INFO - 8.3.3.1.2] Installation de wget, net-tools et curl..."
+            docker exec "$CONTAINER_NAME" apt-get update && \
+            docker exec "$CONTAINER_NAME" apt-get install -y wget net-tools curl || {
+              echo "[ERROR] L'installation de wget/net-tools/curl a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
+            # (optionnel mais utile) ✅ Installation de tzdata pour gérer les fuseaux horaires si besoin
+            echo "[INFO - 8.3.3.1.3] Installation de tzdata (optionnelle)..."
+            docker exec "$CONTAINER_NAME" apt-get install -y tzdata || {
+              echo "[WARNING] Échec de l'installation de tzdata (peut être ignoré si non critique)." >&2
+            }
+
+            # 📝 Installation de nano (éditeur de texte)
+            echo "[INFO - 8.3.3.1.4] Installation de nano..."
+            docker exec "$CONTAINER_NAME" apt-get install -y nano || {
+              echo "[WARNING] Échec de l'installation de nano." >&2
             }
 
             # 🚀 Lancement de l'application manuellement
