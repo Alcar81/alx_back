@@ -1,4 +1,5 @@
-# 📁 backend/Dockerfile.backend
+# N'est plus utilisé gardé en référence 2025-04-13 AC
+#📁 backend/Dockerfile.backend
 
 # =============================
 # 🏗 Étape 1 : Construction

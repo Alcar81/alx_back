@@ -116,40 +116,23 @@ jobs:
           fi
           echo "[SUCCESS - 3.5] Dépendances prêtes pour le build Docker."
       
-      # Étape 4 - Construire l'image Docker pour le backend
-      - name: 4 - Construire l'image Docker
+      # Étape 4 - Copier le code backend sur le serveur
+      - name: 4 - Copier le code backend sur le serveur
         run: |
-          echo "[INFO - 4.1] 🔥 Nettoyage des images Docker inutilisées (dangling)..."
-          docker image prune -f || echo "[INFO] Aucun dangling image à nettoyer."
+          echo "📂 Création d’un répertoire temporaire avec le backend..."
+          mkdir -p backend_sync
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='logs' ./ backend_sync/
 
-          echo "[INFO - 4.1.1] 🧹 Suppression manuelle de l'image précédente ($DOCKER_NAME)..."
-          docker rmi $DOCKER_NAME || echo "[INFO] Aucune image précédente nommée $DOCKER_NAME à supprimer."
+          echo "🚀 Envoi du backend au serveur distant..."
+          ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $SSH_USER@$SERVER_IP "mkdir -p $MOUNT_PATH"
+          
+          rsync -avz backend_sync/ $SSH_USER@$SERVER_IP:$MOUNT_PATH/ -e "ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+          
+          echo "🧼 Nettoyage du répertoire temporaire local..."
+          rm -rf backend_sync
 
-          echo "[DEBUG] Vérification du Dockerfile utilisé :"
-          cat Dockerfile.backend | head -n 20"
-
-          echo "[DEBUG] Présence de server.js avant le build :"
-          head -n 20 server.js
-
-          echo "[INFO - 4.2] 🏗️ Construction de l'image Docker pour le backend (sans cache)..."
-          docker build --no-cache -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log || {
-            echo "[ERROR] ❌ Échec de la construction de l'image Docker." >&2
-            exit 1
-          }
-
-          echo "[INFO - 4.3] 📦 Validation de l'image Docker construite :"
-          docker images $DOCKER_NAME || {
-            echo "[ERROR] ❌ L'image Docker $DOCKER_NAME n'a pas été construite." >&2
-            exit 1
-          }
-
-          echo "[INFO - 4.4] 🔍 Vérification que le bon server.js a été intégré..."
-          docker run --rm $DOCKER_NAME head -n 20 /app/server.js || {
-            echo "[ERROR] ❌ Fichier server.js introuvable dans l'image Docker !" >&2
-            exit 1
-          }
-
-          echo "[SUCCESS - 4.5] ✅ Image Docker construite et vérifiée avec succès : $DOCKER_NAME"
+          echo "✅ Backend copié avec succès vers $MOUNT_PATH sur le serveur."
+      
         
       # Étape 5 - Démarrer l'agent SSH et ajouter la clé 
       - name: 5 - Démarrer l'agent SSH et ajouter la clé
@@ -348,12 +331,11 @@ jobs:
             echo "[INFO - 8.3.3] Lancement du nouveau conteneur backend..."
             docker run -d --name "$CONTAINER_NAME" \
               --network "$NETWORK" \
-              -v "$MOUNT_PATH/.env:/app/.env" \
-              -v "$MOUNT_PATH/logs:/app/logs" \
+              -v "$MOUNT_PATH:/app" \
               -w /app \
               --env-file "$MOUNT_PATH/.env" \
-              -p "127.0.0.1:7001:7001" \
-              "$DOCKER_NAME"
+              -p "127.0.0.1:$BACKEND_PORT:$BACKEND_PORT" \
+              node:20 \
             
             # 🔍 Vérifications supplémentaires après le lancement du conteneur
             echo "[DEBUG] 📂 Liste des fichiers dans /app dans le conteneur :"
