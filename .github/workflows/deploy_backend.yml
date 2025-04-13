@@ -336,6 +336,23 @@ jobs:
               --env-file "$MOUNT_PATH/.env" \
               -p "127.0.0.1:7001:7001" \
               "$DOCKER_NAME"
+            
+            # 🔍 Vérifications supplémentaires après le lancement du conteneur
+            echo "[DEBUG] 📂 Liste des fichiers dans /app dans le conteneur :"
+            docker exec "$CONTAINER_NAME" ls -la /app || echo "[WARNING] Impossible de lister /app"
+
+            echo "[DEBUG] 📄 Début du fichier server.js (20 premières lignes) :"
+            docker exec "$CONTAINER_NAME" head -n 20 /app/server.js || echo "[WARNING] Fichier server.js introuvable"
+
+            echo "[DEBUG] 🔍 Vérification présence de 'helmet' dans server.js..."
+            if docker exec "$CONTAINER_NAME" grep -q "helmet" /app/server.js; then
+              echo "[OK ✅] 'helmet' est bien présent dans server.js"
+            else
+              echo "[⚠️ ATTENTION] 'helmet' n'a pas été trouvé dans server.js !"
+            fi
+
+            echo "[DEBUG] 🔐 Aperçu du fichier .env dans le conteneur (10 premières lignes) :"
+            docker exec "$CONTAINER_NAME" head -n 10 /app/.env || echo "[WARNING] Fichier .env introuvable"
 
             # Étape 8.3.4 - Vérification que le conteneur est actif.
             echo "[INFO - 8.3.4] Vérification du conteneur backend..."
