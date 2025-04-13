@@ -125,7 +125,7 @@ jobs:
           else
             echo "[INFO - 3.4] Arbre de dépendances valide."
           fi
-          echo "[SUCCESS - 3.5] Dépendances prêtes pour le build Docker."   
+          echo "[SUCCESS - 3.5] Dépendances prêtes pour le déploiement."  
 
       # Étape 4 - Copier le code backend sur le serveur
       - name: 4 - Copier le code backend sur le serveur
@@ -338,7 +338,24 @@ jobs:
               --env-file "$MOUNT_PATH/.env" \
               -p "127.0.0.1:$BACKEND_PORT:$BACKEND_PORT" \
               node:20 \
-            
+              tail -f /dev/null
+
+            # 📦 Installation des dépendances dans le conteneur
+            echo "[INFO - 8.3.3.1] Installation de npm dans le conteneur..."
+            docker exec "$CONTAINER_NAME" npm install --omit=dev --loglevel=warn || {
+              echo "[ERROR] npm install a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
+            # 🚀 Lancement de l'application manuellement
+            echo "[INFO - 8.3.3.2] Démarrage manuel du serveur backend..."
+            docker exec -d "$CONTAINER_NAME" node server.js || {
+              echo "[ERROR] Échec du démarrage du serveur." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
             # 🔍 Vérifications supplémentaires après le lancement du conteneur
             echo "[DEBUG] 📂 Liste des fichiers dans /app dans le conteneur :"
             docker exec "$CONTAINER_NAME" ls -la /app || echo "[WARNING] Impossible de lister /app"
@@ -355,6 +372,7 @@ jobs:
 
             echo "[DEBUG] 🔐 Aperçu du fichier .env dans le conteneur (10 premières lignes) :"
             docker exec "$CONTAINER_NAME" head -n 10 /app/.env || echo "[WARNING] Fichier .env introuvable"
+
 
             # Étape 8.3.4 - Vérification que le conteneur est actif.
             echo "[INFO - 8.3.4] Vérification du conteneur backend..."
@@ -502,5 +520,5 @@ jobs:
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
 
       # Étape 10 - Nettoyage des fichiers temporaires
-      - name: Nettoyer les fichiers temporaires
-        run: rm -f /tmp/git_id_rsa
+      - name: 10 - Nettoyage des fichiers temporaires
+        run: rm -f /tmp/git_id_rsa /tmp/env_vars.sh || true
