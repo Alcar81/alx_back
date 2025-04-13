@@ -115,13 +115,16 @@ jobs:
             echo "[INFO - 3.4] Arbre de dépendances valide."
           fi
           echo "[SUCCESS - 3.5] Dépendances prêtes pour le build Docker."
+      
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
         run: |
           echo "[INFO - 4.1] Nettoyage des images Docker inutilisées..."
           docker image prune -f || (echo "[ERROR - 4.1] Impossible de nettoyer les images Docker." && exit 1)
-          echo "[INFO - 4.2] Construction de l'image Docker pour le backend..."
-          docker build -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log || exit 1
+          
+          echo "[INFO - 4.2] Construction de l'image Docker pour le backend avec --no-cache..."
+          docker build --no-cache -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log || exit 1
+
           echo "[INFO - 4.3] Validation du build Docker..."
           docker images $DOCKER_NAME || (echo "[ERROR - 4.3] L'image Docker $DOCKER_NAME n'a pas été construite avec succès." && exit 1)
           echo "[SUCCESS - 4.4] Image Docker construite avec succès : $DOCKER_NAME."
