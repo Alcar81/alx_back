@@ -111,6 +111,20 @@ app.listen(PORT, async () => {
   console.log(`🌐 API accessible à : ${API_URL}`);
   console.log("🛡️  Middleware de sécurité actif (Helmet + Nonce)");
 
+  // 🔍 Affichage des variables d'environnement clés
+  console.log("🚀===============================");
+  console.log("📦 Variables d'environnement :");
+  console.log("🔧 NODE_ENV =", process.env.NODE_ENV);
+  console.log("🔧 APP_ENV  =", process.env.APP_ENV);
+  console.log("🛠️  APP_NAME =", process.env.APP_NAME);
+  console.log("📡 PORT =", process.env.PORT);
+  console.log("📡 SERVER_PORT =", process.env.SERVER_PORT);
+  console.log("🗃️ DATABASE_URL =", process.env.DATABASE_URL?.replace(/\/\/.*:.*@/, '//***:***@'));
+  console.log("🌐 REACT_APP_API_URL =", process.env.REACT_APP_API_URL);
+  console.log("🧪 LOG_LEVEL =", process.env.LOG_LEVEL || "default");
+  console.log("🧩 ENABLE_CACHE =", process.env.ENABLE_CACHE || "false");
+  console.log("🛡️ JWT_SECRET présent :", !!process.env.JWT_SECRET ? "✅" : "❌ manquant");
+
   // 🔌 Test de connexion à la base de données
   try {
     await prisma.$connect();
