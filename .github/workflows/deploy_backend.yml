@@ -377,9 +377,25 @@ jobs:
               echo "[WARNING] Échec de l'installation de nano." >&2
             }
 
+            # 📦 (optionnel mais recommandé) Générer le client Prisma
+            echo "[INFO - 8.3.3.1.5] Génération du client Prisma..."
+            docker exec "$CONTAINER_NAME" npx prisma generate || {
+              echo "[ERROR] La génération de Prisma a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
+            # 🛠️ Build du projet (si applicable, ex: TypeScript ou bundler)
+            echo "[INFO - 8.3.3.1.6] Construction du projet (npm run build)..."
+            docker exec "$CONTAINER_NAME" npm run build || {
+              echo "[ERROR] Le build du projet a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
             # 🚀 Lancement de l'application manuellement
             echo "[INFO - 8.3.3.2] Démarrage manuel du serveur backend..."
-            docker exec -d "$CONTAINER_NAME" node server.js || {
+            docker exec -d "$CONTAINER_NAME" npm start || {
               echo "[ERROR] Échec du démarrage du serveur." >&2
               docker logs "$CONTAINER_NAME"
               exit 1
@@ -402,6 +418,7 @@ jobs:
             echo "[DEBUG] 🔐 Aperçu du fichier .env dans le conteneur (10 premières lignes) :"
             docker exec "$CONTAINER_NAME" head -n 10 /app/.env || echo "[WARNING] Fichier .env introuvable"
 
+            echo "[SUCCESS] Déploiement backend terminé avec succès à $(date)" > "$MOUNT_PATH/logs/deployment_success.log"
 
             # Étape 8.3.4 - Vérification que le conteneur est actif.
             echo "[INFO - 8.3.4] Vérification du conteneur backend..."
