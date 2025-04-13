@@ -362,6 +362,16 @@ jobs:
               exit 1
             fi
             echo "[SUCCESS] Le conteneur backend est actif."
+            echo "[INFO] Attente que le port 7001 soit ouvert..."
+            for i in {1..10}; do
+              if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":7001"; then
+                echo "[SUCCESS] Le serveur écoute bien sur le port 7001"
+                break
+              else
+                echo "[WAIT] Serveur non prêt (tentative $i/10)..."
+                sleep 1
+              fi
+            done
           
              # 8.4 - Mise à jour de npm et Prisma
             echo "[INFO - 8.4] Mise à jour de npm et Prisma..."
