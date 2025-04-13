@@ -10,6 +10,8 @@ const fetch = require("node-fetch");
 
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
+console.log("🟢 [BOOT] Initialisation de server.js...");
+
 const app = express();
 app.set("trust proxy", 1);
 
