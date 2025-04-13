@@ -482,7 +482,7 @@ jobs:
             echo "[INFO - 8.3.8] Test post-déploiement de Prisma, /health et /api/register..."
 
             echo "[TEST] 📦 Lancement de testPrisma.js..."
-            if docker exec "$CONTAINER_NAME" node /app/testPrisma.js; then
+            if docker exec "$CONTAINER_NAME" node /app/tests/testPrisma.js; then
               echo "[SUCCESS] ✅ testPrisma.js a réussi la connexion à la base de données"
             else
               echo "[ERROR] ❌ testPrisma.js a échoué. Vérifiez la connexion Prisma." >&2
