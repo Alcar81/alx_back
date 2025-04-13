@@ -397,7 +397,7 @@ jobs:
 
             # 🕒 Attente que le serveur soit prêt sur le port 7001
             echo "[INFO - 8.3.5] Attente que le port 7001 soit ouvert dans le conteneur..."
-            for i in {1..15}; do
+            for i in {1..30}; do
               if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":7001"; then
                 echo "[SUCCESS] ✅ Le serveur écoute bien sur le port 7001"
                 break
