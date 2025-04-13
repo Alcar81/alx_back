@@ -119,14 +119,18 @@ jobs:
       # Étape 4 - Construire l'image Docker pour le backend
       - name: 4 - Construire l'image Docker
         run: |
-          echo "[INFO - 4.1] Nettoyage des images Docker inutilisées..."
+          echo "[INFO - 4.1] Nettoyage des images Docker inutilisées (dangling)..."
           docker image prune -f || (echo "[ERROR - 4.1] Impossible de nettoyer les images Docker." && exit 1)
-          
+
+          echo "[INFO - 4.1.1] Suppression manuelle de l'image précédente si elle existe..."
+          docker rmi $DOCKER_NAME || echo "[INFO] Aucune image précédente nommée $DOCKER_NAME à supprimer."
+
           echo "[INFO - 4.2] Construction de l'image Docker pour le backend avec --no-cache..."
           docker build --no-cache -t $DOCKER_NAME -f Dockerfile.backend . | tee -a logs/backend_deploy.log || exit 1
 
           echo "[INFO - 4.3] Validation du build Docker..."
           docker images $DOCKER_NAME || (echo "[ERROR - 4.3] L'image Docker $DOCKER_NAME n'a pas été construite avec succès." && exit 1)
+
           echo "[SUCCESS - 4.4] Image Docker construite avec succès : $DOCKER_NAME."
         
       # Étape 5 - Démarrer l'agent SSH et ajouter la clé 
