@@ -516,22 +516,22 @@ jobs:
               # Créer un fichier temporaire contenant le script Node.js
               TEMP_SCRIPT="/tmp/clean_test_user.js"
               cat <<EOT > "$TEMP_SCRIPT"
-            const { PrismaClient } = require("@prisma/client");
-            const prisma = new PrismaClient();
+              const { PrismaClient } = require("@prisma/client");
+              const prisma = new PrismaClient();
 
-            async function clean() {
-              try {
-                await prisma.user.deleteMany({ where: { email: "fakebot@example.com" } });
-                console.log("🗑️ Utilisateur fakebot@example.com supprimé");
-              } catch (e) {
-                console.error("❌ Échec suppression fakebot :", e.message);
-              } finally {
-                await prisma.$disconnect();
+              async function clean() {
+                try {
+                  await prisma.user.deleteMany({ where: { email: "fakebot@example.com" } });
+                  console.log("🗑️ Utilisateur fakebot@example.com supprimé");
+                } catch (e) {
+                  console.error("❌ Échec suppression fakebot :", e.message);
+                } finally {
+                  await prisma.$disconnect();
+                }
               }
-            }
 
-            clean();
-            EOT
+              clean();
+              EOT
 
               # Copier et exécuter le script dans le conteneur
               docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
@@ -540,7 +540,7 @@ jobs:
               # Supprimer le fichier dans le conteneur et localement
               docker exec "$CONTAINER_NAME" rm -f /tmp/clean_test_user.js
               rm -f "$TEMP_SCRIPT"
-              
+
             else
               echo "[INFO - 8.3.9] ENV=$ENV – Aucun nettoyage effectué (réservé à l'environnement de dev)"
             fi
