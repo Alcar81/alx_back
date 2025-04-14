@@ -535,9 +535,12 @@ jobs:
                   await prisma.$disconnect();
                 }
               }
-              docker exec "$CONTAINER_NAME" sh -c "if [ -f /tmp/clean_test_user.js ]; then node /tmp/clean_test_user.js; else echo '[ERROR] Script /tmp/clean_test_user.js not found'; exit 1; fi"
               clean();
               EOT
+
+              # Copier et exécuter le script dans le conteneur
+              docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
+              docker exec "$CONTAINER_NAME" sh -c "if [ -f /tmp/clean_test_user.js ]; then node /tmp/clean_test_user.js; else echo '[ERROR] Script /tmp/clean_test_user.js not found'; exit 1; fi"
 
               # Copier et exécuter le script dans le conteneur
               docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
