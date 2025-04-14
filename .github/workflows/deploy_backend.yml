@@ -630,10 +630,7 @@ jobs:
             echo "[INFO - 8.6] Nettoyage des anciens conteneurs et images..."
             docker container prune -f || echo "[WARNING] Nettoyage des conteneurs échoué."
             docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
-
-            echo "[SUCCESS] Déploiement backend terminé avec succès !"           
-          EOF
-               
+                          
             # 8.7 - Suppression sécurisée des fichiers temporaires
             echo "[INFO - 8.7] Suppression sécurisée des fichiers temporaires..."
             rm -f /tmp/env_vars.sh /tmp/git_id_rsa
@@ -650,6 +647,9 @@ jobs:
             8.10 - Test POST /api/register (sans payload réel)
             echo "[INFO - 8.10] Test POST /api/register (sans payload réel)..."
             docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$BACKEND_PORT/api/register
+
+            echo "[SUCCESS] Déploiement backend terminé avec succès !"           
+          EOF
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
