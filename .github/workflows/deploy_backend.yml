@@ -512,28 +512,28 @@ jobs:
             # 8.3.9 - Nettoyage de l'utilisateur de test, quelle que soit l'environnement
             echo "[INFO - 8.3.9] Suppression de fakebot@example.com (si présent) dans la base de données..."
 
-            # 8.3.9.1 - Créer un fichier temporaire contenant le script Node.js
-            echo "[INFO - 8.3.9.1] Créer un fichier temporaire contenant le script Node.js..."
-            TEMP_SCRIPT="/tmp/clean_test_user.js"
-            cat <<EOT > "$TEMP_SCRIPT"
-              const { PrismaClient } = require("@prisma/client");
-              const prisma = new PrismaClient();
-
-              async function clean() {
-                try {
-                  const result = await prisma.user.deleteMany({
-                    where: { email: "fakebot@example.com" }
-                  });
-                  console.log(\`🧹 Utilisateurs supprimés : \${result.count}\`);
-                } catch (e) {
-                  console.error("❌ Échec de la suppression :", e.message);
-                } finally {
-                  await prisma.$disconnect();
-                }
+                        # 8.3.9.1 - Créer un fichier temporaire contenant le script Node.js
+                        echo "[INFO - 8.3.9.1] Créer un fichier temporaire contenant le script Node.js..."
+                        TEMP_SCRIPT="/tmp/clean_test_user.js"
+                        cat <<EOT > "$TEMP_SCRIPT"
+            const { PrismaClient } = require("@prisma/client");
+            const prisma = new PrismaClient();
+            
+            async function clean() {
+              try {
+                const result = await prisma.user.deleteMany({
+                  where: { email: "fakebot@example.com" }
+                });
+                console.log(\`🧹 Utilisateurs supprimés : \${result.count}\`);
+              } catch (e) {
+                console.error("❌ Échec de la suppression :", e.message);
+              } finally {
+                await prisma.$disconnect();
               }
-
-              clean();
-            EOT
+            }
+            
+            clean();
+                        EOT
 
             # 8.3.9.2 - Copier et exécuter le script dans le conteneur
             echo "[INFO - 8.3.9.2] Copier et exécuter le script dans le conteneur..."
