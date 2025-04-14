@@ -536,7 +536,7 @@ jobs:
                 }
               }
               clean();
-              EOT
+            EOT
 
               # Copier et exécuter le script dans le conteneur
               docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
