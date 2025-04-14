@@ -513,7 +513,9 @@ jobs:
             if [ "$ENV" = "dev" ]; then
               echo "[INFO - 8.3.9] Nettoyage de l'utilisateur de test dans la base de données..."
 
-              docker exec "$CONTAINER_NAME" sh -c 'node <<EOF
+              # Créer un fichier temporaire contenant le script Node.js
+              TEMP_SCRIPT="/tmp/clean_test_user.js"
+              cat <<EOT > "$TEMP_SCRIPT"
             const { PrismaClient } = require("@prisma/client");
             const prisma = new PrismaClient();
 
@@ -529,7 +531,16 @@ jobs:
             }
 
             clean();
-            EOF'
+            EOT
+
+              # Copier et exécuter le script dans le conteneur
+              docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
+              docker exec "$CONTAINER_NAME" node /tmp/clean_test_user.js
+
+              # Supprimer le fichier dans le conteneur et localement
+              docker exec "$CONTAINER_NAME" rm -f /tmp/clean_test_user.js
+              rm -f "$TEMP_SCRIPT"
+              
             else
               echo "[INFO - 8.3.9] ENV=$ENV – Aucun nettoyage effectué (réservé à l'environnement de dev)"
             fi
