@@ -635,18 +635,18 @@ jobs:
             echo "[INFO - 8.7] Suppression sécurisée des fichiers temporaires..."
             rm -f /tmp/env_vars.sh /tmp/git_id_rsa
             echo "[SUCCESS] La suppression des fichiers temporaires est terminée !"
-      
-      # Étape 8.8 - Vérification testPrisma.js et des routes clés
-      - name: 8.8 - 🔎 Vérification testPrisma.js et des routes clés
-        run: |
-          echo "[INFO] Exécution de testPrisma.js pour tester Prisma..."
-          docker exec $CONTAINER_NAME node tests/testPrisma.js
 
-          echo "[INFO] Vérification endpoint /health..."
-          docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health
+            8.8 - Vérification testPrisma.js et des routes clés
+            echo "[INFO] Exécution de testPrisma.js pour tester Prisma..."
+            docker exec $CONTAINER_NAME node tests/testPrisma.js
 
-          echo "[INFO] Test POST /api/register (sans payload réel)..."
-          docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$BACKEND_PORT/api/register
+            8.9 - Vérification de l'endpoint /health
+            echo "[INFO] Vérification endpoint /health..."
+            docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health
+
+            8.10 - Test POST /api/register (sans payload réel)
+            echo "[INFO] Test POST /api/register (sans payload réel)..."
+            docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$BACKEND_PORT/api/register
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
