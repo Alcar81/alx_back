@@ -537,13 +537,13 @@ jobs:
 
             # 8.3.9.2 - Copier et exécuter le script dans le conteneur
             echo "[INFO - 8.3.9.2] Copier et exécuter le script dans le conteneur..."
-            docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
-            docker exec "$CONTAINER_NAME" node /tmp/clean_test_user.js
+            docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/app/clean_test_user.js"  # Copier dans /app
+            docker exec "$CONTAINER_NAME" node /app/clean_test_user.js  # Exécuter dans /app
 
             # 8.3.9.3 - Supprimer le fichier dans le conteneur et localement
             echo "[INFO - 8.3.9.3] Supprimer le fichier dans le conteneur et localement..."
-            docker exec "$CONTAINER_NAME" rm -f /tmp/clean_test_user.js
-            rm -f "$TEMP_SCRIPT"
+            docker exec "$CONTAINER_NAME" rm -f /app/clean_test_user.js  # Supprimer dans /app
+            rm -f "$TEMP_SCRIPT"  # Supprimer localement
 
 
              # 8.4 - Mise à jour de npm et Prisma
