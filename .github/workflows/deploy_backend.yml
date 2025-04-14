@@ -533,7 +533,7 @@ jobs:
             }
 
             clean();
-            EOT
+          EOT
 
             # 8.3.9.2 - Copier et exécuter le script dans le conteneur
             echo "[INFO - 8.3.9.2] Copier et exécuter le script dans le conteneur..."
