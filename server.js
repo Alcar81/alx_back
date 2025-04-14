@@ -30,6 +30,9 @@ function log(message) {
   logStream.write(line + "\n");
 }
 
+// ✅ Lire le JSON avant les middlewares personnalisés
+app.use(express.json());
+
 // === 📥 Logs des requêtes entrantes
 app.use((req, res, next) => {
   log(`📥 ${req.method} ${req.url} | IP: ${req.ip}`);

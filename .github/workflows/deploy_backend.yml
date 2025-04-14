@@ -376,8 +376,8 @@ jobs:
             }
             
             # 🌐 Configuration de la zone horaire à America/Toronto
-            echo "[INFO - 8.3.3.1.4] Configuration de la zone horaire à America/Toronto..."
-            docker exec "$CONTAINER_NAME" ln -sf /usr/share/zoneinfo/America/Toronto /etc/localtime
+            echo "[INFO - 8.3.3.1.4] Configuration de la zone horaire à America/Montreal..."
+            docker exec "$CONTAINER_NAME" ln -sf /usr/share/zoneinfo/America/Montreal /etc/localtime
             docker exec "$CONTAINER_NAME" dpkg-reconfigure -f noninteractive tzdata
 
             # 📝 Installation de nano (éditeur de texte)
