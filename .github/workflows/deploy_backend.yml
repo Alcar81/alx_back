@@ -513,6 +513,7 @@ jobs:
             echo "[INFO - 8.3.9] Suppression de fakebot@example.com (si présent) dans la base de données..."
 
             # 8.3.9.1 - Créer un fichier temporaire contenant le script Node.js
+            echo "[INFO - 8.3.9.1] Créer un fichier temporaire contenant le script Node.js..."
             TEMP_SCRIPT="/tmp/clean_test_user.js"
             cat <<EOT > "$TEMP_SCRIPT"
             const { PrismaClient } = require("@prisma/client");
@@ -535,10 +536,12 @@ jobs:
             EOT
 
             # 8.3.9.2 - Copier et exécuter le script dans le conteneur
+            echo "[INFO - 8.3.9.2] Copier et exécuter le script dans le conteneur..."
             docker cp "$TEMP_SCRIPT" "$CONTAINER_NAME:/tmp/clean_test_user.js"
             docker exec "$CONTAINER_NAME" node /tmp/clean_test_user.js
 
             # 8.3.9.3 - Supprimer le fichier dans le conteneur et localement
+            echo "[INFO - 8.3.9.3] Supprimer le fichier dans le conteneur et localement..."
             docker exec "$CONTAINER_NAME" rm -f /tmp/clean_test_user.js
             rm -f "$TEMP_SCRIPT"
 
@@ -572,14 +575,14 @@ jobs:
 
             if [ -z "$SCHEMA_PATH" ]; then
               echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur !" >&2
-              echo "[INFO] Vérifiez que le fichier est inclus dans l'image Docker et que le chemin est correct."
+              echo "[INFO - 8.5.3.0] Vérifiez que le fichier est inclus dans l'image Docker et que le chemin est correct."
               exit 1
             fi
 
             echo "[SUCCESS] Fichier schema.prisma trouvé : $SCHEMA_PATH"
 
             # Étape 8.5.3.1 - Validation syntaxique du schéma
-            echo "[INFO] Validation syntaxique du schéma..."
+            echo "[INFO - 8.5.3.1] Validation syntaxique du schéma..."
             docker exec "$CONTAINER_NAME" npx prisma validate --schema="$SCHEMA_PATH" || {
               echo "[ERROR] Le fichier schema.prisma est invalide. Corrigez les erreurs avant de continuer." >&2
               exit 1
@@ -587,7 +590,7 @@ jobs:
             echo "[SUCCESS] Le fichier schema.prisma est valide."
 
             # Étape 8.5.3.2 - Vérification des migrations Prisma en attente
-            echo "[INFO] Vérification des migrations Prisma en attente..."
+            echo "[INFO - 8.5.3.2] Vérification des migrations Prisma en attente..."
             docker exec "$CONTAINER_NAME" npx prisma migrate status --schema="$SCHEMA_PATH" || {
               echo "[WARNING] Des migrations sont en attente ou ont échoué. Vérifiez avant le déploiement." >&2
             }
@@ -637,15 +640,15 @@ jobs:
             echo "[SUCCESS] La suppression des fichiers temporaires est terminée !"
 
             8.8 - Vérification testPrisma.js et des routes clés
-            echo "[INFO] Exécution de testPrisma.js pour tester Prisma..."
+            echo "[INFO - 8.8] Exécution de testPrisma.js pour tester Prisma..."
             docker exec $CONTAINER_NAME node tests/testPrisma.js
 
             8.9 - Vérification de l'endpoint /health
-            echo "[INFO] Vérification endpoint /health..."
+            echo "[INFO - 8.9] Vérification endpoint /health..."
             docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health
 
             8.10 - Test POST /api/register (sans payload réel)
-            echo "[INFO] Test POST /api/register (sans payload réel)..."
+            echo "[INFO - 8.10] Test POST /api/register (sans payload réel)..."
             docker exec $CONTAINER_NAME curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$BACKEND_PORT/api/register
 
       # Étape 9 - Configurer l'URL Git distante
