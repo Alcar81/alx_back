@@ -513,24 +513,23 @@ jobs:
             if [ "$ENV" = "dev" ]; then
               echo "[INFO - 8.3.9] Nettoyage de l'utilisateur de test dans la base de données..."
 
-              docker exec "$CONTAINER_NAME" sh -c "node <<'EOF'
-            const { PrismaClient } = require('@prisma/client');
+              docker exec "$CONTAINER_NAME" sh -c 'node <<EOF
+            const { PrismaClient } = require("@prisma/client");
             const prisma = new PrismaClient();
 
             async function clean() {
               try {
-                await prisma.user.deleteMany({ where: { email: 'fakebot@example.com' } });
-                console.log('🗑️ Utilisateur fakebot@example.com supprimé');
+                await prisma.user.deleteMany({ where: { email: "fakebot@example.com" } });
+                console.log("🗑️ Utilisateur fakebot@example.com supprimé");
               } catch (e) {
-                console.error('❌ Échec suppression fakebot :', e.message);
+                console.error("❌ Échec suppression fakebot :", e.message);
               } finally {
                 await prisma.$disconnect();
               }
             }
 
             clean();
-            EOF"
-
+            EOF'
             else
               echo "[INFO - 8.3.9] ENV=$ENV – Aucun nettoyage effectué (réservé à l'environnement de dev)"
             fi
