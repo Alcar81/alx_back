@@ -518,7 +518,6 @@ jobs:
               cat <<"EOT" > "$TEMP_SCRIPT"
             const { PrismaClient } = require("@prisma/client");
             const prisma = new PrismaClient();
-
             async function clean() {
               try {
                 const result = await prisma.user.deleteMany({
@@ -530,9 +529,8 @@ jobs:
               } finally {
                 await prisma.$disconnect();
               }
-            }
-           
-          clean();
+            }           
+            clean();
           EOT
 
             # 8.3.9.2 - Copier et exécuter le script dans le conteneur
