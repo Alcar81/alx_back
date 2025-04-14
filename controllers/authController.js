@@ -1,33 +1,55 @@
+// backend/controllers/authController.js
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
+const fs = require("fs");
+const path = require("path");
+
 const prisma = new PrismaClient();
 
+// 📁 Logger vers logs/server.log
+const logDir = path.join(__dirname, "../logs");
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+const logFilePath = path.join(logDir, "server.log");
+const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
+
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] ${message}`;
+  console.log(line);
+  logStream.write(line + "\n");
+}
+
 exports.registerUser = async (req, res, next) => {
-  console.log("🟡 [registerUser] ➜ Requête reçue");
+  log("🟡 [registerUser] ➜ Requête reçue");
 
   try {
+    if (!req.is("application/json")) {
+      log("⚠️ Type de contenu invalide.");
+      return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
+    }
+
     const { firstName, lastName, email, password } = req.body;
+    log(`📩 Données reçues : ${JSON.stringify({ firstName, lastName, email })}`);
 
-    console.log("📩 Données reçues :", { firstName, lastName, email });
-
-    // 🔎 Vérification des champs
     if (!firstName || !lastName || !email || !password) {
-      console.warn("⚠️ Champs manquants");
+      log("⚠️ Champs requis manquants");
       return res.status(400).json({ message: "Tous les champs sont requis." });
     }
 
-    console.log("🔎 Vérification si l'utilisateur existe...");
+    log("🔎 Vérification si l'utilisateur existe...");
     const userExist = await prisma.user.findUnique({ where: { email } });
 
     if (userExist) {
-      console.warn("⚠️ Email déjà utilisé :", email);
+      log(`⚠️ Email déjà utilisé : ${email}`);
       return res.status(409).json({ message: "Cet email est déjà utilisé." });
     }
 
-    console.log("🔐 Hashage du mot de passe...");
+    log("🔐 Hashage du mot de passe...");
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    console.log("🛠️ Création de l'utilisateur...");
+    log("🛠️ Création de l'utilisateur...");
     const newUser = await prisma.user.create({
       data: {
         firstName,
@@ -37,7 +59,7 @@ exports.registerUser = async (req, res, next) => {
       },
     });
 
-    console.log("✅ Utilisateur créé :", { id: newUser.id, email: newUser.email });
+    log(`✅ Utilisateur créé : ID ${newUser.id}, Email: ${newUser.email}`);
 
     return res.status(201).json({
       message: "Inscription réussie",
@@ -45,9 +67,7 @@ exports.registerUser = async (req, res, next) => {
     });
 
   } catch (err) {
-    console.error("❌ Erreur serveur dans registerUser :", err);
-
-    // Appel du middleware global si besoin
+    log(`❌ Erreur serveur dans registerUser : ${err.message}`);
     return res.status(500).json({
       message: "Erreur interne du serveur",
       error: err.message,
