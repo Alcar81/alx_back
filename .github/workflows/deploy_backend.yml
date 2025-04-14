@@ -516,7 +516,13 @@ jobs:
               # Créer un fichier temporaire contenant le script Node.js
               TEMP_SCRIPT="/tmp/clean_test_user.js"
               cat <<EOT > "$TEMP_SCRIPT"
-              const { PrismaClient } = require("@prisma/client");
+              let PrismaClient;
+              try {
+                PrismaClient = require("@prisma/client").PrismaClient;
+              } catch (e) {
+                console.error("❌ Prisma client is not installed or configured:", e.message);
+                process.exit(1);
+              }
               const prisma = new PrismaClient();
 
               async function clean() {
@@ -529,7 +535,7 @@ jobs:
                   await prisma.$disconnect();
                 }
               }
-
+              docker exec "$CONTAINER_NAME" sh -c "if [ -f /tmp/clean_test_user.js ]; then node /tmp/clean_test_user.js; else echo '[ERROR] Script /tmp/clean_test_user.js not found'; exit 1; fi"
               clean();
               EOT
 
