@@ -26,9 +26,7 @@ const logFilePath = path.join(logDir, "server.log");
 const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 
 function log(message) {
-  const timestamp = new Date().toLocaleString("fr-CA", {
-    timeZone: "America/Toronto",
-  });
+  const timestamp = new Date().toLocaleString("fr-CA", { timeZone: "America/Toronto" });
   const line = `[${timestamp}] ${message}`;
   console.log(line);
   logStream.write(line + "\n");
@@ -38,13 +36,8 @@ function log(message) {
 app.use(express.json());
 
 // === 📥 Logs des requêtes entrantes
-app.use((req, res, next) => {
-  log(`📥 ${req.method} ${req.url} | IP: ${req.ip}`);
-  if (req.method === "POST" || req.method === "PUT") {
-    log(`📦 Données reçues : ${JSON.stringify(req.body)}`);
-  }
-  next();
-});
+const loggerMiddleware = require("./middleware/loggerMiddleware");
+app.use(loggerMiddleware);
 
 app.use(helmet());
 
