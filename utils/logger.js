@@ -1,8 +1,9 @@
+// 📁 backend/utils/logger.js
+const winston = require("winston");
 const path = require("path");
 const fs = require("fs");
-const winston = require("winston");
 
-// Créer le dossier logs si absent
+// 🔧 S'assurer que le dossier logs existe
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
@@ -19,8 +20,11 @@ const logger = winston.createLogger({
     })
   ),
   transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: path.join(logDir, "server.log") }),
+    new winston.transports.Console(), // ✅ Affichage terminal
+    new winston.transports.File({     // ✅ Écriture dans logs/server.log
+      filename: path.join(logDir, "server.log"),
+      handleExceptions: true,
+    }),
   ],
 });
 

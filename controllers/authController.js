@@ -1,30 +1,45 @@
+// 📌 backend/controllers/authController.js
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
-const logger = require("../utils/logger");
+const fs = require("fs");
+const path = require("path");
 
 const prisma = new PrismaClient();
 
+// Logger vers logs/server.log
+const logDir = path.join(__dirname, "../logs");
+if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+const logFilePath = path.join(logDir, "server.log");
+const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
+
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] ${message}`;
+  console.log(line);
+  logStream.write(line + "\n");
+}
+
 exports.registerUser = async (req, res) => {
-  logger.info("🟡 [registerUser] ➜ Requête reçue");
+  log("🟡 [registerUser] ➜ Requête reçue");
 
   try {
     if (!req.is("application/json")) {
-      logger.warn("⚠️ Type de contenu invalide");
+      log("⚠️ Type de contenu invalide");
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
 
     const { firstName, lastName, email, password } = req.body;
-    logger.info(`📩 Données reçues : ${JSON.stringify({ firstName, lastName, email })}`);
+    log(`📩 Données reçues : ${JSON.stringify({ firstName, lastName, email })}`);
 
     if (!firstName || !lastName || !email || !password) {
-      logger.warn("⚠️ Champs requis manquants");
+      log("⚠️ Champs requis manquants");
       return res.status(400).json({ message: "Tous les champs sont requis." });
     }
 
     const userExist = await prisma.user.findUnique({ where: { email } });
     if (userExist) {
-      logger.warn(`⚠️ Email déjà utilisé : ${email}`);
+      log(`⚠️ Email déjà utilisé : ${email}`);
       return res.status(409).json({ message: "Cet email est déjà utilisé." });
     }
 
@@ -33,41 +48,41 @@ exports.registerUser = async (req, res) => {
       data: { firstName, lastName, email, password: hashedPassword },
     });
 
-    logger.info(`✅ Utilisateur créé : ID ${newUser.id}, Email: ${newUser.email}`);
+    log(`✅ Utilisateur créé : ID ${newUser.id}, Email: ${newUser.email}`);
     return res.status(201).json({ message: "Inscription réussie", userId: newUser.id });
 
   } catch (err) {
-    logger.error(`❌ Erreur serveur dans registerUser : ${err.message}`);
+    log(`❌ Erreur serveur dans registerUser : ${err.message}`);
     return res.status(500).json({ message: "Erreur interne du serveur" });
   }
 };
 
 exports.loginUser = async (req, res) => {
-  logger.info("🟡 [loginUser] ➜ Requête reçue");
+  log("🟡 [loginUser] ➜ Requête reçue");
 
   try {
     if (!req.is("application/json")) {
-      logger.warn("⚠️ Type de contenu invalide");
+      log("⚠️ Type de contenu invalide");
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
 
     const { email, password } = req.body;
-    logger.info(`📩 Données reçues : ${JSON.stringify({ email })}`);
+    log(`📩 Données reçues : ${JSON.stringify({ email })}`);
 
     if (!email || !password) {
-      logger.warn("⚠️ Email ou mot de passe manquant");
+      log("⚠️ Email ou mot de passe manquant");
       return res.status(400).json({ message: "Email et mot de passe sont requis." });
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      logger.warn("❌ Utilisateur non trouvé");
+      log("❌ Utilisateur non trouvé");
       return res.status(401).json({ message: "Email ou mot de passe incorrect." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      logger.warn("❌ Mot de passe incorrect");
+      log("❌ Mot de passe incorrect");
       return res.status(401).json({ message: "Email ou mot de passe incorrect." });
     }
 
@@ -75,7 +90,7 @@ exports.loginUser = async (req, res) => {
       expiresIn: "1h",
     });
 
-    logger.info(`✅ Connexion réussie pour ${user.email}`);
+    log(`✅ Connexion réussie pour ${user.email}`);
     return res.json({
       message: "Connexion réussie",
       token,
@@ -85,7 +100,7 @@ exports.loginUser = async (req, res) => {
     });
 
   } catch (err) {
-    logger.error(`❌ Erreur serveur dans loginUser : ${err.message}`);
+    log(`❌ Erreur serveur dans loginUser : ${err.message}`);
     return res.status(500).json({ message: "Erreur interne du serveur" });
   }
 };

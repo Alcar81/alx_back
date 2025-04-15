@@ -1,14 +1,17 @@
-// backend/tests/testPrisma.js
-const { PrismaClient } = require('@prisma/client');
+process.env.TZ = "America/Toronto"; // ✅ Forcer le fuseau horaire
+
+const { PrismaClient } = require("@prisma/client");
+const logger = require("../utils/logger"); // ✅ Utilisation du logger central
+
 const prisma = new PrismaClient();
 
 (async () => {
   try {
     const users = await prisma.user.findMany();
-    console.log("✅ Connexion réussie. Utilisateurs trouvés :", users.length);
+    logger.info(`✅ Connexion réussie. Utilisateurs trouvés : ${users.length}`);
     process.exit(0);
   } catch (e) {
-    console.error("❌ Erreur de connexion ou de requête Prisma :", e.message);
+    logger.error(`❌ Erreur de connexion ou de requête Prisma : ${e.message}`);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
