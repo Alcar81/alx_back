@@ -1,8 +1,12 @@
+// 📁 backend/utils/logger.js
 const winston = require("winston");
 const path = require("path");
 const fs = require("fs");
 
-// 📁 Créer dossier logs si absent
+// 🔧 Forcer le fuseau horaire global
+process.env.TZ = "America/Toronto";
+
+// 🔧 S’assurer que le dossier logs existe
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
