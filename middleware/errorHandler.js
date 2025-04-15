@@ -1,12 +1,14 @@
-// \backend\middleware\errorHandler.js
+// 📌 backend/middleware/errorHandler.js
+module.exports = (err, req, res, next) => {
+  const isJson = req.headers["content-type"] === "application/json";
+  const code = err.status || 500;
+  const message = err.message || "Erreur interne du serveur";
 
-const errorHandler = (err, req, res, next) => {
-    console.error('Erreur :', err.message || err);
-    res.status(err.status || 500).json({
-      error: true,
-      message: err.message || 'Une erreur est survenue.',
-    });
-  };
-  
-  module.exports = errorHandler;
-  
+  console.error(`❌ [${req.method}] ${req.url} - ${message}`);
+
+  if (isJson) {
+    res.status(code).json({ error: true, message });
+  } else {
+    res.status(code).send(`<h1>Erreur ${code}</h1><p>${message}</p>`);
+  }
+};
