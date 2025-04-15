@@ -528,7 +528,9 @@ jobs:
             echo "[INFO - 8.3.9.1] Créer un fichier temporaire contenant le script Node.js..."
             TEMP_SCRIPT="/tmp/clean_test_user.js"
               cat <<"EOT" > "$TEMP_SCRIPT"
+            process.env.TZ = "America/Toronto";
             const { PrismaClient } = require("@prisma/client");
+            const logger = require("../utils/logger");
             const prisma = new PrismaClient();
             async function clean() {
               try {
