@@ -12,11 +12,12 @@ const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 const logFilePath = path.join(logDir, "server.log");
 const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
+const logger = require("../utils/logger");
 
 function log(message) {
   const timestamp = new Date().toISOString();
   const line = `[${timestamp}] ${message}`;
-  console.log(line);
+  logger.info(line);
   logStream.write(line + "\n");
 }
 

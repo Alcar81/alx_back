@@ -3,23 +3,24 @@ const winston = require("winston");
 const path = require("path");
 const fs = require("fs");
 
-// 🔧 Forcer le fuseau horaire global
 process.env.TZ = "America/Toronto";
 
-// 🔧 S’assurer que le dossier logs existe
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
+const timezoned = () =>
+  new Date().toLocaleString("fr-CA", {
+    timeZone: "America/Toronto",
+    hour12: false,
+  });
+
 const logger = winston.createLogger({
   level: "info",
   format: winston.format.combine(
-    winston.format.printf(({ level, message }) => {
-      const timestamp = new Date().toLocaleString("fr-CA", {
-        timeZone: "America/Toronto",
-        hour12: false,
-      });
+    winston.format.timestamp({ format: timezoned }),
+    winston.format.printf(({ timestamp, level, message }) => {
       return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
     })
   ),
