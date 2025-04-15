@@ -1,4 +1,3 @@
-// 📁 backend/utils/logger.js
 const winston = require("winston");
 const path = require("path");
 const fs = require("fs");
@@ -12,8 +11,13 @@ if (!fs.existsSync(logDir)) {
 const logger = winston.createLogger({
   level: "info",
   format: winston.format.combine(
+    // ✅ Timestamp en fuseau horaire local (Toronto)
     winston.format.timestamp({
-      format: "YYYY-MM-DD HH:mm:ss",
+      format: () =>
+        new Date().toLocaleString("fr-CA", {
+          timeZone: "America/Toronto",
+          hour12: false,
+        }),
     }),
     winston.format.printf(({ timestamp, level, message }) => {
       return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
@@ -21,7 +25,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(), // ✅ Affichage terminal
-    new winston.transports.File({     // ✅ Écriture dans logs/server.log
+    new winston.transports.File({
       filename: path.join(logDir, "server.log"),
       handleExceptions: true,
     }),
