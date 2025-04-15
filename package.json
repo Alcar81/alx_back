@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server.js >> logs/server.log 2>&1",
     "build": "echo '✔️ Build non nécessaire pour ce projet backend.'",
     "dev": "nodemon server.js",
     "test": "jest"

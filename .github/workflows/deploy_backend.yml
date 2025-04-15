@@ -322,6 +322,9 @@ jobs:
             mkdir -p "$MOUNT_PATH/logs"
             rm -f "$MOUNT_PATH/logs/*" || echo "[WARNING] Aucune log à nettoyer ou suppression échouée."
 
+            # 🔥 Suppression de l'ancien fichier npm_start_output.log (inutile maintenant)
+            rm -f "$MOUNT_PATH/logs/npm_start_output.log" || echo "[INFO] Aucun npm_start_output.log à supprimer"
+
             # 8.3.1.1 - Suppression des logs plus vieux que 7 jours
             echo "[INFO - 8.3.1.1] Suppression des logs plus vieux que 7 jours..."
             find "$MOUNT_PATH/logs/" -type f -name "*.log" -mtime +7 -exec rm -f {} \; || echo "[WARNING] Aucune log ancienne à supprimer."
@@ -404,7 +407,7 @@ jobs:
 
             # 🚀 Lancement de l'application manuellement
             echo "[INFO - 8.3.3.2] Démarrage manuel du serveur backend..."
-            docker exec -d "$CONTAINER_NAME" sh -c "npm start >> logs/npm_start_output.log 2>&1" || {
+            docker exec -d "$CONTAINER_NAME" npm start || {
               echo "[ERROR] Échec du démarrage du serveur." >&2
               docker logs "$CONTAINER_NAME"
               exit 1

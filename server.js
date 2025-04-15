@@ -1,5 +1,7 @@
 // 📁 backend/server.js
 
+process.env.TZ = 'America/Toronto'; // ✅ Heure locale pour tous les logs
+
 const express = require("express");
 const helmet = require("helmet");
 const crypto = require("crypto");
@@ -24,7 +26,9 @@ const logFilePath = path.join(logDir, "server.log");
 const logStream = fs.createWriteStream(logFilePath, { flags: "a" });
 
 function log(message) {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toLocaleString("fr-CA", {
+    timeZone: "America/Toronto",
+  });
   const line = `[${timestamp}] ${message}`;
   console.log(line);
   logStream.write(line + "\n");
@@ -124,7 +128,9 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost/api";
 const prisma = new PrismaClient();
 
 app.listen(PORT, async () => {
-  const launchTime = new Date().toLocaleString("fr-CA");
+  const launchTime = new Date().toLocaleString("fr-CA", {
+    timeZone: "America/Toronto",
+  });
 
   log("🚀===============================");
   log(`🕒 Démarrage à : ${launchTime}`);
@@ -140,7 +146,10 @@ app.listen(PORT, async () => {
   log("🛠️  APP_NAME = " + process.env.APP_NAME);
   log("📡 PORT = " + process.env.PORT);
   log("📡 SERVER_PORT = " + process.env.SERVER_PORT);
-  log("🗃️ DATABASE_URL = " + (process.env.DATABASE_URL?.replace(/\/\/.*:.*@/, "//***:***@") || ""));
+  log(
+    "🗃️ DATABASE_URL = " +
+      (process.env.DATABASE_URL?.replace(/\/\/.*:.*@/, "//***:***@") || "")
+  );
   log("🌐 REACT_APP_API_URL = " + process.env.REACT_APP_API_URL);
   log("🧪 LOG_LEVEL = " + (process.env.LOG_LEVEL || "default"));
   log("🧩 ENABLE_CACHE = " + (process.env.ENABLE_CACHE || "false"));
@@ -152,16 +161,21 @@ app.listen(PORT, async () => {
     log("🗃️ Connexion à la base de données : ✅ SUCCÈS");
   } catch (error) {
     log("🗃️ Connexion à la base de données : ❌ ÉCHEC");
-    log(error.message);
+    log("🛑 Détail : " + error.message);
   }
 
   // Ping frontend
   if (API_URL.startsWith("http")) {
     try {
       const res = await fetch(API_URL, { method: "HEAD" });
-      log(`🌍 Frontend à ${API_URL} : ${res.ok ? `✅ ${res.status}` : `⚠️ ${res.status}`}`);
+      log(
+        `🌍 Frontend à ${API_URL} : ${
+          res.ok ? `✅ ${res.status}` : `⚠️ ${res.status}`
+        }`
+      );
     } catch (err) {
       log(`🌍 Frontend à ${API_URL} : ❌ Erreur de connexion`);
+      log("🛑 Détail : " + err.message);
     }
   }
 
