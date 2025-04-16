@@ -635,7 +635,10 @@ jobs:
 
             # 8.10 - Test POST /api/register (sans payload réel)
             echo "[INFO - 8.10] 🧪 Test POST /api/register (sans payload JSON)..."
-            REGISTER_CODE=$(docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:$BACKEND_PORT/api/register)
+
+            REGISTER_CODE=$(docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" \
+              -X POST http://localhost:$BACKEND_PORT/api/register \
+              -H "X-Test-Request: true")
 
             if [ "$REGISTER_CODE" = "415" ]; then
               echo "[SUCCESS - 8.10] ✅ /api/register a bien renvoyé $REGISTER_CODE — comportement attendu sans JSON"

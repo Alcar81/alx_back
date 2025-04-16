@@ -48,10 +48,17 @@ exports.loginUser = async (req, res) => {
 
   try {
     if (!req.is("application/json")) {
-      logger.warn("⚠️ Type de contenu invalide");
+      const isTestRequest = req.headers["x-test-request"] === "true";
+    
+      if (isTestRequest) {
+        logger.warn("⚠️ Type de contenu invalide (test WARN voulu)");
+      } else {
+        logger.warn("⚠️ Type de contenu invalide");
+      }
+
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
-
+    
     const { email, password } = req.body;
     logger.info(`📩 Données reçues : ${JSON.stringify({ email })}`);
 
