@@ -2,10 +2,11 @@
 const fetch = require("node-fetch");
 
 (async () => {
-  console.log("🌐 Lancement de testHealth.js...");
+  const url = "http://localhost:7001/health";
+  console.log(`🌐 Lancement de testHealth.js...\n📡 URL testée : ${url}`);
 
   try {
-    const response = await fetch("http://localhost:7001/health", {
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "X-Test-Request": "true"
@@ -18,12 +19,12 @@ const fetch = require("node-fetch");
       console.log("✅ /health est opérationnel.");
       process.exit(0);
     } else {
-      console.error(`❌ /health a retourné ${status} au lieu de 200`);
+      console.error(`❌ /health a retourné le code ${status} (attendu : 200)`);
       process.exit(1);
     }
 
   } catch (err) {
-    console.error("❌ Erreur lors du test de /health :", err.message);
+    console.error(`❌ Erreur lors du test de /health : ${err.message}`);
     process.exit(1);
   }
 })();
