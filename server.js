@@ -10,7 +10,10 @@ const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const fetch = require("node-fetch");
 
+
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+
+const logger = require("./utils/logger");
 
 logger.info("🟢 [BOOT] Initialisation de server.js...");
 
