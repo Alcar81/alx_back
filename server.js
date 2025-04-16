@@ -101,6 +101,11 @@ app.get("*", (req, res) => {
   });
 });
 
+// 📌 Middleware 404 (à placer après tous les app.use(...) et routes définies)
+app.use((req, res, next) => {
+  res.status(404).json({ message: "Route non trouvée." });
+});
+
 // 🔁 Gestion des erreurs
 const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
