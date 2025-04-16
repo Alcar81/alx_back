@@ -21,10 +21,10 @@ module.exports = (req, res, next) => {
       status >= 400 ? "warn" :
       "info";
 
-    // Log dans Winston (fichier + console)
+    // Winston log (écrit dans fichier + console)
     logger[level](baseMessage);
 
-    // Log console colorisé (chalk)
+    // Console colorisée (facultatif mais pratique)
     let colored = "";
 
     if (status >= 500) {
@@ -35,13 +35,15 @@ module.exports = (req, res, next) => {
       colored = chalk.green(baseMessage);
     }
 
-    console.log(colored);
+    // 👉 Affichage optionnel dans la console seulement (désactivable)
+    // console.log(colored); // ❌ Supprimé
+    logger.info(colored); // ✅ Winston gère l'affichage et les fichiers
 
-    // Log du body si POST ou PUT
+    // Log du corps de la requête si POST ou PUT
     if (["POST", "PUT"].includes(method)) {
       const bodyStr = JSON.stringify(req.body);
       logger.info(`📦 Corps de la requête : ${bodyStr}`);
-      console.log(chalk.gray(`📦 Corps : ${bodyStr}`));
+      // console.log(chalk.gray(`📦 Corps : ${bodyStr}`)); // ❌ Supprimé
     }
   });
 

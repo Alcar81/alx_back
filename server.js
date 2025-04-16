@@ -12,7 +12,7 @@ const fetch = require("node-fetch");
 
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
-console.log("🟢 [BOOT] Initialisation de server.js...");
+logger.info("🟢 [BOOT] Initialisation de server.js...");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -30,7 +30,7 @@ function log(message) {
     timeZone: "America/Toronto",
   });
   const line = `[${timestamp}] ${message}`;
-  console.log(line);
+  logger.info(line);
   logStream.write(line + "\n");
 }
 
