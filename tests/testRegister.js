@@ -1,17 +1,11 @@
+// testRegister.js
 const fetch = require("node-fetch");
+const timestamp = new Date().toISOString().replace("T", " ").split(".")[0];
 
-const log = (msg) => {
-  const now = new Date().toLocaleString("fr-CA", { timeZone: "America/Toronto" });
-  console.log(`[${now}] ${msg}`);
-};
+console.log(`${timestamp} 🧪 Lancement du test d'inscription...`);
 
 (async () => {
-  log("🧪 Lancement du test d'inscription...");
-
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // ⏱️ Timeout 5s
-
     const response = await fetch("http://localhost:7001/api/register", {
       method: "POST",
       headers: {
@@ -24,36 +18,20 @@ const log = (msg) => {
         email: "fakebot@example.com",
         password: "Fake1234!"
       }),
-      signal: controller.signal,
     });
 
-    clearTimeout(timeout);
-
     const status = response.status;
+    const data = await response.json();
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (jsonErr) {
-      log(`❌ Erreur de parsing JSON : ${jsonErr.message}`);
-      process.exit(1);
-    }
-
-    if (status === 201 || status === 409) {
-      const info = status === 201 ? "utilisateur créé" : "email déjà utilisé";
-      log(`✅ Inscription test acceptée (${status}) : ${info}`);
+    if (status === 201 || (status === 409 && data.message.includes("déjà utilisé"))) {
+      console.log(`${timestamp} ✅ Inscription test acceptée (${status}) : ${data.message}`);
       process.exit(0);
     } else {
-      log(`⚠️ Réponse inattendue (${status}) : ${data.message || JSON.stringify(data)}`);
+      console.log(`${timestamp} ⚠️ Inscription test refusée (code ${status}) : ${data.message || data}`);
       process.exit(1);
     }
-
-  } catch (error) {
-    if (error.name === "AbortError") {
-      log("❌ Le test a expiré (timeout)");
-    } else {
-      log(`❌ Erreur pendant le test d'inscription : ${error.message}`);
-    }
+  } catch (err) {
+    console.error(`${timestamp} ❌ Erreur lors du test d'inscription : ${err.message}`);
     process.exit(1);
   }
 })();

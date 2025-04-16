@@ -620,61 +620,8 @@ jobs:
 
             # 8.8 - Vérification post-déploiement des fonctionnalités clés
             echo "[INFO - 8.8] Tests post-déploiement : Prisma, /health, /api/register, /api/login..."
-
-            # ✅ Test 1 : Prisma
-            echo "[TEST 1/5] 📦 Lancement de testPrisma.js..."
-            if docker exec "$CONTAINER_NAME" node /app/tests/testPrisma.js; then
-              echo "[SUCCESS 1/5] ✅ testPrisma.js a réussi la connexion à la base de données"
-            else
-              echo "[ERROR 1/5] ❌ testPrisma.js a échoué. Vérifiez la connexion Prisma." >&2
-              exit 1
-            fi
-
-            # ✅ Test 2 : /health
-            echo "[TEST 2/5] 🌐 testHealth.js..."
-            if docker exec "$CONTAINER_NAME" node /app/tests/testHealth.js; then
-              echo "[SUCCESS 2/5] ✅ testHealth.js a confirmé que /health est disponible"
-            else
-              echo "[ERROR 2/5] ❌ /health a échoué ou ne retourne pas 200" >&2
-              exit 1
-            fi
-
-            # ✅ Test 3 : /api/register (faux utilisateur)
-            echo "[TEST 3/5] 👤 testRegister.js..."
-            if docker exec "$CONTAINER_NAME" node /app/tests/testRegister.js; then
-              echo "[SUCCESS 3/5] ✅ testRegister.js a réussi"
-            else
-              echo "[WARNING 3/5] ⚠️ testRegister.js a échoué ou retourné une réponse inattendue"
-            fi
-
-            # ♻️ Nettoyage de l'utilisateur fakebot@example.com
-            echo "[CLEANUP] 🧹 Suppression de fakebot@example.com (testRegister)..."
-            docker exec "$CONTAINER_NAME" node /app/scripts/clean_test_user.js || {
-              echo "[WARNING] ⚠️ Impossible de supprimer fakebot@example.com"
-            }
-
-            # ✅ Test 4 : /api/login (utilisateur de test)
-            echo "[TEST 4/5] 🔐 Vérification de /api/login via testLogin.js..."
-            if docker exec "$CONTAINER_NAME" node /app/tests/testLogin.js; then
-              echo "[SUCCESS 4/5 ] ✅ testLogin.js a validé l’authentification"
-            else
-              echo "[WARNING 4/5] ⚠️ testLogin.js a échoué ou retourné une erreur inattendue"
-            fi
-
-            # ✅ Test 5 : /api/register (sans payload réel)
-            echo "[TEST 5/5] 🧪 Test POST /api/register (sans payload JSON)..."
-
-            REGISTER_CODE=$(docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" \
-              -X POST http://localhost:$BACKEND_PORT/api/register \
-              -H "X-Test-Request: true")
-
-            if [ "$REGISTER_CODE" = "415" ]; then
-              echo "[SUCCESS 5/5] ✅ /api/register a bien renvoyé $REGISTER_CODE — comportement attendu sans JSON"
-            else
-              echo "[WARNING 5/5] ⚠️ /api/register a renvoyé $REGISTER_CODE (attendu : 415 si pas de payload)"
-            fi
-
-          EOF
+            docker exec $CONTAINER_NAME node /app/tests/testComplet.js
+          
 
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
