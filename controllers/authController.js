@@ -10,8 +10,10 @@ exports.registerUser = async (req, res) => {
   logger.info("🟡 [registerUser] ➜ Requête reçue");
 
   try {
+    const isTestRequest = req.headers["x-test-request"] === "true";
+
     if (!req.is("application/json")) {
-      logger.warn("⚠️ Type de contenu invalide");
+      logger.warn(`⚠️ Type de contenu invalide${isTestRequest ? " (test WARN voulu)" : ""}`);
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
 
@@ -47,18 +49,13 @@ exports.loginUser = async (req, res) => {
   logger.info("🟡 [loginUser] ➜ Requête reçue");
 
   try {
-    if (!req.is("application/json")) {
-      const isTestRequest = req.headers["x-test-request"] === "true";
-    
-      if (isTestRequest) {
-        logger.warn("⚠️ Type de contenu invalide (test WARN voulu)");
-      } else {
-        logger.warn("⚠️ Type de contenu invalide");
-      }
+    const isTestRequest = req.headers["x-test-request"] === "true";
 
+    if (!req.is("application/json")) {
+      logger.warn(`⚠️ Type de contenu invalide${isTestRequest ? " (test WARN voulu)" : ""}`);
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
-    
+
     const { email, password } = req.body;
     logger.info(`📩 Données reçues : ${JSON.stringify({ email })}`);
 
