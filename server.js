@@ -44,6 +44,9 @@ app.use((req, res, next) => {
 const authRoutes = require("./routes/auth");
 app.use("/api", authRoutes);
 
+const adminRoutes = require("./routes/admin");
+app.use("/api/admin", adminRoutes);
+
 // 📌 Gestion des routes API inexistantes (avant React fallback)
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "Route API non trouvée." });
