@@ -15,6 +15,7 @@ require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const logger = require("./utils/logger");
 
+logger.info("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 logger.info("🟢 [BOOT] Initialisation de server.js...");
 
 const app = express();
