@@ -364,7 +364,6 @@ jobs:
 
             # 🔄 8.10.0 - Forcer la synchronisation après migration
             echo "[INFO - 8.10.0] Synchronisation post-migration (db pull + generate)"
-            docker exec "$CONTAINER_NAME" npx prisma db pull
             docker exec "$CONTAINER_NAME" npx prisma validate
             docker exec "$CONTAINER_NAME" npx prisma generate
 
