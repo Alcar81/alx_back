@@ -401,9 +401,19 @@ jobs:
             # 8.13 - Démarrage du serveur backend avec attente active
             echo "[INFO - 8.13] 🚀 Lancement du serveur backend avec npm start..."
             docker exec -d "$CONTAINER_NAME" npm start
-            sleep 2
+            sleep 5
             docker exec "$CONTAINER_NAME" pgrep -fl node || echo "[ERROR] ❌ Aucun processus node en cours !"
             docker logs "$CONTAINER_NAME" | tail -n 50
+            sleep 5
+
+            # 🧪 Vérif rapide : est-ce que le mot-clé "[BOOT]" apparaît dans server.log ?
+            echo "[INFO - 8.13] 🔍 Vérification du démarrage réel via server.log..."
+            docker exec "$CONTAINER_NAME" grep "\[BOOT\]" logs/server.log || {
+              echo "[ERROR - 8.13] ❌ Le serveur n'a pas émis son log de démarrage. Il est probable qu'il ait échoué à démarrer."
+              echo "[INFO - 8.13] 📜 Affichage des 100 dernières lignes des logs :"
+              docker exec "$CONTAINER_NAME" tail -n 100 logs/server.log
+              exit 1
+            }
 
             echo "[INFO - 8.13] ⏳ Attente active que le port $BACKEND_PORT soit ouvert..."
             PORT_OK=0
