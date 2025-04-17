@@ -411,23 +411,20 @@ jobs:
               echo "[INFO] Le déploiement se poursuit pour inspection des logs."
             fi
 
-            echo "[INFO - 8.14] Fin de l’étape 8 - Backend démarré"
-          EOF
-
-      - name: 9 - Tests post-déploiement backend
-        run: |
-          echo "[INFO - 9] 🚀 Lancement des tests post-déploiement"
-
-          ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" << EOF
-            set -e
-            echo "[INFO - 9.1] Exécution de testComplet.js..."
+            # 8.14 - Test des endpoints et Prisma
+            echo "[INFO - 8.14] Lancement de testComplet.js..."
             docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js || {
-              echo "[ERROR] ❌ testComplet.js a échoué. Vérifiez les routes API, Prisma, /health, etc."
+              echo "[ERROR - 8.14] ❌ testComplet.js a échoué."
+              docker logs "$CONTAINER_NAME" | tail -n 50
               exit 1
             }
-            echo "[SUCCESS] ✅ testComplet.js exécuté avec succès."
+
+            # 8.15 - Fin de l'étape backend
+            echo "[SUCCESS - 8.15] ✅ Déploiement complet du backend terminé avec succès."
+            
           EOF
 
+      
       # Étape 10 - Configurer l'URL Git distante
       - name: 10 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
