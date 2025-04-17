@@ -362,6 +362,12 @@ jobs:
               exit 1
             }
 
+            # 🔄 8.10.0 - Forcer la synchronisation après migration
+            echo "[INFO - 8.10.0] Synchronisation post-migration (db pull + generate)"
+            docker exec "$CONTAINER_NAME" npx prisma db pull
+            docker exec "$CONTAINER_NAME" npx prisma validate
+            docker exec "$CONTAINER_NAME" npx prisma generate
+
             # 8.10.1 - Vérification de la table "User" après migration
             echo "[INFO - 8.10.1] Vérification du schéma de la table \"User\" après migration..."
             docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" -c "\d+ \"User\"" || {
@@ -381,7 +387,9 @@ jobs:
             
             # 8.11 - Démarrage de l'application backend
             echo "[INFO - 8.11] Démarrage du serveur backend..."
-            docker exec -d "$CONTAINER_NAME" npm start            
+            docker exec -d "$CONTAINER_NAME" npm start
+            echo "[DEBUG] 📜 Affichage des logs backend après npm start..."
+            docker logs "$CONTAINER_NAME" | tail -n 100          
 
             # 8.12 - Vérification du statut du conteneur
             echo "[INFO - 8.12] Vérification du conteneur backend..."
