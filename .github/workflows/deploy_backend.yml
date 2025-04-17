@@ -537,13 +537,22 @@ jobs:
             docker exec "$CONTAINER_NAME" npm list @prisma/client
             
             # 8.5 - Backup et migrations Prisma
+            # 8.5.1.1 - Création du répertoire de backup
             BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
-            echo "[INFO - 8.5.1] Création du répertoire de backup : $BACKUP_DIR"
+            echo "[INFO - 8.5.1.1] Création du répertoire de backup : $BACKUP_DIR"
             mkdir -p "$BACKUP_DIR"
 
+            # 8.5.1.2 - Création du backup de la base de données
             BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
-            echo "[INFO - 8.5.2] Création du backup avant migration..."
+            echo "[INFO - 8.5.1.2] Création du backup avant migration..."
             docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
+
+            # 8.5.2 - Test de connexion à la base de données avec Prisma
+            echo "[INFO - 8.5.2] Test de connexion à la base de données avec Prisma..."
+            docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js || {
+              echo "[ERROR] Échec de la connexion Prisma. Abandon du déploiement." >&2
+              exit 1
+            }
 
             # 8.5.3 - Validation du fichier schema.prisma
             echo "[INFO - 8.5.3] Vérification du fichier schema.prisma..."
@@ -578,7 +587,8 @@ jobs:
             # 8.5.4 - Application des migrations Prisma
             echo "[INFO - 8.5.4] Application des migrations Prisma..."
 
-            # Identifier les migrations échouées
+            # 8.5.4.1 - Identifier les migrations échouées
+            echo "[INFO - 8.5.4.1] Identifier les migrations échouées..."
             FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
 
             if [ -n "$FAILED_MIGRATIONS" ]; then
@@ -593,7 +603,8 @@ jobs:
               done
             fi
 
-            # Appliquer les migrations restantes
+            # 8.5.4.2 - Appliquer les migrations restantes
+            echo "[INFO - 8.5.4.2] Identifier les migrations échouées..."
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
               echo "[ERROR] Échec des migrations Prisma. Restauration du backup..." >&2
               docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
