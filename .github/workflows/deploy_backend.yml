@@ -385,21 +385,8 @@ jobs:
             }
             echo "[SUCCESS - 8.10.2] 🧾 Backup effectué : $BACKUP_FILE"
             
-            # 8.11 - Démarrage de l'application backend
-            echo "[INFO - 8.11] Démarrage du serveur backend..."
-            docker exec -d "$CONTAINER_NAME" npm start
-            # 🕒 Attente active après npm start pour que le serveur soit vraiment prêt
-            echo "[INFO - 8.11] ⏳ Attente active que le backend soit prêt..."
-            for i in {1..30}; do
-              if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
-                echo "[SUCCESS - 8.11] ✅ Serveur backend prêt sur le port $BACKEND_PORT"
-                break
-              fi
-              echo "[WAIT - 8.11] Attente... $i/30"
-              sleep 1
-            done
-            echo "[DEBUG] 📜 Affichage des logs backend après npm start..."
-            docker logs "$CONTAINER_NAME" | tail -n 100          
+            # 8.11 - (optionnel) Info visuelle de transition
+            echo "[INFO - 8.11] ✅ Préparation terminée. Vérification du conteneur..."
 
             # 8.12 - Vérification du statut du conteneur
             echo "[INFO - 8.12] Vérification du conteneur backend..."
@@ -411,8 +398,11 @@ jobs:
               exit 1
             fi
 
-            # 8.13 - Attente que le port soit ouvert
-            echo "[INFO - 8.13] Attente de l’ouverture du port $BACKEND_PORT..."
+            # 8.13 - Démarrage du serveur backend avec attente active
+            echo "[INFO - 8.13] 🚀 Lancement du serveur backend avec npm start..."
+            docker exec -d "$CONTAINER_NAME" npm start
+
+            echo "[INFO - 8.13] ⏳ Attente active que le port $BACKEND_PORT soit ouvert..."
             PORT_OK=0
             for i in {1..60}; do
               if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
@@ -429,7 +419,7 @@ jobs:
               echo "[INFO] Le déploiement se poursuit pour inspection des logs."
             fi
 
-            # 8.14 - Test des endpoints et Prisma
+            # 8.14 - Test des endpoints et de la santé backend
             echo "[INFO - 8.14] Lancement de testComplet.js..."
             docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js || {
               echo "[ERROR - 8.14] ❌ testComplet.js a échoué."
@@ -441,7 +431,6 @@ jobs:
             echo "[SUCCESS - 8.15] ✅ Déploiement complet du backend terminé avec succès."
 
           EOF
-
       
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
