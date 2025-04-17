@@ -355,12 +355,29 @@ jobs:
               exit 1
             }
 
-            # 8.10 - Migration Prisma
+            # 8.10 - Application des migrations Prisma
             echo "[INFO - 8.10] Application des migrations Prisma..."
             docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
-              echo "[ERROR] ❌ Migrations Prisma échouées."
+              echo "[ERROR - 8.10] ❌ Migrations Prisma échouées."
               exit 1
             }
+
+            # 8.10.1 - Vérification de la table "User" après migration
+            echo "[INFO - 8.10.1] Vérification du schéma de la table \"User\" après migration..."
+            docker exec "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" -c "\d+ \"User\"" || {
+              echo "[WARNING - 8.10.1] Impossible d'inspecter la table \"User\". Vérifiez les migrations."
+            }
+
+            # 8.10.2 - Création d’un backup après migration réussie
+            echo "[INFO - 8.10.2] Création du backup de la base à jour..."
+            BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
+            mkdir -p "$BACKUP_DIR"
+            BACKUP_FILE="$BACKUP_DIR/backup_after_migrate_$(date +%Y%m%d%H%M%S).sql"
+            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE" || {
+              echo "[ERROR - 8.10.2] ❌ Échec de la sauvegarde après migration !" >&2
+              exit 1
+            }
+            echo "[SUCCESS - 8.10.2] 🧾 Backup effectué : $BACKUP_FILE"
             
             # 8.11 - Démarrage de l'application backend
             echo "[INFO - 8.11] Démarrage du serveur backend..."
@@ -376,7 +393,7 @@ jobs:
               exit 1
             fi
 
-            # 8.11 - Attente que le port soit ouvert
+            # 8.13 - Attente que le port soit ouvert
             echo "[INFO - 8.13] Attente de l’ouverture du port $BACKEND_PORT..."
             PORT_OK=0
             for i in {1..60}; do
