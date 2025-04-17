@@ -294,18 +294,18 @@ jobs:
             # 8.2 - Création du fichier .env
             echo "[INFO - 8.2] Création du fichier .env..."
             cat <<EOT > "$MOUNT_PATH/.env"
-              DATABASE_URL=$DATABASE_URL
-              NODE_ENV=$ENV
-              APP_ENV=$ENV
-              APP_NAME=alxmultimedia_backend
-              JWT_SECRET=$JWT_SECRET
-              SERVER_PORT=$BACKEND_PORT
-              PORT=$BACKEND_PORT
-              REACT_APP_API_URL=$REACT_APP_API_URL
-              TRUST_PROXY=1
-              LOG_LEVEL=info
-              ENABLE_CACHE=false
-            EOT
+            DATABASE_URL=$DATABASE_URL
+            NODE_ENV=$ENV
+            APP_ENV=$ENV
+            APP_NAME=alxmultimedia_backend
+            JWT_SECRET=$JWT_SECRET
+            SERVER_PORT=$BACKEND_PORT
+            PORT=$BACKEND_PORT
+            REACT_APP_API_URL=$REACT_APP_API_URL
+            TRUST_PROXY=1
+            LOG_LEVEL=info
+            ENABLE_CACHE=false
+          EOT
 
             # 8.3 - Nettoyage des logs existants
             echo "[INFO - 8.3] Nettoyage des anciens logs..."
