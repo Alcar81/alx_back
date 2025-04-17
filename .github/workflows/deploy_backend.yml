@@ -401,6 +401,9 @@ jobs:
             # 8.13 - Démarrage du serveur backend avec attente active
             echo "[INFO - 8.13] 🚀 Lancement du serveur backend avec npm start..."
             docker exec -d "$CONTAINER_NAME" npm start
+            sleep 2
+            docker exec "$CONTAINER_NAME" pgrep -fl node || echo "[ERROR] ❌ Aucun processus node en cours !"
+            docker logs "$CONTAINER_NAME" | tail -n 50
 
             echo "[INFO - 8.13] ⏳ Attente active que le port $BACKEND_PORT soit ouvert..."
             PORT_OK=0
