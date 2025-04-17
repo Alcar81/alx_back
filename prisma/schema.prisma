@@ -15,5 +15,6 @@ model User {
   password  String
   firstName String   @default("")
   lastName  String   @default("")
+  role      String   @default("user")
   updatedAt DateTime @updatedAt
 }
