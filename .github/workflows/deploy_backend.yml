@@ -421,14 +421,14 @@ jobs:
 
             # 8.15 - Fin de l'étape backend
             echo "[SUCCESS - 8.15] ✅ Déploiement complet du backend terminé avec succès."
-            
+
           EOF
 
       
-      # Étape 10 - Configurer l'URL Git distante
-      - name: 10 - Configurer l'URL Git distante
+      # Étape 9 - Configurer l'URL Git distante
+      - name: 9 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
 
-      # Étape 11 - Nettoyage des fichiers temporaires
-      - name: 11 - Nettoyage des fichiers temporaires
+      # Étape 10 - Nettoyage des fichiers temporaires
+      - name: 10 - Nettoyage des fichiers temporaires
         run: rm -f /tmp/git_id_rsa /tmp/env_vars.sh || true
