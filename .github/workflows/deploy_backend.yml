@@ -348,39 +348,53 @@ jobs:
             docker exec "$CONTAINER_NAME" npx prisma generate
             docker exec "$CONTAINER_NAME" npm run build || echo "[INFO] Aucun build requis ou échec non bloquant"
 
-            # 8.9 - Démarrage de l'application backend
-            echo "[INFO - 8.9] Démarrage de l'application backend..."
-            docker exec -d "$CONTAINER_NAME" npm start
+            # 8.9 - Test de connexion DB avec Prisma avant migration
+            echo "[INFO - 8.9] Test de connexion DB via testDbConnection.js"
+            docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js || {
+              echo "[ERROR] ❌ Connexion DB échouée avant migration"
+              exit 1
+            }
 
-            # 8.10 - Vérification du statut du conteneur
-            echo "[INFO - 8.10] Vérification du conteneur backend..."
+            # 8.10 - Migration Prisma
+            echo "[INFO - 8.10] Application des migrations Prisma..."
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
+              echo "[ERROR] ❌ Migrations Prisma échouées."
+              exit 1
+            }
+            
+            # 8.11 - Démarrage de l'application backend
+            echo "[INFO - 8.11] Démarrage du serveur backend..."
+            docker exec -d "$CONTAINER_NAME" npm start            
+
+            # 8.12 - Vérification du statut du conteneur
+            echo "[INFO - 8.12] Vérification du conteneur backend..."
             if docker ps --filter "name=$CONTAINER_NAME" --filter "status=running" | grep -w "$CONTAINER_NAME"; then
-              echo "[SUCCESS - 8.10] ✅ Le conteneur backend est actif"
+              echo "[SUCCESS - 8.12] ✅ Le conteneur backend est actif"
             else
-              echo "[ERROR - 8.10] ❌ Le conteneur backend n’est pas en marche." >&2
+              echo "[ERROR - 8.12] ❌ Le conteneur backend n’est pas en marche." >&2
               docker logs "$CONTAINER_NAME"
               exit 1
             fi
 
             # 8.11 - Attente que le port soit ouvert
-            echo "[INFO - 8.11] Attente de l’ouverture du port $BACKEND_PORT..."
+            echo "[INFO - 8.13] Attente de l’ouverture du port $BACKEND_PORT..."
             PORT_OK=0
             for i in {1..60}; do
               if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
-                echo "[SUCCESS - 8.11] ✅ Le port $BACKEND_PORT est actif"
+                echo "[SUCCESS - 8.13] ✅ Le port $BACKEND_PORT est actif"
                 PORT_OK=1
                 break
               fi
-              echo "[WAITING - 8.11] Tentative $i/60..."
+              echo "[WAITING - 8.13] Tentative $i/60..."
               sleep 1
             done
 
             if [ "$PORT_OK" -eq 0 ]; then
-              echo "[WARNING - 8.11] ❌ Le port $BACKEND_PORT ne s’est pas ouvert après 60 secondes."
+              echo "[WARNING - 8.13] ❌ Le port $BACKEND_PORT ne s’est pas ouvert après 60 secondes."
               echo "[INFO] Le déploiement se poursuit pour inspection des logs."
             fi
 
-            echo "[INFO - 8.12] Fin de l’étape 8 - Backend démarré"
+            echo "[INFO - 8.14] Fin de l’étape 8 - Backend démarré"
           EOF
 
       - name: 9 - Tests post-déploiement backend
