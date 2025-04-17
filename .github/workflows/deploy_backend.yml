@@ -388,6 +388,16 @@ jobs:
             # 8.11 - Démarrage de l'application backend
             echo "[INFO - 8.11] Démarrage du serveur backend..."
             docker exec -d "$CONTAINER_NAME" npm start
+            # 🕒 Attente active après npm start pour que le serveur soit vraiment prêt
+            echo "[INFO - 8.11] ⏳ Attente active que le backend soit prêt..."
+            for i in {1..30}; do
+              if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
+                echo "[SUCCESS - 8.11] ✅ Serveur backend prêt sur le port $BACKEND_PORT"
+                break
+              fi
+              echo "[WAIT - 8.11] Attente... $i/30"
+              sleep 1
+            done
             echo "[DEBUG] 📜 Affichage des logs backend après npm start..."
             docker logs "$CONTAINER_NAME" | tail -n 100          
 
