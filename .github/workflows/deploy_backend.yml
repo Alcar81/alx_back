@@ -137,7 +137,7 @@ jobs:
           echo "🚀 Envoi du backend au serveur distant..."
           ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $SSH_USER@$SERVER_IP "mkdir -p $MOUNT_PATH"
           
-          rsync -avz backend_sync/ $SSH_USER@$SERVER_IP:$MOUNT_PATH/ -e "ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='logs' --include='migrate_auto.sh' ./ backend_sync/
           
           echo "🧼 Nettoyage du répertoire temporaire local..."
           rm -rf backend_sync
@@ -322,13 +322,17 @@ jobs:
             mkdir -p "$MOUNT_PATH/logs"
             rm -f "$MOUNT_PATH/logs/*" || echo "[WARNING] Aucune log à nettoyer ou suppression échouée."
 
-            # 🔥 Suppression de l'ancien fichier npm_start_output.log (inutile maintenant)
-            rm -f "$MOUNT_PATH/logs/npm_start_output.log" || echo "[INFO] Aucun npm_start_output.log à supprimer"
+      
 
             # 8.3.1.1 - Suppression des logs plus vieux que 7 jours
             echo "[INFO - 8.3.1.1] Suppression des logs plus vieux que 7 jours..."
             find "$MOUNT_PATH/logs/" -type f -name "*.log" -mtime +7 -exec rm -f {} \; || echo "[WARNING] Aucune log ancienne à supprimer."
 
+            # 8.3.1.2 - Backup des migrations Prisma (avant suppression du conteneur)
+            echo "[INFO - 8.3.1.2] Backup du dossier prisma/migrations (avant suppression du conteneur)..."
+            docker cp "$CONTAINER_NAME":/app/prisma/migrations "$MOUNT_PATH/prisma_migrations_backup" || {
+              echo "[WARNING] Aucun dossier migrations trouvé dans le conteneur à sauvegarder."
+            }
 
             # Étape 8.3.2 - Suppression de l’ancien conteneur
             echo "[INFO - 8.3.2] Nettoyage de l’ancien conteneur backend..."
@@ -346,6 +350,15 @@ jobs:
               -p "127.0.0.1:$BACKEND_PORT:$BACKEND_PORT" \
               node:20 \
               tail -f /dev/null
+
+            # 🔁 Restauration du dossier migrations si un backup existe
+            if [ -d "$MOUNT_PATH/prisma_migrations_backup" ]; then
+              echo "[INFO] Restauration du dossier migrations depuis le backup..."
+              cp -r "$MOUNT_PATH/prisma_migrations_backup" "$MOUNT_PATH/prisma/migrations"
+              echo "[SUCCESS] Le dossier migrations a été restauré."
+            else
+              echo "[INFO] Aucun backup de migrations trouvé à restaurer."
+            fi
 
             # 📦 Installation des dépendances Node.js dans le conteneur
             echo "[INFO - 8.3.3.1] Installation des dépendances npm dans le conteneur..."
@@ -434,6 +447,19 @@ jobs:
             docker exec "$CONTAINER_NAME" head -n 10 /app/.env || echo "[WARNING] Fichier .env introuvable"
 
             echo "[SUCCESS] Déploiement backend terminé avec succès à $(date '+%Y-%m-%d %H:%M:%S')" > "$MOUNT_PATH/logs/deployment_success.log"
+
+            # 🔄 Étape 8.3.3.3 - Migration Prisma automatique (migrate_auto.sh)
+            echo "[INFO - 8.3.3.3] Exécution du script migrate_auto.sh dans le conteneur..."
+
+            docker exec "$CONTAINER_NAME" bash -c "
+              chmod +x /app/migrate_auto.sh && \
+              /app/migrate_auto.sh
+            " || {
+              echo '[ERROR] Le script de migration Prisma a échoué.' >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+  
 
             # Étape 8.3.4 - Vérification que le conteneur est actif.
             echo "[INFO - 8.3.4] Vérification du conteneur backend..."
@@ -536,74 +562,36 @@ jobs:
             docker exec "$CONTAINER_NAME" npx prisma --version
             docker exec "$CONTAINER_NAME" npm list @prisma/client
             
-            # 8.5 - Backup et migrations Prisma
+            # 8.5 - Migration automatique Prisma avec backup de la base
+            echo "[INFO - 8.5] Démarrage de la migration Prisma avec sauvegarde préalable..."
+
+            # 8.5.1 - Création d’un dossier de sauvegarde
             BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
-            echo "[INFO - 8.5.1] Création du répertoire de backup : $BACKUP_DIR"
             mkdir -p "$BACKUP_DIR"
-
             BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
-            echo "[INFO - 8.5.2] Création du backup avant migration..."
-            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
 
-            # 8.5.3 - Validation du fichier schema.prisma
-            echo "[INFO - 8.5.3] Vérification du fichier schema.prisma..."
-
-            # Étape 8.5.3.0 - Recherche du fichier schema.prisma dans le conteneur
-            echo "[INFO - 8.5.3.0] Recherche du fichier schema.prisma dans le conteneur..."
-            SCHEMA_PATH=$(docker exec "$CONTAINER_NAME" find / -name "schema.prisma" 2>/dev/null | head -n 1)
-
-            if [ -z "$SCHEMA_PATH" ]; then
-              echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur !" >&2
-              echo "[INFO - 8.5.3.0] Vérifiez que le fichier est inclus dans l'image Docker et que le chemin est correct."
-              exit 1
-            fi
-
-            echo "[SUCCESS] Fichier schema.prisma trouvé : $SCHEMA_PATH"
-
-            # Étape 8.5.3.1 - Validation syntaxique du schéma
-            echo "[INFO - 8.5.3.1] Validation syntaxique du schéma..."
-            docker exec "$CONTAINER_NAME" npx prisma validate --schema="$SCHEMA_PATH" || {
-              echo "[ERROR] Le fichier schema.prisma est invalide. Corrigez les erreurs avant de continuer." >&2
+            echo "[INFO - 8.5.2] Sauvegarde de la base PostgreSQL avant migration : $BACKUP_FILE"
+            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE" || {
+              echo "[ERROR] Échec de la sauvegarde de la base de données avant migration." >&2
               exit 1
             }
-            echo "[SUCCESS] Le fichier schema.prisma est valide."
 
-            # Étape 8.5.3.2 - Vérification des migrations Prisma en attente
-            echo "[INFO - 8.5.3.2] Vérification des migrations Prisma en attente..."
-            docker exec "$CONTAINER_NAME" npx prisma migrate status --schema="$SCHEMA_PATH" || {
-              echo "[WARNING] Des migrations sont en attente ou ont échoué. Vérifiez avant le déploiement." >&2
-            }
-
-
-            # 8.5.4 - Application des migrations Prisma
-            echo "[INFO - 8.5.4] Application des migrations Prisma..."
-
-            # Identifier les migrations échouées
-            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
-
-            if [ -n "$FAILED_MIGRATIONS" ]; then
-              echo "[WARNING] Des migrations échouées détectées : $FAILED_MIGRATIONS"
-              for MIGRATION in $FAILED_MIGRATIONS; do
-                echo "[INFO] Tentative de résolution pour : $MIGRATION"
-                # Résoudre la migration échouée (rollback ou marquer comme appliquée)
-                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
-                  echo "[ERROR] Échec de la résolution pour $MIGRATION." >&2
-                  exit 1
-                }
-              done
-            fi
-
-            # Appliquer les migrations restantes
-            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
-              echo "[ERROR] Échec des migrations Prisma. Restauration du backup..." >&2
+            # 8.5.3 - Exécution du script de migration automatique
+            echo "[INFO - 8.5.3] Exécution du script migrate_auto.sh dans le conteneur..."
+            docker exec "$CONTAINER_NAME" bash /app/migrate_auto.sh || {
+              echo "[ERROR] La migration a échoué. Restauration du backup..." >&2
               docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
-                echo "[ERROR] Échec de la restauration du backup. Intervention manuelle requise." >&2
+                echo "[CRITICAL] Échec de la restauration. Intervention manuelle requise." >&2
                 exit 1
               }
               exit 1
             }
 
-            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."           
+            # 8.5.4 - Nettoyage post-migration
+            echo "[INFO - 8.5.4] Suppression du backup temporaire des migrations..."
+            rm -rf "$MOUNT_PATH/prisma_migrations_backup" || echo "[INFO] Aucun backup à supprimer."
+
+            echo "[SUCCESS] ✅ Migration Prisma complétée avec succès."       
 
             # 8.6 - Nettoyage final
             echo "[INFO - 8.6] Nettoyage des anciens conteneurs et images..."
