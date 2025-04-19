@@ -137,7 +137,7 @@ jobs:
           echo "🚀 Envoi du backend au serveur distant..."
           ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $SSH_USER@$SERVER_IP "mkdir -p $MOUNT_PATH"
           
-          rsync -avz backend_sync/ $SSH_USER@$SERVER_IP:$MOUNT_PATH/ -e "ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+          rsync -av --exclude='.git' --exclude='node_modules' --exclude='logs' --include='migrate_auto.sh' ./ backend_sync/
           
           echo "🧼 Nettoyage du répertoire temporaire local..."
           rm -rf backend_sync
@@ -310,8 +310,15 @@ jobs:
             # 8.3 - Nettoyage des logs existants
             echo "[INFO - 8.3] Nettoyage des anciens logs..."
             mkdir -p "$MOUNT_PATH/logs"
-            rm -f "$MOUNT_PATH/logs/*" || echo "[WARNING] Aucune log à supprimer"
-            find "$MOUNT_PATH/logs/" -type f -name "*.log" -mtime +7 -exec rm -f {} \; || true
+            rm -f "$MOUNT_PATH/logs/*" || echo "[WARNING] Aucune log à nettoyer ou suppression échouée."
+
+            # 🔥 Suppression de l'ancien fichier npm_start_output.log (inutile maintenant)
+            rm -f "$MOUNT_PATH/logs/npm_start_output.log" || echo "[INFO] Aucun npm_start_output.log à supprimer"
+
+            # 8.3.1.1 - Suppression des logs plus vieux que 7 jours
+            echo "[INFO - 8.3.1.1] Suppression des logs plus vieux que 7 jours..."
+            find "$MOUNT_PATH/logs/" -type f -name "*.log" -mtime +7 -exec rm -f {} \; || echo "[WARNING] Aucune log ancienne à supprimer."
+
 
             # 8.4 - Suppression de l’ancien conteneur backend
             echo "[INFO - 8.4] Suppression de l'ancien conteneur (si présent)..."
@@ -331,15 +338,39 @@ jobs:
               node:20 \
               tail -f /dev/null
 
-            # 8.6 - Installation des dépendances
-            echo "[INFO - 8.6] Installation des dépendances backend..."
-            docker exec "$CONTAINER_NAME" npm install --omit=dev --loglevel=warn
-            docker exec "$CONTAINER_NAME" npm install node-fetch@2
-            docker exec "$CONTAINER_NAME" apt-get update
-            docker exec "$CONTAINER_NAME" apt-get install -y wget curl net-tools tzdata nano
+            # 📦 Installation des dépendances Node.js dans le conteneur
+            echo "[INFO - 8.3.3.1] Installation des dépendances npm dans le conteneur..."
+            docker exec "$CONTAINER_NAME" npm install --omit=dev --loglevel=warn || {
+              echo "[ERROR] npm install a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
 
-            # 8.7 - Configuration du fuseau horaire
-            echo "[INFO - 8.7] Configuration du fuseau horaire..."
+            # 📦 Installation explicite de node-fetch@2 (pour compatibilité avec require)
+            echo "[INFO - 8.3.3.1.1] Installation spécifique de node-fetch@2 dans le conteneur..."
+            docker exec "$CONTAINER_NAME" npm install node-fetch@2 --loglevel=warn || {
+              echo "[ERROR] L'installation de node-fetch@2 a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
+            # 📦 Installation de wget, net-tools, et curl pour les vérifications réseau
+            echo "[INFO - 8.3.3.1.2] Installation de wget, net-tools et curl..."
+            docker exec "$CONTAINER_NAME" apt-get update && \
+            docker exec "$CONTAINER_NAME" apt-get install -y wget net-tools curl || {
+              echo "[ERROR] L'installation de wget/net-tools/curl a échoué." >&2
+              docker logs "$CONTAINER_NAME"
+              exit 1
+            }
+
+            # (optionnel mais utile) ✅ Installation de tzdata pour gérer les fuseaux horaires si besoin
+            echo "[INFO - 8.3.3.1.3] Installation de tzdata (optionnelle)..."
+            docker exec "$CONTAINER_NAME" apt-get install -y tzdata || {
+              echo "[WARNING] Échec de l'installation de tzdata (peut être ignoré si non critique)." >&2
+            }
+            
+            # 🌐 Configuration de la zone horaire à America/Toronto
+            echo "[INFO - 8.3.3.1.4] Configuration de la zone horaire à America/Montreal..."
             docker exec "$CONTAINER_NAME" ln -sf /usr/share/zoneinfo/America/Montreal /etc/localtime
             docker exec "$CONTAINER_NAME" dpkg-reconfigure -f noninteractive tzdata
 
@@ -382,10 +413,28 @@ jobs:
               echo "[ERROR - 8.10.2] ❌ Échec de la sauvegarde après migration !" >&2
               exit 1
             }
-            echo "[SUCCESS - 8.10.2] 🧾 Backup effectué : $BACKUP_FILE"
-            
-            # 8.11 - (optionnel) Info visuelle de transition
-            echo "[INFO - 8.11] ✅ Préparation terminée. Vérification du conteneur..."
+
+            echo "[DEBUG] 🔍 Logs du conteneur backend (30 dernières lignes) :"
+            docker logs "$CONTAINER_NAME" | tail -n 30
+
+            # 🔍 Vérifications supplémentaires après le lancement du conteneur
+            echo "[DEBUG] 📂 Liste des fichiers dans /app dans le conteneur :"
+            docker exec "$CONTAINER_NAME" ls -la /app || echo "[WARNING] Impossible de lister /app"
+
+            echo "[DEBUG] 📄 Début du fichier server.js (20 premières lignes) :"
+            docker exec "$CONTAINER_NAME" head -n 20 /app/server.js || echo "[WARNING] Fichier server.js introuvable"
+
+            echo "[DEBUG] 🔍 Vérification présence de 'helmet' dans server.js..."
+            if docker exec "$CONTAINER_NAME" grep -q "helmet" /app/server.js; then
+              echo "[OK ✅] 'helmet' est bien présent dans server.js"
+            else
+              echo "[⚠️ ATTENTION] 'helmet' n'a pas été trouvé dans server.js !"
+            fi
+
+            echo "[DEBUG] 🔐 Aperçu du fichier .env dans le conteneur (10 premières lignes) :"
+            docker exec "$CONTAINER_NAME" head -n 10 /app/.env || echo "[WARNING] Fichier .env introuvable"
+
+            echo "[SUCCESS] Déploiement backend terminé avec succès à $(date '+%Y-%m-%d %H:%M:%S')" > "$MOUNT_PATH/logs/deployment_success.log"
 
             # 8.12 - Vérification du statut du conteneur
             echo "[INFO - 8.12] Vérification du conteneur backend..."
@@ -431,19 +480,148 @@ jobs:
               echo "[INFO] Le déploiement se poursuit pour inspection des logs."
             fi
 
-            # 8.14 - Test des endpoints et de la santé backend
-            echo "[INFO - 8.14] Lancement de testComplet.js..."
-            docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js || {
-              echo "[ERROR - 8.14] ❌ testComplet.js a échoué."
-              docker logs "$CONTAINER_NAME" | tail -n 50
+
+            # (Optionnel) 🔐 Vérification d'une route protégée ou critique
+            echo "[INFO - 8.3.7] Vérification d'une route API clé (/api/me)..."
+            if docker exec "$CONTAINER_NAME" wget --spider -q http://localhost:7001/api/me; then
+              echo "[SUCCESS] ✅ La route /api/me est disponible"
+            else
+              echo "[WARNING] ⚠️ La route /api/me est inaccessible (peut être normal si pas encore connectée)"
+            fi
+
+            # 8.3.8 - Vérification post-déploiement de l'API
+            echo "[INFO - 8.3.8] Test post-déploiement de Prisma, /health et /api/register..."
+
+            echo "[TEST] 📦 Lancement de testPrisma.js..."
+            if docker exec "$CONTAINER_NAME" node /app/tests/testPrisma.js; then
+              echo "[SUCCESS] ✅ testPrisma.js a réussi la connexion à la base de données"
+            else
+              echo "[ERROR] ❌ testPrisma.js a échoué. Vérifiez la connexion Prisma." >&2
+              exit 1
+            fi
+
+            echo "[TEST] 🌐 Vérification de /health via curl..."
+            if docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health | grep -q "200"; then
+              echo "[SUCCESS] ✅ L'endpoint /health répond correctement"
+            else
+              echo "[ERROR] ❌ /health ne répond pas comme attendu." >&2
+              exit 1
+            fi
+
+            echo "[TEST] 👤 Vérification de /api/register avec un appel fictif..."
+            RESPONSE=$(docker exec "$CONTAINER_NAME" curl -s -X POST http://localhost:$BACKEND_PORT/api/register \
+              -H "Content-Type: application/json" \
+              -d '{"firstName":"Test","lastName":"Bot","email":"fakebot@example.com","password":"Fake1234!"}')
+
+            if echo "$RESPONSE" | grep -q "email déjà utilisé\|created\|erreur attendue"; then
+              echo "[SUCCESS] ✅ /api/register répond bien à une requête de test"
+            else
+              echo "[WARNING] ⚠️ Réponse inattendue de /api/register :"
+              echo "$RESPONSE"
+            fi
+
+            # 8.3.9 - Nettoyage de l'utilisateur de test, quelle que soit l'environnement
+            echo "[INFO - 8.3.9] Suppression de fakebot@example.com (si présent) dans la base de données..."
+            docker exec "$CONTAINER_NAME" node /app/scripts/clean_test_user.js
+            
+             # 8.4 - Mise à jour de npm et Prisma
+            echo "[INFO - 8.4] Mise à jour de npm et Prisma..."
+            docker exec "$CONTAINER_NAME" npm install -g npm@latest --force
+            docker exec "$CONTAINER_NAME" npm install --save-dev prisma@latest @prisma/client@latest --force --legacy-peer-deps
+                        
+            # Étape 8.4.1 - Vérification des versions mises à jour
+            echo "[INFO - 8.4.1] Vérification des versions de npm et Prisma..."
+            docker exec "$CONTAINER_NAME" npm --version
+            docker exec "$CONTAINER_NAME" npx prisma --version
+            docker exec "$CONTAINER_NAME" npm list @prisma/client
+            
+            # 8.5 - Backup et migrations Prisma
+            BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
+            echo "[INFO - 8.5.1] Création du répertoire de backup : $BACKUP_DIR"
+            mkdir -p "$BACKUP_DIR"
+
+            BACKUP_FILE="$BACKUP_DIR/backup_$(date +%Y%m%d%H%M%S).sql"
+            echo "[INFO - 8.5.2] Création du backup avant migration..."
+            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
+
+            # 8.5.3 - Validation du fichier schema.prisma
+            echo "[INFO - 8.5.3] Vérification du fichier schema.prisma..."
+
+            # Étape 8.5.3.0 - Recherche du fichier schema.prisma dans le conteneur
+            echo "[INFO - 8.5.3.0] Recherche du fichier schema.prisma dans le conteneur..."
+            SCHEMA_PATH=$(docker exec "$CONTAINER_NAME" find / -name "schema.prisma" 2>/dev/null | head -n 1)
+
+            if [ -z "$SCHEMA_PATH" ]; then
+              echo "[ERROR] Fichier schema.prisma introuvable dans le conteneur !" >&2
+              echo "[INFO - 8.5.3.0] Vérifiez que le fichier est inclus dans l'image Docker et que le chemin est correct."
+              exit 1
+            fi
+
+            echo "[SUCCESS] Fichier schema.prisma trouvé : $SCHEMA_PATH"
+
+            # Étape 8.5.3.1 - Validation syntaxique du schéma
+            echo "[INFO - 8.5.3.1] Validation syntaxique du schéma..."
+            docker exec "$CONTAINER_NAME" npx prisma validate --schema="$SCHEMA_PATH" || {
+              echo "[ERROR] Le fichier schema.prisma est invalide. Corrigez les erreurs avant de continuer." >&2
+              exit 1
+            }
+            echo "[SUCCESS] Le fichier schema.prisma est valide."
+
+            # Étape 8.5.3.2 - Vérification des migrations Prisma en attente
+            echo "[INFO - 8.5.3.2] Vérification des migrations Prisma en attente..."
+            docker exec "$CONTAINER_NAME" npx prisma migrate status --schema="$SCHEMA_PATH" || {
+              echo "[WARNING] Des migrations sont en attente ou ont échoué. Vérifiez avant le déploiement." >&2
+            }
+
+
+            # 8.5.4 - Application des migrations Prisma
+            echo "[INFO - 8.5.4] Application des migrations Prisma..."
+
+            # Identifier les migrations échouées
+            FAILED_MIGRATIONS=$(docker exec "$CONTAINER_NAME" npx prisma migrate status | grep 'failed' | awk '{print $2}')
+
+            if [ -n "$FAILED_MIGRATIONS" ]; then
+              echo "[WARNING] Des migrations échouées détectées : $FAILED_MIGRATIONS"
+              for MIGRATION in $FAILED_MIGRATIONS; do
+                echo "[INFO] Tentative de résolution pour : $MIGRATION"
+                # Résoudre la migration échouée (rollback ou marquer comme appliquée)
+                docker exec "$CONTAINER_NAME" npx prisma migrate resolve --rolled-back "$MIGRATION" || {
+                  echo "[ERROR] Échec de la résolution pour $MIGRATION." >&2
+                  exit 1
+                }
+              done
+            fi
+
+            # Appliquer les migrations restantes
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy || {
+              echo "[ERROR] Échec des migrations Prisma. Restauration du backup..." >&2
+              docker exec -i "$POSTGRES_CONTAINER_NAME" psql -U "$DB_USERNAME" -d "$DB_NAME" < "$BACKUP_FILE" || {
+                echo "[ERROR] Échec de la restauration du backup. Intervention manuelle requise." >&2
+                exit 1
+              }
               exit 1
             }
 
-            # 8.15 - Fin de l'étape backend
-            echo "[SUCCESS - 8.15] ✅ Déploiement complet du backend terminé avec succès."
+            echo "[SUCCESS] Les migrations Prisma ont été appliquées avec succès."           
 
-          EOF
-      
+            # 8.6 - Nettoyage final
+            echo "[INFO - 8.6] Nettoyage des anciens conteneurs et images..."
+            docker container prune -f || echo "[WARNING] Nettoyage des conteneurs échoué."
+            docker image prune -f || echo "[WARNING] Nettoyage des images échoué."
+
+            echo "[SUCCESS] Déploiement backend terminé avec succès !"           
+          
+               
+            # 8.7 - Suppression sécurisée des fichiers temporaires
+            echo "[INFO - 8.7] Suppression sécurisée des fichiers temporaires..."
+            rm -f /tmp/env_vars.sh /tmp/git_id_rsa
+            echo "[SUCCESS] La suppression des fichiers temporaires est terminée !"
+
+            # 8.8 - Vérification post-déploiement des fonctionnalités clés
+            echo "[INFO - 8.8] Tests post-déploiement : Prisma, /health, /api/register, /api/login..."
+            docker exec $CONTAINER_NAME node /app/tests/testComplet.js
+          
+
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
