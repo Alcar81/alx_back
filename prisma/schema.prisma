@@ -11,18 +11,11 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-<<<<<<< HEAD
-=======
   password  String
   firstName String   @default("")
   lastName  String   @default("")
   role      Role     @default(USER)
->>>>>>> rollback-avant-bug
   createdAt DateTime @default(now())
-  password  String
-  firstName String   @default("")
-  lastName  String   @default("")
-  role      String   @default("user")
   updatedAt DateTime @updatedAt
 }
 
