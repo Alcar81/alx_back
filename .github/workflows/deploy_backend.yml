@@ -446,6 +446,22 @@ jobs:
               exit 1
             fi
 
+            # Attente active de fin de migration
+            i=0
+            while [ ! -f /tmp/migration_done.flag ] && [ $i -lt 30 ]; do
+              echo "[WAIT] Migration non terminée... attente 1s ($i/30)"
+              sleep 1
+              ((i++))
+            done
+
+            if [ -f /tmp/migration_done.flag ]; then
+              echo "[OK] Migration terminée. Suppression du flag..."
+              rm -f /tmp/migration_done.flag
+            else
+              echo "[ERROR] Migration toujours non terminée après 30 secondes." >&2
+              exit 1
+            fi
+
             # 8.13 - Démarrage du serveur backend avec attente active
             echo "[INFO - 8.13] 🚀 Lancement du serveur backend avec npm start..."
             docker exec -d "$CONTAINER_NAME" npm start
@@ -628,4 +644,4 @@ jobs:
 
       # Étape 10 - Nettoyage des fichiers temporaires
       - name: 10 - Nettoyage des fichiers temporaires
-        run: rm -f /tmp/git_id_rsa /tmp/env_vars.sh || true
+        run: rm -f /tmp/git_id_rsa /tmp/env_vars.sh || true        

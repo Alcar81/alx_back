@@ -1,6 +1,5 @@
 # //backend/migrate_auto.sh
-
-
+#!/bin/bash
 set -e  # Interrompt en cas d'erreur
 
 echo "                                                                     " 
@@ -16,6 +15,10 @@ LOG_FILE="$LOG_DIR/migrate_${TIMESTAMP}.log"
 LOCAL_MIGRATION_PATH="prisma/migrations"
 SCHEMA_PATH_CONTAINER="/app/prisma/schema.prisma"
 SCHEMA_PATH_LOCAL="prisma/schema.prisma"
+DONE_FLAG="/tmp/migration_done.flag"
+
+# Nettoyage du flag existant
+rm -f "$DONE_FLAG"
 
 # Étape 1 - Préparation des dossiers
 mkdir -p "$LOG_DIR"
@@ -46,6 +49,7 @@ docker exec "$CONTAINER_NAME" test -d /app/prisma/migrations
 if [ $? -ne 0 ]; then
   echo "⚠️ [INFO] Aucune migration générée (aucun changement détecté)."
   echo "📄 6. Aucun nouveau dossier à copier. Voir logs pour confirmation : $LOG_FILE"
+  touch "$DONE_FLAG"
   exit 0
 fi
 
@@ -65,5 +69,13 @@ echo "📄 8. Détails de la migration enregistrés dans : $LOG_FILE"
 echo "📊 9. Introspection : affichage des tables connues par Prisma..."
 docker exec "$CONTAINER_NAME" npx prisma db pull --print | tee -a "$LOG_FILE"
 
+# Étape 10 - Création du flag pour indiquer la fin
+echo "✅ 10. Création du flag de fin : $DONE_FLAG"
+touch "$DONE_FLAG"
+
+# Étape 11 - Nettoyage des logs trop anciens
+echo "🧹 11. Nettoyage des fichiers de logs de migration vieux de plus de 30 jours..."
+find "$LOG_DIR" -type f -name "*.log" -mtime +30 -exec rm -f {} \;
+
 echo " Fin Migration =====================================================" 
-echo "                                                                    "
+echo "           
