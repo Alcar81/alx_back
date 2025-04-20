@@ -121,7 +121,7 @@ if (!PORT) {
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost/api";
 const prisma = new PrismaClient();
 
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   const launchTime = new Date().toLocaleString("fr-CA", {
     timeZone: "America/Toronto",
   });
