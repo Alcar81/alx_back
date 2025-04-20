@@ -24,3 +24,7 @@ enum Role {
   ADMIN
   SUPERADMIN
 }
+model TestTable {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+}

@@ -78,4 +78,4 @@ echo "🧹 11. Nettoyage des fichiers de logs de migration vieux de plus de 30 j
 find "$LOG_DIR" -type f -name "*.log" -mtime +30 -exec rm -f {} \;
 
 echo " Fin Migration =====================================================" 
-echo "           
+echo "                                                                    "  
