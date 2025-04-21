@@ -635,7 +635,14 @@ jobs:
 
             # 8.8 - Vérification post-déploiement des fonctionnalités clés
             echo "[INFO - 8.8] Tests post-déploiement : Prisma, /health, /api/register, /api/login..."
-            docker exec $CONTAINER_NAME node /app/tests/testComplet.js
+
+            if [ "$ENV" = "dev" ]; then
+              echo "[INFO - 8.8] Mode développement détecté : lancement de testComplet.js avec --debug"
+              docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js --debug
+            else
+              echo "[INFO - 8.8] Mode production : lancement de testComplet.js"
+              docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js
+            fi
           
 
       # Étape 9 - Configurer l'URL Git distante
