@@ -47,12 +47,12 @@ app.use("/api", authRoutes);
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
-// 📌 Gestion des routes API inexistantes (avant React fallback)
+// 📌 Gestion des routes API inexistantes
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "Route API non trouvée." });
 });
 
-// 📦 Fichiers statiques frontend
+// 📦 Fichiers statiques React
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -121,48 +121,59 @@ if (!PORT) {
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost/api";
 const prisma = new PrismaClient();
 
-app.listen(PORT, '0.0.0.0', async () => {
-  const launchTime = new Date().toLocaleString("fr-CA", {
-    timeZone: "America/Toronto",
-  });
+logger.info("⚠️ POINT DE CONTRÔLE : juste avant app.listen()");
 
-  logger.info("🚀===============================");
-  logger.info(`🕒 Démarrage à : ${launchTime}`);
-  logger.info(`✅ Serveur backend lancé sur le port ${PORT}`);
-  logger.info("📌 process.env.SERVER_PORT = " + rawPort);
-  logger.info(`🌐 API accessible à : ${API_URL}`);
-  logger.info("🛡️  Middleware de sécurité actif (Helmet + Nonce)");
+try {
+  app.listen(PORT, async () => {
+    logger.info("✅ app.listen lancé, port " + PORT);
 
-  logger.info("📦 Variables d'environnement :");
-  logger.info("🔧 NODE_ENV = " + process.env.NODE_ENV);
-  logger.info("🔧 APP_ENV  = " + process.env.APP_ENV);
-  logger.info("🛠️  APP_NAME = " + process.env.APP_NAME);
-  logger.info("📡 PORT = " + process.env.PORT);
-  logger.info("📡 SERVER_PORT = " + process.env.SERVER_PORT);
-  logger.info("🗃️ DATABASE_URL = " + (process.env.DATABASE_URL?.replace(/\/\/.*:.*@/, "//***:***@") || ""));
-  logger.info("🌐 REACT_APP_API_URL = " + process.env.REACT_APP_API_URL);
-  logger.info("🧪 LOG_LEVEL = " + (process.env.LOG_LEVEL || "default"));
-  logger.info("🧩 ENABLE_CACHE = " + (process.env.ENABLE_CACHE || "false"));
-  logger.info("🛡️ JWT_SECRET présent : " + (process.env.JWT_SECRET ? "✅" : "❌ manquant"));
+    const launchTime = new Date().toLocaleString("fr-CA", {
+      timeZone: "America/Toronto",
+    });
 
-  try {
-    await prisma.$connect();
-    logger.info("🗃️ Connexion à la base de données : ✅ SUCCÈS");
-  } catch (error) {
-    logger.info("🗃️ Connexion à la base de données : ❌ ÉCHEC");
-    logger.info("🛑 Détail : " + error.message);
-  }
+    logger.info("🚀===============================");
+    logger.info(`🕒 Démarrage à : ${launchTime}`);
+    logger.info(`✅ Serveur backend lancé sur le port ${PORT}`);
+    logger.info("📌 process.env.SERVER_PORT = " + rawPort);
+    logger.info(`🌐 API accessible à : ${API_URL}`);
+    logger.info("🛡️  Middleware de sécurité actif (Helmet + Nonce)");
 
-  if (API_URL.startsWith("http")) {
+    logger.info("📦 Variables d'environnement :");
+    logger.info("🔧 NODE_ENV = " + process.env.NODE_ENV);
+    logger.info("🔧 APP_ENV  = " + process.env.APP_ENV);
+    logger.info("🛠️  APP_NAME = " + process.env.APP_NAME);
+    logger.info("📡 PORT = " + process.env.PORT);
+    logger.info("📡 SERVER_PORT = " + process.env.SERVER_PORT);
+    logger.info("🗃️ DATABASE_URL = " + (process.env.DATABASE_URL?.replace(/\/\/.*:.*@/, "//***:***@") || ""));
+    logger.info("🌐 REACT_APP_API_URL = " + process.env.REACT_APP_API_URL);
+    logger.info("🧪 LOG_LEVEL = " + (process.env.LOG_LEVEL || "default"));
+    logger.info("🧩 ENABLE_CACHE = " + (process.env.ENABLE_CACHE || "false"));
+    logger.info("🛡️ JWT_SECRET présent : " + (process.env.JWT_SECRET ? "✅" : "❌ manquant"));
+
     try {
-      const res = await fetch(API_URL, { method: "HEAD" });
-      logger.info(`🌍 Frontend à ${API_URL} : ${res.ok ? `✅ ${res.status}` : `⚠️ ${res.status}`}`);
-    } catch (err) {
-      logger.info(`🌍 Frontend à ${API_URL} : ❌ Erreur de connexion`);
-      logger.info("🛑 Détail : " + err.message);
+      logger.info("🕸 Connexion à la base de données en cours...");
+      await prisma.$connect();
+      logger.info("🗃️ Connexion à la base de données : ✅ SUCCÈS");
+    } catch (error) {
+      logger.error("🗃️ Connexion à la base de données : ❌ ÉCHEC");
+      logger.error("🛑 Détail : " + error.message);
     }
-  }
 
-  logger.info("🧪 Logs de requêtes activés");
-  logger.info("🚀===============================");
-});
+    if (API_URL.startsWith("http")) {
+      try {
+        logger.info(`🌐 Test de HEAD vers ${API_URL}...`);
+        const res = await fetch(API_URL, { method: "HEAD" });
+        logger.info(`🌍 Frontend à ${API_URL} : ${res.ok ? `✅ ${res.status}` : `⚠️ ${res.status}`}`);
+      } catch (err) {
+        logger.error(`🌍 Frontend à ${API_URL} : ❌ Erreur de connexion`);
+        logger.error("🛑 Détail : " + err.message);
+      }
+    }
+
+    logger.info("🧪 Logs de requêtes activés");
+    logger.info("🚀===============================");
+  });
+} catch (err) {
+  logger.error("❌ Erreur dans le bloc app.listen : " + err.message);
+  process.exit(1);
+}
