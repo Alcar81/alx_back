@@ -339,7 +339,26 @@ jobs:
             docker exec "$CONTAINER_NAME" ln -sf /usr/share/zoneinfo/America/Montreal /etc/localtime
             docker exec "$CONTAINER_NAME" dpkg-reconfigure -f noninteractive tzdata
       
-          
+            # 8.6 - Génération Prisma et build
+            echo "[INFO - 8.6] Prisma generate et npm build..."
+            docker exec "$CONTAINER_NAME" npx prisma generate
+            docker exec "$CONTAINER_NAME" npm run build || echo "[INFO] Aucun build requis"
+      
+            # 8.7 - Connexion DB (pré-migration)
+            echo "[INFO - 8.7] Test de connexion DB..."
+            docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js
+      
+            # 8.8 - Application des migrations Prisma
+            echo "[INFO - 8.8] Lancement des migrations..."
+            docker exec "$CONTAINER_NAME" npx prisma migrate deploy
+      
+            # 8.9 - Backup post-migration
+            echo "[INFO - 8.9] Backup de la base après migration..."
+            BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
+            mkdir -p "$BACKUP_DIR"
+            BACKUP_FILE="$BACKUP_DIR/backup_after_migrate_$(date +%Y%m%d%H%M%S).sql"
+            docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
+            sleep 30
       
             # 8.10 - Lancement du serveur backend
             echo "[INFO - 8.10] Démarrage du backend..."
