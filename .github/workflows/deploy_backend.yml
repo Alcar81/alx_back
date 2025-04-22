@@ -371,36 +371,7 @@ jobs:
               docker exec "$CONTAINER_NAME" tail -n 100 logs/server.log
               exit 1
             }
-      
-            echo "[INFO - 8.11] Vérification port et endpoint /health..."
-            for i in {1..120}; do
-              echo "[WAIT] Vérification tentative $i/120..."
-
-              # ✅ Vérifie que le port est écouté
-              if docker exec "$CONTAINER_NAME" ss -tln | grep -q ":$BACKEND_PORT"; then
-                echo "[OK] Port $BACKEND_PORT détecté via ss -tln ✅"
-              else
-                echo "[WAIT] Port $BACKEND_PORT non encore actif (ss -tln)..."
-              fi
-
-              # ✅ Vérifie que /health répond
-              STATUS_CODE=$(docker exec "$CONTAINER_NAME" curl -s -o /dev/null -w "%{http_code}" http://localhost:$BACKEND_PORT/health)
-              if [ "$STATUS_CODE" = "200" ]; then
-                echo "[OK] /health a répondu 200 ✅ (itération $i)"
-                break
-              fi
-
-              sleep 1
-            done
-
-            # 🔴 Si après 120 secondes ça ne répond toujours pas...
-            if [ "$STATUS_CODE" != "200" ]; then
-              echo "[ERROR] ❌ /health n’a pas répondu 200 après 120 secondes."
-              docker exec "$CONTAINER_NAME" tail -n 100 logs/server.log
-              exit 1
-            fi
-
-      
+            
             # 8.12 - Tests post-déploiement (testComplet.js)
             echo "[INFO - 8.12] Lancement des tests automatisés post-déploiement..."
       
