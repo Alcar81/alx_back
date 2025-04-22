@@ -2,16 +2,16 @@
 
 process.env.TZ = 'America/Toronto';
 
-const express = require("express");
-const helmet = require("helmet");
-const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
-const { PrismaClient } = require("@prisma/client");
-const fetch = require("node-fetch");
-require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+import express from "express";
+import helmet from "helmet";
+import crypto from "crypto";
+import path from "path";
+import { PrismaClient } from "@prisma/client";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
+import logger from "./utils/logger.js";
 
-const logger = require("./utils/logger");
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 logger.info("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 logger.info("🟢 [BOOT] Initialisation de server.js...");
@@ -40,20 +40,20 @@ app.use((req, res, next) => {
 
 // ✅ Routes API
 logger.info("🔌 Chargement des routes /api...");
-const authRoutes = require("./routes/auth");
+import authRoutes from "./routes/auth.js";
 app.use("/api", authRoutes);
 
 logger.info("🔌 Chargement des routes /api/admin...");
-const adminRoutes = require("./routes/admin");
+import adminRoutes from "./routes/admin.js";
 app.use("/api/admin", adminRoutes);
 
 // 📌 Route API inexistante
-app.use("/api", (req, res) => {
+app.use("/api", (_, res) => {
   res.status(404).json({ message: "Route API non trouvée." });
 });
 
 // ✅ Endpoint de santé
-app.get("/health", (req, res) => {
+app.get("/health", (_, res) => {
   res.status(200).send("OK");
 });
 
@@ -103,7 +103,7 @@ app.use(
 // });
 
 // 🔁 Gestion des erreurs
-const errorHandler = require("./middleware/errorHandler");
+import errorHandler from "./middleware/errorHandler.js";
 app.use(errorHandler);
 
 // 🚀 Lancement sécurisé
