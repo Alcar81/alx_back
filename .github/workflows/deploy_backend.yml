@@ -374,12 +374,12 @@ jobs:
       
             # 8.11 - Vérification port et endpoint
             echo "[INFO - 8.11] Vérification port et endpoint /health..."
-            for i in {1..30}; do
+            for i in {1..120}; do
               if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
                 echo "[OK] Port $BACKEND_PORT ouvert"
                 break
               fi
-              echo "[WAIT] Port pas encore actif ($i/30)..."
+              echo "[WAIT] Port pas encore actif ($i/120)..."
               sleep 1
             done
       
