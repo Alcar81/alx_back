@@ -25,3 +25,6 @@ certificates/
 # Exclure les fichiers de clé ssh
 known_hosts
 
+# Scripts de promotion temporaires
+backend/scripts/dev-only/
+

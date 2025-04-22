@@ -406,7 +406,7 @@ jobs:
             # 8.12.5 - Promotion de testAdmin
             if [ "$ENV" = "dev" ]; then
               echo "[INFO - 8.12.5] Promotion automatique de testAdmin@alxmultimedia.com en ADMIN"
-              docker exec "$CONTAINER_NAME" node scripts/setAdmin.js testAdmin@alxmultimedia.com ADMIN || {
+              docker exec "$CONTAINER_NAME" node scripts/dev-only/setAdmin.js testAdmin@alxmultimedia.com ADMIN || {
                 echo "[WARN] ⚠️ La promotion a échoué."
               }
             fi
@@ -416,7 +416,7 @@ jobs:
             rm -f /tmp/git_id_rsa /tmp/env_vars.sh
 
             echo "[SUCCESS ✅] Étape 8 terminée avec succès."
-            
+
           EOF
 
       
