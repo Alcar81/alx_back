@@ -21,9 +21,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 // ✅ Middleware JSON
+logger.info("➡️ Montage middleware JSON...");
 app.use(express.json());
 
 // 📥 Logs des requêtes
+logger.info("➡️ Montage middleware logger...");
 app.use((req, res, next) => {
   logger.info(`📥 ${req.method} ${req.url} | IP: ${req.ip}`);
   if (["POST", "PUT"].includes(req.method)) {
@@ -32,27 +34,35 @@ app.use((req, res, next) => {
   next();
 });
 
+// 🛡️ Helmet
+logger.info("➡️ Montage Helmet...");
 app.use(helmet());
 
 // 🔐 CSP Nonce
+logger.info("➡️ Middleware CSP (nonce)...");
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
   next();
 });
 
 // ✅ Routes API
+logger.info("➡️ Montage des routes /api...");
 const authRoutes = require("./routes/auth");
 app.use("/api", authRoutes);
 
+logger.info("➡️ Montage des routes /api/admin...");
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
-// 📌 Route API inexistante
+// 📌 Middleware 404 API
+logger.info("➡️ Middleware 404 sur /api...");
 app.use("/api", (req, res) => {
+  logger.info(`❌ Route API non trouvée : ${req.url}`);
   res.status(404).json({ message: "Route API non trouvée." });
 });
 
 // 📦 Fichiers statiques React
+logger.info("➡️ Configuration des fichiers statiques React...");
 app.use(
   express.static(path.join(__dirname, "../public_html/build"), {
     setHeaders: (res, filePath) => {
@@ -80,23 +90,29 @@ app.use(
 );
 
 // ✅ Endpoint de santé
+logger.info("➡️ Définition de /health...");
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
 // 🌐 Fallback React
+// 🛑 Temporairement désactivé pour test
+/*
+logger.info("➡️ Fallback React HTML...");
 app.get("*", (req, res) => {
   const nonce = res.locals.nonce;
   const indexPath = path.join(__dirname, "../public_html/build/index.html");
 
+  logger.info(`🌐 Route fallback activée : ${req.url}`);
+
   if (!fs.existsSync(indexPath)) {
-    logger.info("❌ index.html introuvable !");
+    logger.error("❌ index.html introuvable !");
     return res.status(500).send("Erreur : Fichier index.html manquant.");
   }
 
   fs.readFile(indexPath, "utf8", (err, data) => {
     if (err) {
-      logger.info("❌ Erreur de lecture index.html : " + err.message);
+      logger.error("❌ Erreur de lecture index.html : " + err.message);
       return res.status(500).send("Erreur lecture HTML.");
     }
 
@@ -105,8 +121,10 @@ app.get("*", (req, res) => {
     res.send(updatedHtml);
   });
 });
+*/
 
 // 🔁 Gestion globale des erreurs
+logger.info("➡️ Montage middleware d'erreurs...");
 const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
@@ -114,7 +132,7 @@ app.use(errorHandler);
 const rawPort = process.env.SERVER_PORT;
 const PORT = parseInt(rawPort, 10);
 if (!PORT) {
-  logger.info("❌ PORT invalide ou manquant dans .env (SERVER_PORT)");
+  logger.error("❌ PORT invalide ou manquant dans .env (SERVER_PORT)");
   process.exit(1);
 }
 
