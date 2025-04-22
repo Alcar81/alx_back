@@ -372,32 +372,21 @@ jobs:
               exit 1
             }
       
-            # 8.11 - Vérification port et endpoint /health
-            echo "[INFO - 8.11] Vérification port et endpoint /health..."
-
-            PORT_OK=false
+            # 8.11 - Vérification endpoint /health
+            echo "[INFO - 8.11] Vérification du endpoint /health sur port $BACKEND_PORT..."
 
             for i in {1..180}; do
-              if docker exec "$CONTAINER_NAME" netstat -tln | grep -q ":$BACKEND_PORT"; then
-                echo "[OK] Port $BACKEND_PORT ouvert ✅"
-                PORT_OK=true
+              if docker exec "$CONTAINER_NAME" curl -sSf "http://localhost:$BACKEND_PORT/health" > /dev/null; then
+                echo "[OK] ✅ /health a répondu correctement (tentative $i)"
                 break
               fi
-              echo "[WAIT] Vérification tentative $i/180..."
+              echo "[WAIT] /health pas encore disponible (tentative $i/180)..."
               sleep 1
             done
 
-            if [ "$PORT_OK" = true ]; then
-              echo "[INFO] Test du endpoint /health..."
-              if docker exec "$CONTAINER_NAME" curl -sSf "http://localhost:$BACKEND_PORT/health"; then
-                echo "[OK] Endpoint /health accessible ✅"
-              else
-                echo "[ERROR] ❌ Le endpoint /health n’a pas répondu malgré le port ouvert."
-                docker exec "$CONTAINER_NAME" tail -n 50 logs/server.log
-                exit 8
-              fi
-            else
-              echo "[ERROR] ❌ Le port $BACKEND_PORT n’a pas été détecté après 180 secondes."
+            # Test final : si au bout de 180 sec c'est toujours inaccessible, on arrête tout
+            if ! docker exec "$CONTAINER_NAME" curl -sSf "http://localhost:$BACKEND_PORT/health" > /dev/null; then
+              echo "[ERROR] ❌ /health n’a pas répondu après 180 secondes."
               docker exec "$CONTAINER_NAME" tail -n 50 logs/server.log
               exit 7
             fi
