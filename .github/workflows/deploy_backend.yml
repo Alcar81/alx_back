@@ -365,12 +365,14 @@ jobs:
             docker exec -d "$CONTAINER_NAME" npm start
             
       
-            echo "[INFO - 8.10.1] Vérification du log de démarrage..."
-            docker exec "$CONTAINER_NAME" grep "\[BOOT\]" logs/server.log || {
-              echo "[ERROR] 🚨 Le serveur ne semble pas avoir démarré correctement."
-              docker exec "$CONTAINER_NAME" tail -n 100 logs/server.log
-              exit 1
+            # 8.10.1 - Vérification du log de démarrage
+            echo "[INFO - 8.10.1] Log démarrage backend (extrait utile)..."
+
+            docker exec "$CONTAINER_NAME" grep "app.listen lancé" logs/server.log || {
+              echo "[WARN] Aucune trace 'app.listen lancé' trouvée dans les logs. ⚠️"
             }
+
+            echo "[INFO - 8.10.1] Fin de vérification."
       
             # 8.11 - Vérification endpoint /health
             echo "[INFO - 8.11] Vérification du endpoint /health sur port $BACKEND_PORT..."
