@@ -55,6 +55,7 @@ const printBanner = () => {
 ║ 🩺 Santé du serveur confirmée                         ║
 ║ 🧪 Prisma opérationnel                                ║
 ║ 🔐 Test de route protégée : OK                        ║
+║ 📂 Routes admin publiques accessibles : OK            ║
 ║ ❓ Gestion des erreurs 404 : OK                        ║
 ║ 🧼 Comportement sans payload JSON validé              ║
 ║                                                        ║
@@ -88,7 +89,8 @@ const printBanner = () => {
       "testLogin.js",
       "testRegisterEmpty.js",
       "testProtectedRoute.js",
-      "test404.js"
+      "test404.js",
+      "testAdmin.js" // <--- ajouté ici
     ];
 
     console.log("🔍 Vérification des fichiers de test...");
@@ -101,13 +103,14 @@ const printBanner = () => {
       console.log(`✅ ${file} trouvé`);
     });
 
-    await runTest("Test 1/7 - testPrisma.js", "node /app/tests/testPrisma.js");
-    await runTest("Test 2/7 - testHealth.js", "node /app/tests/testHealth.js");
-    await runTest("Test 3/7 - testRegister.js", "node /app/tests/testRegister.js");
-    await runTest("Test 4/7 - testLogin.js", "node /app/tests/testLogin.js");
-    await runTest("Test 5/7 - testRegisterEmpty.js", "node /app/tests/testRegisterEmpty.js");
-    await runTest("Test 6/7 - testProtectedRoute.js", "node /app/tests/testProtectedRoute.js");
-    await runTest("Test 7/7 - test404.js", "node /app/tests/test404.js");
+    await runTest("Test 1/8 - testPrisma.js", "node /app/tests/testPrisma.js");
+    await runTest("Test 2/8 - testHealth.js", "node /app/tests/testHealth.js");
+    await runTest("Test 3/8 - testRegister.js", "node /app/tests/testRegister.js");
+    await runTest("Test 4/8 - testLogin.js", "node /app/tests/testLogin.js");
+    await runTest("Test 5/8 - testRegisterEmpty.js", "node /app/tests/testRegisterEmpty.js");
+    await runTest("Test 6/8 - testProtectedRoute.js", "node /app/tests/testProtectedRoute.js");
+    await runTest("Test 7/8 - test404.js", "node /app/tests/test404.js");
+    await runTest("Test 8/8 - testAdmin.js", "node /app/tests/testAdmin.js"); // <--- ajouté ici aussi
 
     printBanner();
   } catch (e) {
