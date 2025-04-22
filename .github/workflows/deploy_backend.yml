@@ -393,34 +393,32 @@ jobs:
               exit 7
             fi
 
-          EOF
-      
-      - name: 8.12 - Tests post-déploiement (testComplet.js)
-        run: |
-          echo "[INFO - 8.12] Lancement des tests automatisés post-déploiement..."
+            # 8.12 - Tests post-déploiement
+            echo "[INFO - 8.12] Lancement des tests automatisés post-déploiement..."
+            if [ "$ENV" = "dev" ]; then
+              echo "[INFO] Mode développement - testComplet.js --debug"
+              docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js --debug
+            else
+              echo "[INFO] Mode production - testComplet.js"
+              docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js
+            fi
 
-          if [ "$ENV" = "dev" ]; then
-            echo "[INFO] Mode développement - testComplet.js --debug"
-            docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js --debug
-          else
-            echo "[INFO] Mode production - testComplet.js"
-            docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js
-          fi
+            # 8.12.5 - Promotion de testAdmin
+            if [ "$ENV" = "dev" ]; then
+              echo "[INFO - 8.12.5] Promotion automatique de testAdmin@alxmultimedia.com en ADMIN"
+              docker exec "$CONTAINER_NAME" node scripts/setAdmin.js testAdmin@alxmultimedia.com ADMIN || {
+                echo "[WARN] ⚠️ La promotion a échoué."
+              }
+            fi
 
-      - name: 8.12.5 - Promotion testAdmin@alxmultimedia.com
-        if: env.ENV == 'dev'
-        run: |
-          echo "[INFO - 8.12.5] Promotion automatique de testAdmin@alxmultimedia.com en ADMIN"
-          docker exec "$CONTAINER_NAME" node scripts/setAdmin.js testAdmin@alxmultimedia.com ADMIN || {
-            echo "[WARN] ⚠️ La promotion a échoué."
-          }
-
-      
             # 8.13 - Nettoyage final
             echo "[INFO - 8.13] Suppression des fichiers temporaires..."
             rm -f /tmp/git_id_rsa /tmp/env_vars.sh
-      
+
             echo "[SUCCESS ✅] Étape 8 terminée avec succès."
+            
+          EOF
+
       
         
           
