@@ -17,7 +17,8 @@ exports.registerUser = async (req, res) => {
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
 
-    const { firstName, lastName, email, password } = req.body;
+    let { firstName, lastName, email, password } = req.body;
+    email = email.toLowerCase();
     logger.info(`📩 Données reçues : ${JSON.stringify({ firstName, lastName, email })}`);
 
     if (!firstName || !lastName || !email || !password) {
@@ -56,7 +57,8 @@ exports.loginUser = async (req, res) => {
       return res.status(415).json({ message: "Type de contenu invalide. Utilisez application/json." });
     }
 
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email.toLowerCase();
     logger.info(`📩 Données reçues : ${JSON.stringify({ email })}`);
 
     if (!email || !password) {

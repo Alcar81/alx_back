@@ -5,7 +5,8 @@ const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
-const [,, email = "", role = "ADMIN"] = process.argv;
+const [,, rawEmail = "", role = "ADMIN"] = process.argv;
+const email = rawEmail.toLowerCase();
 
 if (!email || !role) {
   console.error("❌ Usage : node setAdmin.js <email> <role>");
@@ -25,14 +26,14 @@ if (!email || !role) {
           password: hashed,
           firstName: "Test",
           lastName: "Admin",
-          role
-        }
+          role,
+        },
       });
       console.log(`🆕 Utilisateur ${email} créé avec le mot de passe : ${defaultPassword}`);
     } else {
       await prisma.user.update({
         where: { email },
-        data: { role }
+        data: { role },
       });
       console.log(`🔄 Rôle de ${email} mis à jour en : ${role}`);
     }
