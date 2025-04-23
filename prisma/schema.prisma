@@ -36,7 +36,7 @@ model UserRole {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, roleId]) // 👈 un utilisateur ne peut pas avoir deux fois le même rôle
+  @@unique([userId, roleId])
 }
 
 model TestTable {
