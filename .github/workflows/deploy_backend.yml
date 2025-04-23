@@ -362,17 +362,7 @@ jobs:
       
             # 8.10 - Lancement du serveur backend
             echo "[INFO - 8.10] Démarrage du backend..."
-            docker exec -d "$CONTAINER_NAME" npm start
-            
-      
-            # 8.10.1 - Vérification du log de démarrage
-            echo "[INFO - 8.10.1] Log démarrage backend (extrait utile)..."
-
-            docker exec "$CONTAINER_NAME" grep "app.listen lancé" logs/server.log || {
-              echo "[WARN] Aucune trace 'app.listen lancé' trouvée dans les logs. ⚠️"
-            }
-
-            echo "[INFO - 8.10.1] Fin de vérification."
+            docker exec -d "$CONTAINER_NAME" npm start           
       
             # 8.11 - Vérification endpoint /health
             echo "[INFO - 8.11] Vérification du endpoint /health sur port $BACKEND_PORT..."

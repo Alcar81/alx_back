@@ -38,6 +38,22 @@ exports.registerUser = async (req, res) => {
     });
 
     logger.info(`✅ Utilisateur créé : ID ${newUser.id}, Email: ${newUser.email}`);
+
+    // 🎯 Attribution automatique du rôle USER
+    const defaultRole = await prisma.role.findUnique({ where: { name: "USER" } });
+
+    if (defaultRole) {
+      await prisma.userRole.create({
+        data: {
+          userId: newUser.id,
+          roleId: defaultRole.id,
+        },
+      });
+      logger.info(`🔐 Rôle USER attribué à l'utilisateur ${email}`);
+    } else {
+      logger.warn("⚠️ Le rôle USER n'existe pas dans la table Role.");
+    }
+
     return res.status(201).json({ message: "Inscription réussie", userId: newUser.id });
 
   } catch (err) {

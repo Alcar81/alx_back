@@ -1,20 +1,21 @@
+// 📁 scripts/dev-only/setAdmin.js
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
-const [,, emailArg = "", roleArg = "ADMIN"] = process.argv;
 
-if (!emailArg || !roleArg) {
+const [,, emailInput = "", roleInput = "ADMIN"] = process.argv;
+const email = emailInput.toLowerCase();
+const role = roleInput.toUpperCase();
+
+if (!email || !role) {
   console.error("❌ Usage : node setAdmin.js <email> <role>");
   process.exit(1);
 }
 
-const email = emailArg.toLowerCase();
-const role = roleArg.toUpperCase();
-
 (async () => {
   try {
-    // Vérifier si l'utilisateur existe
+    // 🔍 Vérifie si l'utilisateur existe
     let user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
@@ -31,28 +32,26 @@ const role = roleArg.toUpperCase();
       console.log(`🆕 Utilisateur ${email} créé avec le mot de passe : ${defaultPassword}`);
     }
 
-    // Vérifier si le rôle existe
-    let roleRecord = await prisma.role.findUnique({ where: { name: role } });
+    // 🔍 Vérifie si le rôle existe
+    const roleRecord = await prisma.role.findUnique({ where: { name: role } });
+
     if (!roleRecord) {
-      console.log(`📌 Le rôle '${role}' est absent, création...`);
-      roleRecord = await prisma.role.create({
-        data: { name: role },
-      });
-      console.log(`✅ Rôle '${role}' créé.`);
+      const allRoles = await prisma.role.findMany({ select: { name: true } });
+      console.error(`❌ Le rôle '${role}' est introuvable.`);
+      console.log("🎭 Rôles disponibles :", allRoles.map(r => r.name).join(", "));
+      process.exit(1);
     }
 
-    // Vérifier l'association UserRole
-    const existing = await prisma.userRole.findUnique({
+    // 🔍 Vérifie si l'association existe
+    const existingRole = await prisma.userRole.findFirst({
       where: {
-        userId_roleId: {
-          userId: user.id,
-          roleId: roleRecord.id,
-        },
+        userId: user.id,
+        roleId: roleRecord.id,
       },
     });
 
-    if (existing) {
-      console.log(`ℹ️ L'utilisateur a déjà le rôle '${role}'.`);
+    if (existingRole) {
+      console.log(`ℹ️ L'utilisateur ${email} possède déjà le rôle '${role}'`);
     } else {
       await prisma.userRole.create({
         data: {
