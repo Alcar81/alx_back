@@ -346,18 +346,24 @@ jobs:
       
             # 8.6.5 - Lancement de la migration automatique Prisma (migrate_auto.sh)
             echo "[INFO - 8.6.5] Lancement de migrate_auto.sh..."
-            if docker exec "$CONTAINER_NAME" [ ! -f "./migrate_auto.sh" ]; then
+
+            # Vérifier la présence du script dans le conteneur
+            if ! docker exec "$CONTAINER_NAME" test -f ./migrate_auto.sh; then
               echo "[ERROR] ❌ migrate_auto.sh introuvable dans le conteneur." >&2
+              echo "[INFO] Contenu du dossier courant dans le conteneur :"
               docker exec "$CONTAINER_NAME" ls -la
               exit 1
             fi
 
-            docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh || {
+            # Lancer le script et intercepter les erreurs
+            if ! docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh; then
               echo "[ERROR] ❌ Échec de l'exécution du script migrate_auto.sh"
-              echo "[LOGS] 🔍 Dernières lignes de logs de migration :"
+              echo "[LOGS] 🔍 Dernières lignes de logs de migration (server.log) :"
               docker exec "$CONTAINER_NAME" tail -n 50 logs/server.log || echo "[INFO] Pas de logs trouvés."
               exit 6
-            }
+            fi
+
+            echo "[SUCCESS] ✅ migrate_auto.sh exécuté avec succès."
 
             # 8.7 - Connexion DB (pré-migration)
             echo "[INFO - 8.7] Test de connexion DB..."
