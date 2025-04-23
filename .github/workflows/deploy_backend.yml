@@ -344,11 +344,18 @@ jobs:
             docker exec "$CONTAINER_NAME" npx prisma generate
             docker exec "$CONTAINER_NAME" npm run build || echo "[INFO] Aucun build requis"
       
-            # 📌 Ajout ici : lancer migrate_auto.sh
-            echo "[INFO - 8.6.5] Lancement du script de migration automatique Prisma..."
+            # 8.6.5 - Lancement de la migration automatique Prisma (migrate_auto.sh)
+            echo "[INFO - 8.6.5] Lancement de migrate_auto.sh..."
+            if docker exec "$CONTAINER_NAME" [ ! -f "./migrate_auto.sh" ]; then
+              echo "[ERROR] ❌ migrate_auto.sh introuvable dans le conteneur." >&2
+              docker exec "$CONTAINER_NAME" ls -la
+              exit 1
+            fi
+
             docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh || {
-              echo "[ERROR] ❌ Échec de migrate_auto.sh"
-              docker exec "$CONTAINER_NAME" tail -n 30 logs/server.log
+              echo "[ERROR] ❌ Échec de l'exécution du script migrate_auto.sh"
+              echo "[LOGS] 🔍 Dernières lignes de logs de migration :"
+              docker exec "$CONTAINER_NAME" tail -n 50 logs/server.log || echo "[INFO] Pas de logs trouvés."
               exit 6
             }
 
