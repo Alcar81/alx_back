@@ -9,21 +9,30 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
   password  String
-  firstName String   @default("")
-  lastName  String   @default("")
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  firstName String     @default("")
+  lastName  String     @default("")
+  roles     UserRole[] // 🔁 relation many-to-many
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
-enum Role {
-  USER
-  ADMIN
-  SUPERADMIN
+model Role {
+  id    Int        @id @default(autoincrement())
+  name  String     @unique
+  users UserRole[] // 🔁 relation many-to-many
 }
+
+model UserRole {
+  userId Int
+  roleId Int
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
+  @@id([userId, roleId]) // composite primary key
+}
+
 model TestTable {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
