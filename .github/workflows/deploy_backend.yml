@@ -344,6 +344,14 @@ jobs:
             docker exec "$CONTAINER_NAME" npx prisma generate
             docker exec "$CONTAINER_NAME" npm run build || echo "[INFO] Aucun build requis"
       
+            # 📌 Ajout ici : lancer migrate_auto.sh
+            echo "[INFO - 8.6.5] Lancement du script de migration automatique Prisma..."
+            docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh || {
+              echo "[ERROR] ❌ Échec de migrate_auto.sh"
+              docker exec "$CONTAINER_NAME" tail -n 30 logs/server.log
+              exit 6
+            }
+
             # 8.7 - Connexion DB (pré-migration)
             echo "[INFO - 8.7] Test de connexion DB..."
             docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js
