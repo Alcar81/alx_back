@@ -1,31 +1,23 @@
+// 📁 scripts/dev-only/seedRoles.js
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const rolesToSeed = ["USER", "ADMIN", "SUPERADMIN"];
+const roles = ["USER", "ADMIN", "SUPERADMIN"];
 
 (async () => {
   try {
-    console.log("🌱 Initialisation des rôles...");
-
-    for (const roleName of rolesToSeed) {
-      const exists = await prisma.role.findUnique({
-        where: { name: roleName },
-      });
-
-      if (!exists) {
-        await prisma.role.create({
-          data: { name: roleName },
-        });
-        console.log(`✅ Rôle '${roleName}' ajouté.`);
+    for (const name of roles) {
+      const existing = await prisma.role.findUnique({ where: { name } });
+      if (!existing) {
+        await prisma.role.create({ data: { name } });
+        console.log(`✅ Rôle créé : ${name}`);
       } else {
-        console.log(`ℹ️ Rôle '${roleName}' déjà présent.`);
+        console.log(`ℹ️ Rôle déjà existant : ${name}`);
       }
     }
-
-    console.log("🎉 Initialisation des rôles terminée.");
-    process.exit(0);
+    console.log("🎉 Tous les rôles sont prêts !");
   } catch (err) {
-    console.error("❌ Erreur lors de l’initialisation :", err.message);
+    console.error("❌ Erreur :", err.message);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
