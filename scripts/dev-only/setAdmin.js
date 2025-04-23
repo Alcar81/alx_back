@@ -1,29 +1,29 @@
 // 📁 scripts/dev-only/setAdmin.js
-const { PrismaClient, Role } = require("@prisma/client");
+const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
+// 🛠️ Liste manuelle basée sur l'enum Prisma
+const validRoles = ["USER", "ADMIN", "SUPERADMIN"];
+
 const [,, emailInput = "", roleInput = "ADMIN"] = process.argv;
 const email = emailInput.toLowerCase();
 const role = roleInput.toUpperCase();
-
-// ✅ Vérification du rôle contre les valeurs de l'enum Prisma
-const validRoles = Object.values(Role);
-if (!validRoles.includes(role)) {
-  console.error(`❌ Rôle invalide : '${role}'.`);
-  console.log("🎭 Rôles valides :", validRoles.join(", "));
-  process.exit(1);
-}
 
 if (!email || !role) {
   console.error("❌ Usage : node setAdmin.js <email> <role>");
   process.exit(1);
 }
 
+if (!validRoles.includes(role)) {
+  console.error(`❌ Rôle invalide : '${role}'.`);
+  console.log("🎭 Rôles valides :", validRoles.join(", "));
+  process.exit(1);
+}
+
 (async () => {
   try {
-    // 🔍 Vérifie si l'utilisateur existe
     let user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
