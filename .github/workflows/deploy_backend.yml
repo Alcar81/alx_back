@@ -354,11 +354,8 @@ jobs:
 
             # 8.7 - Connexion DB (pré-migration)
             echo "[INFO - 8.7] Test de connexion DB..."
-            docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js
-      
-            # 8.8 - Application des migrations Prisma
-            echo "[INFO - 8.8] Lancement des migrations..."
-            docker exec "$CONTAINER_NAME" npx prisma migrate deploy
+            docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js    
+
       
             # 8.9 - Backup post-migration
             echo "[INFO - 8.9] Backup de la base après migration..."
