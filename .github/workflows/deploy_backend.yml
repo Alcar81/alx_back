@@ -354,8 +354,11 @@ jobs:
             docker cp "$MOUNT_PATH/prisma/schema.prisma" "$CONTAINER_NAME:/app/prisma/schema.prisma"
             echo "[OK] ✅ Fichier schema.prisma copié dans le conteneur."
 
-            # Affiche le contenu du dossier pour vérification
-            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
+            # Crée le dossier logs s'il n'existe pas
+            mkdir -p "$MOUNT_PATH/logs"
+
+            # Affiche le contenu du dossier pour vérification et le log vers logs/server.log
+            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a "$MOUNT_PATH/logs/server.log"
 
 
             # 8.6.4 - Prisma generate et npm build
