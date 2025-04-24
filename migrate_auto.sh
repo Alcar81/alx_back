@@ -1,6 +1,11 @@
-#backend/migrate_auto.sh
 #!/bin/sh
-set -e  # Interrompt en cas d'erreur
+# Fichier : backend/migrate_auto.sh
+# Description : Migration automatique Prisma avec logs complets dans server.log uniquement.
+# Codes d'erreurs personnalisés :
+# 6 = Erreur lors du diff Prisma (migrate diff)
+# 7 = Échec d'application du patch SQL (psql)
+
+set -e
 
 # Début
 echo "                                                                     " 
@@ -17,16 +22,18 @@ DONE_FLAG="/tmp/migration_done.flag"
 SCHEMA_PATH_LOCAL="prisma/schema.prisma"
 MIGRATIONS_DIR="prisma/migrations"
 
-# Fonction log multi-destination
+# Fonction log multi-destination (vers log fichier seulement)
 log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] [migrate_auto] $1" | tee -a "$LOG_FILE" "$SERVER_LOG"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] [migrate_auto] $1" | tee -a "$LOG_FILE" "$SERVER_LOG" > /dev/null
 }
 
 # Section d'en-tête dans server.log
-echo "" | tee -a "$SERVER_LOG"
-echo "═══════════════════════════════════════════════════════════════════════" | tee -a "$SERVER_LOG"
-echo "🕓 DÉBUT MIGRATION [$(date '+%Y-%m-%d %H:%M:%S')] - Script migrate_auto.sh" | tee -a "$SERVER_LOG"
-echo "═══════════════════════════════════════════════════════════════════════" | tee -a "$SERVER_LOG"
+{
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════════════"
+  echo "🕓 DÉBUT MIGRATION [$(date '+%Y-%m-%d %H:%M:%S')] - Script migrate_auto.sh"
+  echo "═══════════════════════════════════════════════════════════════════════"
+} >> "$SERVER_LOG"
 
 # Nettoyage du flag existant
 rm -f "$DONE_FLAG"
@@ -46,25 +53,31 @@ fi
 
 # Étape 4 - Application des migrations
 log "🚀 4. Application des migrations Prisma existantes..."
-npx prisma migrate deploy | tee -a "$LOG_FILE" "$SERVER_LOG"
+if ! npx prisma migrate deploy >> "$LOG_FILE" 2>&1; then
+  log "❌ Échec de prisma migrate deploy."
+  exit 2
+fi
 
 # Étape 5 - Patch SQL s'il reste des écarts
 log "🚀 5. Génération du patch SQL pour diff entre le schema et la DB..."
-if ! npx prisma migrate diff --script > prisma/generated_patch.sql 2>> "$LOG_FILE"; then
-  log "❌ Erreur lors de la génération du patch SQL. Voir $LOG_FILE pour les détails."
-  exit 6
-fi
-
-if grep -qE "(CREATE|ALTER|DROP|INSERT|UPDATE)" prisma/generated_patch.sql; then
-  log "⚙️ Différences détectées ➔ Application du patch SQL..."
-  psql -U "$DB_USERNAME" -d "$DB_NAME" -f prisma/generated_patch.sql | tee -a "$LOG_FILE" "$SERVER_LOG" || log "⚠️ Impossible d'appliquer le patch"
+if npx prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-database --script > prisma/generated_patch.sql 2>> "$LOG_FILE"; then
+  if grep -qE "(CREATE|ALTER|DROP|INSERT|UPDATE)" prisma/generated_patch.sql; then
+    log "⚙️ Différences détectées ➔ Application du patch SQL..."
+    if ! psql -U "$DB_USERNAME" -d "$DB_NAME" -f prisma/generated_patch.sql >> "$LOG_FILE" 2>&1; then
+      log "⚠️ Erreur lors de l'application du patch SQL."
+    else
+      log "✅ Patch SQL appliqué avec succès."
+    fi
+  else
+    log "✅ Aucun correctif à appliquer. Base déjà synchronisée."
+  fi
 else
-  log "✅ Aucun correctif à appliquer. Base déjà synchronisée."
+  log "❌ Erreur lors de la génération du patch SQL (code retour ignoré). Voir $LOG_FILE pour les détails."
 fi
 
 # Étape 6 - Regénération du client Prisma
 log "🔧 6. Regénération du client Prisma..."
-npx prisma generate | tee -a "$LOG_FILE" "$SERVER_LOG"
+npx prisma generate >> "$LOG_FILE" 2>&1
 
 # Étape 7 - Création du flag
 log "✅ 7. Création du flag de fin : $DONE_FLAG"
