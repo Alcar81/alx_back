@@ -449,18 +449,12 @@ jobs:
 
             # 8.12.4 - Liste des tables existantes
             echo "[INFO - 8.12.4] Liste des tables existantes dans la base de données..."
-            docker exec "$CONTAINER_NAME" bash -c "
-              echo '📋 Tables dans la base $DB_NAME :';
-              psql -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c '\dt' || echo '[WARN] ❌ Impossible de lister les tables avec \dt';
-              echo;
-              echo '📦 Toutes les relations (bonus) :';
-              psql -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c '
-                SELECT schemaname, tablename, tableowner
-                FROM pg_tables
-                WHERE schemaname NOT IN (''pg_catalog'', ''information_schema'')
-                ORDER BY tablename;
-              ' || echo '[WARN] ❌ Impossible d’afficher les relations.'
-            "
+
+            echo "📋 Tables dans la base $DB_NAME :"
+            docker exec "$CONTAINER_NAME" psql -h postgres_dev -U "$DB_USERNAME" -d "$DB_NAME" -c "\\dt" || echo "[WARN] ❌ Impossible de lister les tables avec \\dt"
+
+            echo "📦 Toutes les relations (bonus) :"
+            docker exec "$CONTAINER_NAME" psql -h postgres_dev -U "$DB_USERNAME" -d "$DB_NAME" -c "\\d+" || echo "[WARN] ❌ Impossible d’afficher les relations."
 
             # 8.12.5 - Promotion de testAdmin
             if [ "$ENV" = "dev" ]; then
