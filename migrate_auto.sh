@@ -57,10 +57,7 @@ fi
 
 if grep -qE "(CREATE|ALTER|DROP|INSERT|UPDATE)" prisma/generated_patch.sql; then
   log "⚙️ Différences détectées ➔ Application du patch SQL..."
-  if ! psql -U "$DB_USERNAME" -d "$DB_NAME" -f prisma/generated_patch.sql | tee -a "$LOG_FILE" "$SERVER_LOG"; then
-    log "⚠️ Impossible d'appliquer le patch SQL. Des erreurs peuvent subsister."
-    exit 6
-  fi
+  psql -U "$DB_USERNAME" -d "$DB_NAME" -f prisma/generated_patch.sql | tee -a "$LOG_FILE" "$SERVER_LOG" || log "⚠️ Impossible d'appliquer le patch"
 else
   log "✅ Aucun correctif à appliquer. Base déjà synchronisée."
 fi
