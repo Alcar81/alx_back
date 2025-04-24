@@ -342,27 +342,23 @@ jobs:
             # 8.6.3 - Copie forcée du schema.prisma local dans le conteneur
             echo "[INFO - 8.6.3] Vérification et copie du fichier schema.prisma dans le conteneur..."
 
-            # Vérification locale
-            if [ ! -f "./prisma/schema.prisma" ]; then
-              echo "[ERROR] ❌ Fichier ./prisma/schema.prisma introuvable localement." >&2
-              echo "[DEBUG] Contenu du dossier courant :"
-              ls -la .
-              echo "[DEBUG] Contenu du dossier ./prisma :"
-              ls -la ./prisma || echo "[❌] Dossier ./prisma introuvable ou vide."
+            # Vérifie que le fichier existe localement (sur le serveur)
+            if [ ! -f "$MOUNT_PATH/prisma/schema.prisma" ]; then
+              echo "[ERROR] ❌ Fichier $MOUNT_PATH/prisma/schema.prisma introuvable." >&2
+              echo "[DEBUG] Contenu du dossier $MOUNT_PATH/prisma :"
+              ls -la "$MOUNT_PATH/prisma" || echo "[❌] Dossier inexistant ou vide."
               exit 3
             fi
 
-            # Copie dans le conteneur
-            docker cp ./prisma/schema.prisma "$CONTAINER_NAME:/app/prisma/schema.prisma"
-            if [ $? -ne 0 ]; then
-              echo "[ERROR] ❌ Échec de la copie de schema.prisma dans le conteneur." >&2
-              exit 4
-            fi
+            # Copie vers le conteneur
+            docker cp "$MOUNT_PATH/prisma/schema.prisma" "$CONTAINER_NAME:/app/prisma/schema.prisma"
+            echo "[OK] ✅ Fichier schema.prisma copié dans le conteneur."
 
-            echo "[OK] Fichier schema.prisma copié avec succès dans le conteneur."
+            # Affiche le contenu du dossier pour vérification
             docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
 
-            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
+
+            # 8.6.4 - Prisma generate et npm build
             echo "[INFO - 8.6.4] Prisma generate et npm build..."
             docker exec "$CONTAINER_NAME" npx prisma generate
             docker exec "$CONTAINER_NAME" npm run build || echo "[INFO] Aucun build requis"
