@@ -360,7 +360,7 @@ jobs:
             fi
 
             echo "[OK] Fichier schema.prisma copié avec succès dans le conteneur."
-docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
+            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
 
             docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
             echo "[INFO - 8.6.4] Prisma generate et npm build..."
