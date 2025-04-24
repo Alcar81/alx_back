@@ -41,7 +41,7 @@ fi
 
 # Étape 4 - Lancer la migration dans le conteneur
 log "🚀 4. Lancement de la migration Prisma..."
-npx prisma migrate dev --name "$MIGRATION_NAME" --skip-seed --force | tee -a "$LOG_FILE" "$SERVER_LOG"
+npx prisma migrate deploy | tee -a "$LOG_FILE" "$SERVER_LOG"
 if grep -q "Error" "$LOG_FILE"; then
   log "❌ [ERREUR 4] Échec de la migration. Voir détails dans : $LOG_FILE"
   exit 1
