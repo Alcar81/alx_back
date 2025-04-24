@@ -1,62 +1,60 @@
 // backend/scripts/dev-only/setAdmin.js
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
+
 const prisma = new PrismaClient();
 
-const email = process.argv[2];
-const roleName = process.argv[3] || "ADMIN";
-
 (async () => {
+  const email = process.argv[2] || "testAdmin@alxmultimedia.com";
+  const roleName = process.argv[3] || "ADMIN";
+  const password = "Fake1234!";
+
   try {
     console.log(`🧪 Tentative de promotion de ${email} en ${roleName}...`);
 
-    // Vérifier si l'utilisateur existe
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      console.error(`❌ Utilisateur ${email} non trouvé.`);
-      process.exit(1);
-    }
-
-    // Vérifier si le rôle existe
+    // Crée le rôle s'il n'existe pas
     let role = await prisma.role.findUnique({ where: { name: roleName } });
     if (!role) {
-      console.log(`🔧 Rôle ${roleName} inexistant ➜ création...`);
+      console.log(`🛠️ Rôle ${roleName} non trouvé. Création...`);
       role = await prisma.role.create({ data: { name: roleName } });
     }
 
-    // Vérifier si l'utilisateur a déjà ce rôle
-    const existing = await prisma.userRole.findUnique({
-      where: {
-        userId_roleId: {
-          userId: user.id,
-          roleId: role.id,
-        },
-      },
+    // Vérifie si l'utilisateur existe
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      console.log(`👤 Utilisateur ${email} non trouvé. Création...`);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          firstName: "Test",
+          lastName: "Admin"
+        }
+      });
+    }
+
+    // Vérifie si l'association existe déjà
+    const alreadyAssigned = await prisma.userRole.findFirst({
+      where: { userId: user.id, roleId: role.id }
     });
 
-    if (existing) {
-      console.log(`✅ ${email} a déjà le rôle ${roleName}.`);
-    } else {
+    if (!alreadyAssigned) {
+      console.log(`🔗 Attribution du rôle ${roleName} à ${email}...`);
       await prisma.userRole.create({
         data: {
           userId: user.id,
-          roleId: role.id,
-        },
+          roleId: role.id
+        }
       });
-      console.log(`✅ ${email} a bien reçu le rôle ${roleName}.`);
+    } else {
+      console.log(`✅ ${email} a déjà le rôle ${roleName}`);
     }
 
-    // 🔍 Afficher tous les rôles de l'utilisateur
-    const roles = await prisma.userRole.findMany({
-      where: { userId: user.id },
-      include: { role: true },
-    });
-
-    console.log(`\n📋 Rôles associés à ${email} :`);
-    console.table(roles.map(r => ({ id: r.role.id, name: r.role.name, assignedAt: r.createdAt })));
-
+    console.log("🎉 Promotion terminée avec succès !");
     process.exit(0);
-  } catch (err) {
-    console.error("❌ Erreur dans setAdmin :", err.message || err);
+  } catch (error) {
+    console.error("❌ Erreur dans setAdmin :\n", error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
