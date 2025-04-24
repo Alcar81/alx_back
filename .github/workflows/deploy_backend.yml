@@ -339,10 +339,28 @@ jobs:
             docker exec "$CONTAINER_NAME" ln -sf /usr/share/zoneinfo/America/Montreal /etc/localtime
             docker exec "$CONTAINER_NAME" dpkg-reconfigure -f noninteractive tzdata
       
-            # 8.6 - Génération Prisma et build
-            echo "[INFO - 8.6.3] Copie forcée du schema.prisma local dans le conteneur..."
+            # 8.6.3 - Copie forcée du schema.prisma local dans le conteneur
+            echo "[INFO - 8.6.3] Vérification et copie du fichier schema.prisma dans le conteneur..."
+
+            # Vérification locale
+            if [ ! -f "./prisma/schema.prisma" ]; then
+              echo "[ERROR] ❌ Fichier ./prisma/schema.prisma introuvable localement." >&2
+              echo "[DEBUG] Contenu du dossier courant :"
+              ls -la .
+              echo "[DEBUG] Contenu du dossier ./prisma :"
+              ls -la ./prisma || echo "[❌] Dossier ./prisma introuvable ou vide."
+              exit 3
+            fi
+
+            # Copie dans le conteneur
             docker cp ./prisma/schema.prisma "$CONTAINER_NAME:/app/prisma/schema.prisma"
-            echo "[OK] Fichier schema.prisma copé dans le conteneur."
+            if [ $? -ne 0 ]; then
+              echo "[ERROR] ❌ Échec de la copie de schema.prisma dans le conteneur." >&2
+              exit 4
+            fi
+
+            echo "[OK] Fichier schema.prisma copié avec succès dans le conteneur."
+            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
 
             docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a logs/server.log
             echo "[INFO - 8.6.4] Prisma generate et npm build..."
