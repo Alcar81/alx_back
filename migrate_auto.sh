@@ -16,6 +16,7 @@ LOG_FILE="$LOG_DIR/migrate_${TIMESTAMP}.log"
 DONE_FLAG="/tmp/migration_done.flag"
 SCHEMA_PATH_LOCAL="prisma/schema.prisma"
 MIGRATIONS_DIR="prisma/migrations"
+PATCH_FILE="prisma/generated_patch.sql"
 
 # Fonction log multi-destination
 log() {
@@ -50,11 +51,11 @@ npx prisma migrate deploy | tee -a "$LOG_FILE" "$SERVER_LOG"
 
 # Étape 5 - Patch SQL s'il reste des écarts
 log "🚀 5. Génération du patch SQL pour diff entre le schema et la DB..."
-npx prisma migrate diff --script > prisma/generated_patch.sql 2>&1
+npx prisma migrate diff --script > "$PATCH_FILE" 2>&1
 
-if grep -qE "(CREATE|ALTER|DROP|INSERT|UPDATE)" prisma/generated_patch.sql; then
+if grep -Eq "(CREATE|ALTER|DROP|INSERT|UPDATE)" "$PATCH_FILE"; then
   log "⚙️ Différences détectées ➔ Application du patch SQL..."
-  psql -U "$DB_USERNAME" -d "$DB_NAME" -f prisma/generated_patch.sql | tee -a "$LOG_FILE" "$SERVER_LOG" || log "⚠️ Impossible d'appliquer le patch"
+  psql -U "$DB_USERNAME" -d "$DB_NAME" -f "$PATCH_FILE" | tee -a "$LOG_FILE" "$SERVER_LOG" || log "⚠️ Impossible d'appliquer le patch"
 else
   log "✅ Aucun correctif à appliquer. Base déjà synchronisée."
 fi
