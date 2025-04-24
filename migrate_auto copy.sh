@@ -1,3 +1,4 @@
+#backend/migrate_auto.sh
 #!/bin/sh
 set -e  # Interrompt en cas d'erreur
 
@@ -38,35 +39,30 @@ if [ ! -f "$SCHEMA_PATH_LOCAL" ]; then
   exit 1
 fi
 
-# Étape 4 - Lancer la migration dans le conteneur
+# Étape 4 - Lancer la migration
 log "🚀 4. Lancement de la migration Prisma..."
-npx prisma migrate dev --name "$MIGRATION_NAME" --skip-seed --force | tee -a "$LOG_FILE" "$SERVER_LOG"
+npx prisma migrate dev --name "$MIGRATION_NAME" --skip-seed | tee -a "$LOG_FILE" "$SERVER_LOG"
 if grep -q "Error" "$LOG_FILE"; then
-  log "❌ [ERREUR 4] Échec de la migration. Voir détails dans : $LOG_FILE"
+  log "❌ [ERREUR] Échec de la migration. Voir détails dans : $LOG_FILE"
   exit 1
 fi
 
 # Étape 5 - Vérification du dossier de migrations
-log "📦 5. Vérification de l'existence du dossier de migrations..."
+log "📦 5. Vérification du contenu du dossier de migrations..."
 if [ ! -d "$MIGRATIONS_DIR" ] || [ -z "$(ls -A "$MIGRATIONS_DIR")" ]; then
-  log "⚠️ Aucune migration générée (aucun changement détecté)."
-  log "📄 Voir logs pour confirmation : $LOG_FILE"
+  log "⚠️ Aucune migration générée. Aucun changement détecté dans le schema."
   touch "$DONE_FLAG"
   exit 0
 fi
 
 # Étape 6 - Succès
-log "✅ [SUCCÈS] Migration terminée. Dossier 'migrations' prêt."
+log "✅ 6. Migration terminée et migrations générées."
 
-# Étape 7 - Introspection finale
-log "📊 6. Introspection Prisma (db pull)..."
-npx prisma db pull --print | tee -a "$LOG_FILE" "$SERVER_LOG"
-
-# Étape 8 - Flag de fin
+# Étape 7 - Création du flag de fin
 log "✅ 7. Création du flag de fin : $DONE_FLAG"
 touch "$DONE_FLAG"
 
-# Étape 9 - Nettoyage des logs trop anciens
+# Étape 8 - Nettoyage des logs trop anciens
 log "🧹 8. Nettoyage des fichiers de logs de migration vieux de 30 jours..."
 find "$LOG_DIR" -type f -name "*.log" -mtime +30 -exec rm -f {} \;
 
