@@ -67,6 +67,11 @@ touch "$DONE_FLAG"
 log "🧹 7. Nettoyage des fichiers de logs de migration vieux de 30 jours..."
 find "$LOG_DIR" -type f -name "*.log" -mtime +30 -exec rm -f {} \;
 
+# Étape 9 - finale - Liste des tables existantes
+log "📋 8. Tables existantes dans la base :"
+psql -U "$DB_USERNAME" -d "$DB_NAME" -c "\\dt" || log "[WARN] ❌ Impossible de lister les tables."
+
+
 log "🏁 Fin du script de migration automatique"
 echo " Fin Migration ====================================================="
 echo "      
