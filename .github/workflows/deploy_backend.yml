@@ -348,7 +348,10 @@ jobs:
 
             # 8.5.4 - Test rapide de psql
             echo "[INFO - 8.5.4] Vérification de l'installation de psql..."
-            docker exec "$CONTAINER_NAME" psql --version || { 
+            docker exec "$CONTAINER_NAME" psql --version || {
+              echo "[ERROR - 8.5.4] ❌ psql n'est pas installé correctement dans le conteneur."
+              exit 1
+            }
       
             # 8.6.3 - Copie forcée du schema.prisma local dans le conteneur
             echo "[INFO - 8.6.3] Vérification et copie du fichier schema.prisma dans le conteneur..."
@@ -370,8 +373,6 @@ jobs:
 
             # Affiche le contenu du dossier pour vérification et le log vers logs/server.log
             docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a "$MOUNT_PATH/logs/server.log"
-
-
 
 
             # 8.6.4 - Prisma generate et npm build
@@ -474,7 +475,6 @@ jobs:
             rm -f /tmp/git_id_rsa /tmp/env_vars.sh
 
             echo "[SUCCESS ✅] Étape 8 terminée avec succès."
-
           EOF
 
       
