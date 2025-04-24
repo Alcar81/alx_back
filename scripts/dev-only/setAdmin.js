@@ -1,5 +1,4 @@
 // 📁 scripts/dev-only/setAdmin.js
-
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
@@ -15,6 +14,20 @@ if (!email || !roleName) {
 
 (async () => {
   try {
+    // 🔧 S'assurer que la table Role existe (utile après une base neuve sans migration complète)
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'Role') THEN
+          CREATE TABLE "Role" (
+            id SERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL
+          );
+        END IF;
+      END
+      $$;
+    `);
+
     // 1. Créer le rôle s'il n'existe pas
     let role = await prisma.role.findUnique({ where: { name: roleName } });
     if (!role) {

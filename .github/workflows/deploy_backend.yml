@@ -451,10 +451,11 @@ jobs:
             echo "[INFO - 8.12.4] Liste des tables existantes dans la base de données..."
 
             echo "📋 Tables dans la base $DB_NAME :"
-            PGPASSWORD="$DB_PASSWORD" docker exec "$CONTAINER_NAME" psql -h postgres_dev -U "$DB_USERNAME" -d "$DB_NAME" -c "\\dt" || echo "[WARN] ❌ Impossible de lister les tables avec \\dt"
+            docker exec "$CONTAINER_NAME" bash -c "PGPASSWORD=\"$DB_PASSWORD\" psql -h postgres_dev -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c '\\dt'" || echo "[WARN] ❌ Impossible de lister les tables avec \\dt"
 
             echo "📦 Toutes les relations (bonus) :"
-            PGPASSWORD="$DB_PASSWORD" docker exec "$CONTAINER_NAME" psql -h postgres_dev -U "$DB_USERNAME" -d "$DB_NAME" -c "\\d+" || echo "[WARN] ❌ Impossible d’afficher les relations."
+            docker exec "$CONTAINER_NAME" bash -c "PGPASSWORD=\"$DB_PASSWORD\" psql -h postgres_dev -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c '\\d+'" || echo "[WARN] ❌ Impossible d’afficher les relations."
+
 
             # 8.12.5 - Promotion de testAdmin
             if [ "$ENV" = "dev" ]; then
