@@ -49,6 +49,10 @@ logger.info("📌 Chargement des routes /api/admin...");
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
+logger.info("📌 Chargement des routes /api/admin/users...");
+const userRoutes = require("./routes/users");
+app.use("/api/admin/users", userRoutes);  // 👈 ici c'est important !
+
 // 📌 Route API inexistante
 app.use("/api", (req, res) => {
   res.status(404).json({ message: "Route API non trouvée." });
