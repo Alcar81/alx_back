@@ -51,7 +51,7 @@ app.use("/api/admin", adminRoutes);
 
 logger.info("📌 Chargement des routes /api/admin/users...");
 const userRoutes = require("./routes/users");
-app.use("/api/admin/users", userRoutes);  // 👈 ici c'est important !
+app.use("/api/admin/users", userRoutes);
 
 // 📌 Route API inexistante
 app.use("/api", (req, res) => {
