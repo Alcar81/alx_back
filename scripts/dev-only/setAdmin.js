@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
 
 (async () => {
-  const email = process.argv[2] || "testAdmin@alxmultimedia.com";
+  const email = (process.argv[2] || "testAdmin@alxmultimedia.com").toLowerCase();
   const roleName = process.argv[3] || "ADMIN";
   const password = "Fake1234!";
 

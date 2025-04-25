@@ -98,13 +98,24 @@ exports.loginUser = async (req, res) => {
       expiresIn: "1h",
     });
 
+    // 🆕 Récupération des rôles de l'utilisateur
+    const roles = await prisma.userRole.findMany({
+      where: { userId: user.id },
+      include: { role: true },
+    });
+
+    const roleNames = roles.map(r => r.role.name); // ← tableau de string
+
     logger.info(`✅ Connexion réussie pour ${user.email}`);
     return res.json({
       message: "Connexion réussie",
       token,
+      id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      createdAt: user.createdAt,
+      roles: roleNames,
     });
 
   } catch (err) {
