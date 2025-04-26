@@ -53,8 +53,9 @@ logger.info("📌 Chargement des routes /api/admin/users...");
 const userRoutes = require("./routes/users");
 app.use("/api/admin/users", userRoutes);
 
-// 📌 Route API inexistante
+// ✅ Gestion des routes API inexistantes
 app.use("/api", (req, res) => {
+  logger.warn(`❌ [API 404] Route introuvable ➔ ${req.method} ${req.originalUrl}`);
   res.status(404).json({ message: "Route API non trouvée." });
 });
 

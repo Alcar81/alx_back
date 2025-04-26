@@ -12,7 +12,7 @@ const excludePassword = (user) => {
 };
 
 // ✅ GET tous les utilisateurs avec leurs rôles
-router.get("/admin/users", authenticateJWT, async (req, res) => {
+router.get("/users", authenticateJWT, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       include: {
@@ -35,7 +35,7 @@ router.get("/admin/users", authenticateJWT, async (req, res) => {
 });
 
 // ✅ PATCH utilisateur avec réattribution de rôles
-router.patch("/admin/users/:id", authenticateJWT, async (req, res) => {
+router.patch("/users/:id", authenticateJWT, async (req, res) => {
   try {
     const userId = req.params.id;
     const { firstName, lastName, email, roles } = req.body;
@@ -80,13 +80,13 @@ router.patch("/admin/users/:id", authenticateJWT, async (req, res) => {
 
     res.json(userResponse);
   } catch (error) {
-    console.error("❌ Erreur PATCH /admin/users/:id :", error);
+    console.error("❌ Erreur PATCH /users/:id :", error);
     res.status(500).json({ message: "Erreur lors de la mise à jour.", details: error.message });
   }
 });
 
 // ✅ DELETE utilisateur
-router.delete("/admin/users/:id", authenticateJWT, async (req, res) => {
+router.delete("/users/:id", authenticateJWT, async (req, res) => {
   try {
     await prisma.userRole.deleteMany({ where: { userId: req.params.id } });
     await prisma.user.delete({ where: { id: req.params.id } });
