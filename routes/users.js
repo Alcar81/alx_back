@@ -1,3 +1,4 @@
+// backend/routes/users.js
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
 const { authenticateJWT } = require("../middleware/auth");
@@ -11,8 +12,8 @@ const excludePassword = (user) => {
   return userWithoutPassword;
 };
 
-// ✅ GET tous les utilisateurs avec leurs rôles
-router.get("/users", authenticateJWT, async (req, res) => {
+// ✅ GET tous les utilisateurs (avec leurs rôles)
+router.get("/", authenticateJWT, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       include: {
@@ -29,13 +30,13 @@ router.get("/users", authenticateJWT, async (req, res) => {
 
     res.json(usersWithRoles);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Erreur GET /api/admin/users :", error);
     res.status(500).json({ message: "Erreur lors de la récupération des utilisateurs." });
   }
 });
 
 // ✅ PATCH utilisateur avec réattribution de rôles
-router.patch("/users/:id", authenticateJWT, async (req, res) => {
+router.patch("/:id", authenticateJWT, async (req, res) => {
   try {
     const userId = req.params.id;
     const { firstName, lastName, email, roles } = req.body;
@@ -80,19 +81,19 @@ router.patch("/users/:id", authenticateJWT, async (req, res) => {
 
     res.json(userResponse);
   } catch (error) {
-    console.error("❌ Erreur PATCH /users/:id :", error);
+    console.error("❌ Erreur PATCH /api/admin/users/:id :", error);
     res.status(500).json({ message: "Erreur lors de la mise à jour.", details: error.message });
   }
 });
 
 // ✅ DELETE utilisateur
-router.delete("/users/:id", authenticateJWT, async (req, res) => {
+router.delete("/:id", authenticateJWT, async (req, res) => {
   try {
     await prisma.userRole.deleteMany({ where: { userId: req.params.id } });
     await prisma.user.delete({ where: { id: req.params.id } });
     res.status(204).send();
   } catch (error) {
-    console.error(error);
+    console.error("❌ Erreur DELETE /api/admin/users/:id :", error);
     res.status(500).json({ message: "Erreur lors de la suppression.", details: error.message });
   }
 });
