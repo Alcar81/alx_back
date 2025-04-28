@@ -449,7 +449,7 @@ jobs:
             if [ "$ENV" = "dev" ]; then
               echo "[INFO] Mode développement - testComplet.js --debug"
 
-              # [NOUVEAU] 8.12.1 - Génération du token admin pour les tests
+              # 8.12.1 - Générer le ADMIN_TEST_TOKEN
               echo "[INFO - 8.12.1] Génération du ADMIN_TEST_TOKEN pour les tests..."
               ADMIN_TEST_TOKEN=$(docker exec "$CONTAINER_NAME" node /app/scripts/dev-only/generateAdminToken.js | tail -n 1)
 
@@ -460,9 +460,27 @@ jobs:
 
               echo "[OK] ✅ ADMIN_TEST_TOKEN généré."
 
+              # 🛠 8.12.1.1 - Remplacer proprement dans .env
+              echo "[INFO - 8.12.1.1] Mise à jour de /app/.env dans le conteneur..."
+              docker exec "$CONTAINER_NAME" bash -c "
+                sed -i '/^ADMIN_TEST_TOKEN=/d' /app/.env && \
+                echo 'ADMIN_TEST_TOKEN=$ADMIN_TEST_TOKEN' >> /app/.env
+              " || {
+                echo "[ERROR] ❌ Impossible de mettre à jour ADMIN_TEST_TOKEN dans /app/.env"
+                exit 1
+              }
+
+              # 🛠 8.12.1.2 - Copier .env corrigé du conteneur vers le serveur
+              echo "[INFO - 8.12.1.2] Copie du .env corrigé vers le serveur ($MOUNT_PATH/.env)..."
+              docker cp "$CONTAINER_NAME:/app/.env" "$MOUNT_PATH/.env" || {
+                echo "[ERROR] ❌ Impossible de copier le .env depuis le conteneur."
+                exit 1
+              }
+
               # 8.12.2 - Lancer les tests backend avec ADMIN_TEST_TOKEN
               echo "[INFO - 8.12.2] Lancement des tests automatisés avec token..."
               docker exec -e ADMIN_TEST_TOKEN="$ADMIN_TEST_TOKEN" "$CONTAINER_NAME" node /app/tests/testComplet.js --debug
+
             else
               echo "[INFO] Mode production - testComplet.js"
               docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js
