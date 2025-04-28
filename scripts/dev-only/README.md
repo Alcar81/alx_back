@@ -21,3 +21,16 @@ Dans le dossier `backend/`, exécutez :
 
 ```bash
 node scripts/dev-only/manageTestUsers.js admin
+
+Pour voir également les informations en temps réel dans la console (et pas seulement dans logs/server.log), utilisez l'option --verbose :
+
+node scripts/dev-only/manageTestUsers.js --verbose
+
+
+Les mots de passe par défaut des utilisateurs de test est : Fake1234!
+
+Ce script est idempotent :
+➔ Si les comptes ou rôles existent déjà, ils ne seront pas dupliqués.
+
+Les résultats seront également visibles dans le fichier de logs :
+➔ backend/logs/server.log
