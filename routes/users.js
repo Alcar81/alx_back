@@ -1,8 +1,10 @@
-// backend/routes/users.js
+// 📁 backend/routes/users.js
+
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
-const { authenticateJWT } = require("../middleware/auth");
+const { authenticateToken } = require("../middleware/authMiddleware");
+const { requireSelfOrAdmin } = require("../middleware/requireSelfOrAdmin");
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -13,8 +15,8 @@ const excludePassword = (user) => {
   return userWithoutPassword;
 };
 
-// ✅ GET - Récupérer tous les utilisateurs
-router.get("/users", authenticateJWT, async (req, res) => {
+// ✅ GET - Récupérer tous les utilisateurs (uniquement connecté, pas besoin d'être admin ici)
+router.get("/users", authenticateToken, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       include: {
@@ -35,7 +37,7 @@ router.get("/users", authenticateJWT, async (req, res) => {
 });
 
 // ✅ PATCH - Modifier un utilisateur + ses rôles
-router.patch("/users/:id", authenticateJWT, async (req, res) => {
+router.patch("/users/:id", authenticateToken, requireSelfOrAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
     const { firstName, lastName, email, roles } = req.body;
@@ -83,7 +85,7 @@ router.patch("/users/:id", authenticateJWT, async (req, res) => {
 });
 
 // ✅ PATCH - Modifier son mot de passe
-router.patch("/users/:id/password", authenticateJWT, async (req, res) => {
+router.patch("/users/:id/password", authenticateToken, requireSelfOrAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
     const { currentPassword, newPassword } = req.body;
@@ -121,7 +123,7 @@ router.patch("/users/:id/password", authenticateJWT, async (req, res) => {
 });
 
 // ✅ DELETE - Supprimer un utilisateur
-router.delete("/users/:id", authenticateJWT, async (req, res) => {
+router.delete("/users/:id", authenticateToken, requireSelfOrAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
 
