@@ -2,9 +2,16 @@
 
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
-const logger = require("../../utils/logger"); // ✅ Correction chemin
-
+const logger = require("../../utils/logger");
 const prisma = new PrismaClient();
+
+// Ajout de couleurs sans dépendance externe (codes ANSI simples)
+const COLORS = {
+  reset: "\x1b[0m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+};
 
 // ✅ Définition des utilisateurs de test
 const TEST_USERS = [
@@ -20,9 +27,16 @@ const TEST_USERS = [
     lastName: "Usager",
     roleName: "USER",
   },
+  {
+    id: "admin-test-id-123", // Pour ADMIN_TEST_TOKEN
+    email: "admin@example.com",
+    firstName: "Admin",
+    lastName: "Token",
+    roleName: "ADMIN",
+  },
 ];
 
-// ✅ Vérification du mode verbose
+// ✅ Mode verbose
 const isVerbose = process.argv.includes("--verbose");
 
 function logInfo(message) {
@@ -44,67 +58,61 @@ async function main() {
     for (const userData of TEST_USERS) {
       logInfo(`🔎 Vérification de "${userData.email}"...`);
 
-      // Vérifie si l'utilisateur existe
+      // Vérifie l'existence
       let user = await prisma.user.findUnique({
         where: { email: userData.email },
       });
 
       if (!user) {
         logInfo("👤 Utilisateur non trouvé. Création...");
-        user = await prisma.user.create({
-          data: {
-            email: userData.email,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            password: hashedPassword,
-          },
-        });
-        results.push({ email: userData.email, status: "✅ Utilisateur créé" });
+
+        const createData = {
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          password: hashedPassword,
+        };
+
+        if (userData.id) createData.id = userData.id;
+
+        user = await prisma.user.create({ data: createData });
+        results.push({ email: userData.email, status: "✅ Utilisateur créé", color: "green" });
       } else {
         logInfo("👤 Utilisateur déjà existant.");
-        results.push({ email: userData.email, status: "✔️ Déjà existant" });
+        results.push({ email: userData.email, status: "⚠️ Déjà existant", color: "yellow" });
       }
 
-      // Vérifie si le rôle existe
-      let role = await prisma.role.findUnique({
-        where: { name: userData.roleName },
-      });
-
+      // Vérifie le rôle
+      let role = await prisma.role.findUnique({ where: { name: userData.roleName } });
       if (!role) {
         logInfo(`🛡️ Rôle "${userData.roleName}" non trouvé. Création...`);
-        role = await prisma.role.create({
-          data: { name: userData.roleName },
-        });
+        role = await prisma.role.create({ data: { name: userData.roleName } });
       }
 
       // Vérifie l'association UserRole
       const userRole = await prisma.userRole.findFirst({
-        where: {
-          userId: user.id,
-          roleId: role.id,
-        },
+        where: { userId: user.id, roleId: role.id },
       });
 
       if (!userRole) {
         logInfo(`🔗 Attribution du rôle "${userData.roleName}" à ${userData.email}`);
         await prisma.userRole.create({
-          data: {
-            userId: user.id,
-            roleId: role.id,
-          },
+          data: { userId: user.id, roleId: role.id },
         });
       } else {
         logInfo(`🔗 L'utilisateur possède déjà le rôle "${userData.roleName}".`);
       }
     }
 
-    // Résumé final
+    // Résumé final coloré
     logInfo("\n📋 Résultats :");
     logInfo("------------------------------------------------------");
     logInfo("| Utilisateur                  | Statut              |");
     logInfo("------------------------------------------------------");
     for (const result of results) {
-      logInfo(`| ${result.email.padEnd(28)} | ${result.status.padEnd(18)} |`);
+      const color = COLORS[result.color] || COLORS.reset;
+      const reset = COLORS.reset;
+      console.log(`| ${result.email.padEnd(28)} | ${color}${result.status.padEnd(18)}${reset} |`);
     }
     logInfo("------------------------------------------------------");
 
