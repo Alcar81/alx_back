@@ -1,13 +1,11 @@
 // 📁 backend/scripts/dev-only/generateAdminToken.js
 
-// 📁 backend/scripts/generateAdminToken.js
-
 const fs = require("fs");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 require("dotenv").config(); // Charge .env existant
 
-const envPath = path.resolve(__dirname, "../.env"); // chemin vers backend/.env
+const envPath = path.resolve(__dirname, "../../.env"); // chemin vers backend/.env
 
 const secret = process.env.JWT_SECRET;
 
