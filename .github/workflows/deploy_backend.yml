@@ -476,6 +476,14 @@ jobs:
                 echo "[ERROR] ❌ Impossible de copier le .env depuis le conteneur."
                 exit 1
               }
+              
+              # 8.12.1.3 - Gestion automatique des utilisateurs de test (environnement DEV uniquement)
+              if [ "$ENV" = "dev" ]; then
+                echo "[INFO - 8.12.1.3] Exécution de manageTestUsers.js pour préparer les utilisateurs de test..."
+                docker exec "$CONTAINER_NAME" node /app/scripts/dev-only/manageTestUsers.js all || {
+                  echo "[WARN] ⚠️ La création/mise à jour des utilisateurs de test a échoué."
+                }
+              fi
 
               # 8.12.2 - Lancer les tests backend avec ADMIN_TEST_TOKEN
               echo "[INFO - 8.12.2] Lancement des tests automatisés avec token..."
@@ -495,13 +503,6 @@ jobs:
             echo "📦 Toutes les relations (bonus) :"
             docker exec "$CONTAINER_NAME" bash -c "PGPASSWORD=\"$DB_PASSWORD\" psql -h postgres_dev -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c '\\d+'" || echo "[WARN] ❌ Impossible d’afficher les relations."
 
-            # 8.12.5 - Gestion automatique des utilisateurs de test (environnement DEV uniquement)
-            if [ "$ENV" = "dev" ]; then
-              echo "[INFO - 8.12.5] Exécution de manageTestUsers.js pour préparer les utilisateurs de test..."
-              docker exec "$CONTAINER_NAME" node /app/scripts/dev-only/manageTestUsers.js all || {
-                echo "[WARN] ⚠️ La création/mise à jour des utilisateurs de test a échoué."
-              }
-            fi
 
             # 8.13 - Nettoyage final
             echo "[INFO - 8.13] Suppression des fichiers temporaires..."
