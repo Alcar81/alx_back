@@ -5,7 +5,6 @@ const bcrypt = require("bcryptjs");
 const logger = require("../../utils/logger");
 const prisma = new PrismaClient();
 
-// Ajout de couleurs sans dépendance externe (codes ANSI simples)
 const COLORS = {
   reset: "\x1b[0m",
   green: "\x1b[32m",
@@ -13,7 +12,7 @@ const COLORS = {
   red: "\x1b[31m",
 };
 
-// ✅ Définition des utilisateurs de test
+// ✅ Liste des utilisateurs à créer (sans champ `id`)
 const TEST_USERS = [
   {
     email: "testadmin@alxmultimedia.com",
@@ -28,7 +27,6 @@ const TEST_USERS = [
     roleName: "USER",
   },
   {
-    id: "admin-test-id-123", // Pour ADMIN_TEST_TOKEN
     email: "admin@example.com",
     firstName: "Admin",
     lastName: "Token",
@@ -36,7 +34,6 @@ const TEST_USERS = [
   },
 ];
 
-// ✅ Mode verbose
 const isVerbose = process.argv.includes("--verbose");
 
 function logInfo(message) {
@@ -58,38 +55,34 @@ async function main() {
     for (const userData of TEST_USERS) {
       logInfo(`🔎 Vérification de "${userData.email}"...`);
 
-      // Vérifie l'existence
-      let user = await prisma.user.findUnique({
-        where: { email: userData.email },
-      });
+      let user = await prisma.user.findUnique({ where: { email: userData.email } });
 
       if (!user) {
         logInfo("👤 Utilisateur non trouvé. Création...");
 
-        const createData = {
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          password: hashedPassword,
-        };
+        user = await prisma.user.create({
+          data: {
+            email: userData.email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            password: hashedPassword,
+          },
+        });
 
-        if (userData.id) createData.id = userData.id;
-
-        user = await prisma.user.create({ data: createData });
         results.push({ email: userData.email, status: "✅ Utilisateur créé", color: "green" });
       } else {
         logInfo("👤 Utilisateur déjà existant.");
         results.push({ email: userData.email, status: "⚠️ Déjà existant", color: "yellow" });
       }
 
-      // Vérifie le rôle
+      // Vérification du rôle
       let role = await prisma.role.findUnique({ where: { name: userData.roleName } });
       if (!role) {
         logInfo(`🛡️ Rôle "${userData.roleName}" non trouvé. Création...`);
         role = await prisma.role.create({ data: { name: userData.roleName } });
       }
 
-      // Vérifie l'association UserRole
+      // Vérification de l'association UserRole
       const userRole = await prisma.userRole.findFirst({
         where: { userId: user.id, roleId: role.id },
       });
@@ -104,7 +97,7 @@ async function main() {
       }
     }
 
-    // Résumé final coloré
+    // Résumé
     logInfo("\n📋 Résultats :");
     logInfo("------------------------------------------------------");
     logInfo("| Utilisateur                  | Statut              |");
@@ -117,7 +110,6 @@ async function main() {
     logInfo("------------------------------------------------------");
 
     process.exit(0);
-
   } catch (error) {
     logError(`❌ Erreur fatale : ${error.message}`);
     process.exit(1);
