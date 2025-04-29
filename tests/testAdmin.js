@@ -2,45 +2,24 @@
 
 const fetch = require("node-fetch");
 
-const ADMIN_EMAIL = "testadmin@alxmultimedia.com"; // ⚡ Corrigé (pas de majuscule au "A")
-const ADMIN_PASSWORD = "Fake1234!";
 const BASE_URL = "http://localhost:7001";
 
-async function getAdminToken() {
-  console.log("🔐 Connexion avec le compte admin de test...");
-
-  const response = await fetch(`${BASE_URL}/api/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
-  });
-
-  if (!response.ok) {
-    console.error(`❌ Échec de connexion admin - code ${response.status}`);
-    const body = await response.text();
-    console.error("Contenu :", body);
-    process.exit(1);
-  }
-
-  const data = await response.json();
-
-  if (!data.token) {
-    console.error("❌ Aucun token reçu après connexion !");
-    process.exit(1);
-  }
-
-  console.log(`✅ Connexion réussie. Token reçu pour ${data.firstName} ${data.lastName}`);
-  return data.token;
-}
+// 🔥 Nouveau ➔ lire ADMIN_TEST_TOKEN de l'environnement
+const ADMIN_TEST_TOKEN = process.env.ADMIN_TEST_TOKEN;
 
 async function testAdminRoute() {
   try {
     console.log("🧪 Test d'accès à /api/admin/public...");
 
-    const token = await getAdminToken();
+    if (!ADMIN_TEST_TOKEN) {
+      console.error("❌ ADMIN_TEST_TOKEN manquant dans .env !");
+      process.exit(1);
+    }
 
     const response = await fetch(`${BASE_URL}/api/admin/public`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${ADMIN_TEST_TOKEN}`,
+      },
     });
 
     if (response.ok) {
