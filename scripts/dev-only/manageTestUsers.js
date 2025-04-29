@@ -16,13 +16,13 @@ const COLORS = {
 const TEST_USERS = [
   {
     email: "testadmin@alxmultimedia.com",
-    firstName: "Test",
+    firstName: "TestAdmin",
     lastName: "Admin",
     roleName: "ADMIN",
   },
   {
     email: "testusager@alxmultimedia.com",
-    firstName: "Test",
+    firstName: "TestUsager",
     lastName: "Usager",
     roleName: "USER",
   },
