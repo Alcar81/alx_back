@@ -111,8 +111,25 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   fi
 
   # 2.3 Passage à master et synchronisation
-  echo "[INFO 2.3.1] Passage à la branche master..."
-  git checkout master || error_exit "Échec du passage à la branche master."
+  # 2.3.1 Passer à master, réinitialiser et écraser avec dev
+    echo "[INFO 2.3.1] Passage à la branche master..."
+
+    # Sauvegarder .env si modifié localement
+    if git status --porcelain | grep -q ".env"; then
+      echo "[INFO] Sauvegarde temporaire de .env car il est modifié localement."
+      cp .env /tmp/env_backup_checkout || error_exit "[ERROR] Échec de la sauvegarde temporaire de .env."
+      git restore --staged .env 2>/dev/null
+      git checkout -- .env 2>/dev/null
+    fi
+
+    git checkout master || error_exit "Échec du passage à la branche master."
+
+    # Restaurer .env après checkout
+    if [ -f /tmp/env_backup_checkout ]; then
+      echo "[INFO] Restauration de .env après le passage à master..."
+      cp /tmp/env_backup_checkout .env || error_exit "[ERROR] Échec de la restauration de .env."
+      rm /tmp/env_backup_checkout
+    fi
 
   # 2.3.2 Réinitialisation forcée avec origin/dev
   echo "[INFO 2.3.2] Réinitialisation de master avec origin/dev..."
