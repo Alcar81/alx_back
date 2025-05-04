@@ -98,38 +98,40 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   echo "[INFO 2.1.1] Connexion au dépôt distant :"
   git remote -v || error_exit "Impossible de se connecter au dépôt distant."
 
-  # 2.2 Ignorer le fichier .env
-  echo "[INFO 2.2] Vérification des modifications locales..."
-  git update-index --assume-unchanged .env && echo "[INFO] Le fichier .env est ignoré (assume-unchanged)."
+  # 2.2 Gérer .env modifié et assume-unchanged
+  echo "[INFO 2.2] Préparation du fichier .env..."
+  # 2.2.1 Enlever assume-unchanged s'il est actif
+  git update-index --no-assume-unchanged .env && echo "[INFO] Le fichier .env est maintenant suivi temporairement par Git."
 
-  # 2.2.1 Si seul .env est modifié ➜ commit temporaire
-  MODIFIED=$(git status --porcelain | grep -v '^ M .env')
-  if [ -z "$MODIFIED" ] && git status --porcelain | grep -q '^ M .env'; then
-    echo "[INFO] Seul le fichier .env est modifié localement ➜ commit temporaire..."
-    git add .env || error_exit "Échec du git add .env"
-    git commit -m "Temp commit .env before checkout" || error_exit "Échec du commit temporaire de .env"
-    ENV_TEMP_COMMIT=true
+  # 2.2.2 Vérifier si le fichier .env est modifié
+  if git status --porcelain | grep -q '^ M .env'; then
+    echo "[INFO] Fichier .env modifié localement ➜ on le stash temporairement..."
+    git stash push -m "Temp stash .env before checkout" .env || error_exit "Échec du stash de .env"
+    ENV_STASHED=true
   else
-    ENV_TEMP_COMMIT=false
+    ENV_STASHED=false
   fi
 
-  # 2.3 Passage à master, reset avec dev, push
+  # 2.3 Passage à master, réinitialisation avec dev, et push
   echo "[INFO 2.3.1] Passage à la branche master..."
   git checkout master || error_exit "Échec du passage à la branche master."
 
+  # 2.3.1.b Restauration de .env si on l’avait stashed
+  if [ "$ENV_STASHED" = true ]; then
+    echo "[INFO] Restauration du fichier .env depuis le stash..."
+    git stash pop || echo "[WARNING] Impossible de récupérer le .env depuis le stash automatiquement."
+  fi
+
+  # 2.3.2 Réinitialiser master avec dev
   echo "[INFO 2.3.2] Réinitialisation de master avec dev..."
   git reset --hard origin/dev || error_exit "Échec de la réinitialisation de master avec dev."
 
+  # 2.3.3 Pousser sur master
   echo "[INFO 2.3.3] Poussée forcée vers master... (déclenche le workflow GitHub Actions)"
   git push origin master --force || error_exit "Échec de la poussée vers master."
 
-  # 2.4 Si commit temporaire, revenir à dev et l’annuler
-  if [ "$ENV_TEMP_COMMIT" = true ]; then
-    echo "[INFO 2.4] Retour à la branche dev et suppression du commit temporaire de .env..."
-    git checkout dev || echo "[WARNING] Échec du retour à dev."
-    git reset --soft HEAD~1 || echo "[WARNING] Échec du reset du commit temporaire."
-  fi
-
+  # 2.4 Remettre .env en assume-unchanged
+  git update-index --assume-unchanged .env && echo "[INFO] .env est de nouveau ignoré par Git."
 
 
 
