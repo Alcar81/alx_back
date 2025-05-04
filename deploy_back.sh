@@ -82,11 +82,11 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
 
 
 # Étape 2 : Synchronisation Git
-echo "=============================================================================="
-echo "=== Étape 2 : Synchronisation Git : $(date) ==="
+  echo "=============================================================================="
+  echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 
-# 2.1 Vérifier si les branches existent
-  echo "[INFO] Vérification des branches Git..."
+  # 2.1 Vérifier si les branches existent
+  echo "[INFO 2.1] Vérification des branches Git..."
   if ! git show-ref --quiet refs/heads/master; then
     error_exit "La branche 'master' n'existe pas. Vérifiez votre dépôt."
   fi
@@ -94,36 +94,35 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
     error_exit "La branche 'dev' n'existe pas. Vérifiez votre dépôt."
   fi
 
-# 2.1.1 Vérifier la connexion au dépôt distant
-  echo "[INFO 2.1.1] Vérification de la connexion au dépôt distant..."
-  git remote -v || error_exit "[ERROR] Impossible de se connecter au dépôt distant."
+  # 2.1.1 Vérifier la connexion au dépôt distant
+  echo "[INFO 2.1.1] Connexion au dépôt distant :"
+  git remote -v || error_exit "Impossible de se connecter au dépôt distant."
 
+  # 2.2 Vérifier les modifications locales
+  echo "[INFO 2.2] Vérification des modifications locales..."
+  git update-index --assume-unchanged .env && echo "[INFO] Le fichier .env est ignoré (assume-unchanged)."
 
-# 2.2 Vérifier les modifications non validées
-  echo "[INFO 2.2] Vérifier les modifications non validées"
-  echo "Les fichiers suivants ont été modifiés et doivent être validés ou ignorés"
-  # Ignorer les modifications locales de .env pour éviter les conflits Git
-  git update-index --assume-unchanged .env && echo "[INFO] .env ignoré par Git (assume-unchanged)."
-  echo "[INFO 2.2.1] Ignorer les modifications locales de .env pour éviter les conflits Git."
-  echo "[INFO 2.2.2] Vérifier les modifications non validées..."
   if [ "$(git status --porcelain)" ]; then
-    error_exit "Des modifications locales non validées ont été détectées."    
-    git status --porcelain | awk '{print $2}'
-    echo "Veuillez exécuter 'git status' pour plus de détails. $(date)"
-    echo "Ajoutez les fichiers avec 'git add', validez-les avec 'git commit', ou stash-les avec 'git stash'."
-    exit 1
+    echo "[ERROR] Des modifications locales non validées ont été détectées."
+    git status --short
+    echo "➡️  Veuillez valider, ignorer ou stasher vos modifications."
+    echo "   Exemple : git stash && ./deploy_back.sh"
+    error_exit "Arrêt du déploiement pour éviter une perte de données."
   fi
 
-# 2.3.1 Passer à master, réinitialiser et écraser avec dev
-  echo "[INFO 2.3.1] Passer à master, réinitialiser et écraser avec dev..."
-  echo "[INFO 2.3.1] Déploiement : Passage à la branche master..."
-  git checkout master || error_exit "Échec du checkout vers master."
+  # 2.3 Passage à master et synchronisation
+  echo "[INFO 2.3.1] Passage à la branche master..."
+  git checkout master || error_exit "Échec du passage à la branche master."
 
-  echo "[INFO 2.3.2] Réinitialisation de master avec dev..."
-  git reset --hard origin/dev || error_exit "Échec de la réinitialisation de master avec dev."
+  # 2.3.2 Réinitialisation forcée avec origin/dev
+  echo "[INFO 2.3.2] Réinitialisation de master avec origin/dev..."
+  git reset --hard origin/dev || error_exit "Échec du reset --hard."
 
-  echo "[INFO 2.3.3] Poussée forcée vers la branche master... Déclanche le deploy_backend.yml"
-  git push origin master --force || error_exit "Échec de la poussée forcée vers master."
+  # 2.3.3 Push forcé vers master ➜ déclenche GitHub Actions
+  echo "[INFO 2.3.3] Push forcé vers master (déclenche CI/CD)..."
+  git push origin master --force || error_exit "Échec du push vers master."
+
+  echo "[SUCCESS] Étape 2 : Synchronisation Git terminée avec succès."
 
 
 # Étape 3 : Gestion du répertoire de production
@@ -196,7 +195,7 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   echo "=============================================================================="
 
 # Étape 3.2 : Préparation du répertoire de production
-  echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."
+  echo "[INFO 3.2] Préparation du répertoire de production ($REPO_PROD)..."  
 
 # 3.2.1 Sauvegarde temporaire des fichiers sensibles (.git et .env)
   echo "[INFO 3.2.1] Sauvegarde temporaire des fichiers sensibles (.git et .env)..."
