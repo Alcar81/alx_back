@@ -282,6 +282,10 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
   git checkout dev || error_exit "Échec du checkout de dev."
   echo "[SUCCESS] Passage à dev réussi. : $(date)"
 
+# 4.1.1 : Ignorer les modifications du fichier .env localement pour éviter les conflits de commit
+  git update-index --assume-unchanged .env && echo "[INFO] Le fichier .env est maintenant ignoré par Git (assume-unchanged)."
+
+
 # 4.2 : Utilisation des ressources après déploiement
   echo "[INFO] Utilisation des ressources après déploiement :"
   df -h | grep "/$" || echo "[ERROR] Impossible d'obtenir l'état des disques."
