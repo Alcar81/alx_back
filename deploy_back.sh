@@ -103,8 +103,24 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   git update-index --assume-unchanged .env && echo "[INFO] Le fichier .env est ignoré (assume-unchanged)."
 
   # 2.3 Passage à master, réinitialisation avec dev, et push
+  # 2.3.1 Passage à master : stash temporaire du .env si modifié
+  if git status --porcelain | grep -q '^ M .env'; then
+    echo "[INFO] Fichier .env modifié localement ➜ on le stash temporairement..."
+    git stash push -m "Temp stash .env before checkout" .env || error_exit "Échec du stash de .env"
+    ENV_STASHED=true
+  else
+    ENV_STASHED=false
+  fi
+
   echo "[INFO 2.3.1] Passage à la branche master..."
   git checkout master || error_exit "Échec du passage à la branche master."
+
+  # Restauration du .env stashed si nécessaire
+  if [ "$ENV_STASHED" = true ]; then
+    echo "[INFO] Restauration du fichier .env depuis le stash..."
+    git stash pop || echo "[WARNING] Impossible de récupérer le .env depuis le stash automatiquement."
+  fi
+
 
   echo "[INFO 2.3.2] Réinitialisation de master avec dev..."
   git reset --hard origin/dev || error_exit "Échec de la réinitialisation de master avec dev."
