@@ -105,9 +105,9 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   # 2.3 Passage à master, réinitialisation avec dev, et push
   # 2.3.1 Passage à master : stash temporaire du .env si modifié
   if git status --porcelain | grep -q '^ M .env'; then
-    echo "[INFO] Fichier .env modifié localement ➜ on le stash temporairement..."
-    git stash push -m "Temp stash .env before checkout" .env || error_exit "Échec du stash de .env"
-    ENV_STASHED=true
+  echo "[INFO] Fichier .env modifié localement ➜ on le stash temporairement..."
+  git stash push -m "Temp stash .env before checkout" .env || error_exit "Échec du stash de .env"
+  ENV_STASHED=true
   else
     ENV_STASHED=false
   fi
@@ -115,7 +115,7 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   echo "[INFO 2.3.1] Passage à la branche master..."
   git checkout master || error_exit "Échec du passage à la branche master."
 
-  # Restauration du .env stashed si nécessaire
+  # 2.3.1.b Restauration de .env si on l’avait stashed
   if [ "$ENV_STASHED" = true ]; then
     echo "[INFO] Restauration du fichier .env depuis le stash..."
     git stash pop || echo "[WARNING] Impossible de récupérer le .env depuis le stash automatiquement."
