@@ -100,12 +100,13 @@ echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 
 
 # 2.2 Vérifier les modifications non validées
-  echo "[INFO 2.2] Vérifier les modifications non validées..."
+  echo "[INFO 2.2] Vérifier les modifications non validées"
+  echo "Les fichiers suivants ont été modifiés et doivent être validés ou ignorés"
+  # Ignorer les modifications locales de .env pour éviter les conflits Git
+  echo "[INFO 2.2.1] Ignorer les modifications locales de .env pour éviter les conflits Git."
+  echo "[INFO 2.2.2] Vérifier les modifications non validées..."
   if [ "$(git status --porcelain)" ]; then
-    error_exit "Des modifications locales non validées ont été détectées."
-    echo "Les fichiers suivants ont été modifiés et doivent être validés ou ignorés"
-    # Ignorer les modifications locales de .env pour éviter les conflits Git
-    echo "[INFO] Ignorer les modifications locales de .env pour éviter les conflits Git."
+    error_exit "Des modifications locales non validées ont été détectées."    
     git update-index --assume-unchanged .env && echo "[INFO] .env ignoré par Git (assume-unchanged)."
     git status --porcelain | awk '{print $2}'
     echo "Veuillez exécuter 'git status' pour plus de détails. $(date)"
