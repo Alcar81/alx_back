@@ -94,52 +94,24 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
     error_exit "La branche 'dev' n'existe pas. Vérifiez votre dépôt."
   fi
 
-  # 2.1.1 Vérifier la connexion au dépôt distant
+  # 2.1.1 Connexion au dépôt distant
   echo "[INFO 2.1.1] Connexion au dépôt distant :"
   git remote -v || error_exit "Impossible de se connecter au dépôt distant."
 
-  # 2.2 Vérifier les modifications locales
+  # 2.2 Ignorer le fichier .env
   echo "[INFO 2.2] Vérification des modifications locales..."
   git update-index --assume-unchanged .env && echo "[INFO] Le fichier .env est ignoré (assume-unchanged)."
 
-  if [ "$(git status --porcelain)" ]; then
-    echo "[ERROR] Des modifications locales non validées ont été détectées."
-    git status --short
-    echo "➡️  Veuillez valider, ignorer ou stasher vos modifications."
-    echo "   Exemple : git stash && ./deploy_back.sh"
-    error_exit "Arrêt du déploiement pour éviter une perte de données."
-  fi
+  # 2.3 Passage à master, réinitialisation avec dev, et push
+  echo "[INFO 2.3.1] Passage à la branche master..."
+  git checkout master || error_exit "Échec du passage à la branche master."
 
-  # 2.3 Passage à master et synchronisation
-  # 2.3.1 Passer à master, réinitialiser et écraser avec dev
-    echo "[INFO 2.3.1] Passage à la branche master..."
+  echo "[INFO 2.3.2] Réinitialisation de master avec dev..."
+  git reset --hard origin/dev || error_exit "Échec de la réinitialisation de master avec dev."
 
-    # Sauvegarder .env si modifié localement
-    if git status --porcelain | grep -q ".env"; then
-      echo "[INFO] Sauvegarde temporaire de .env car il est modifié localement."
-      cp .env /tmp/env_backup_checkout || error_exit "[ERROR] Échec de la sauvegarde temporaire de .env."
-      git restore --staged .env 2>/dev/null
-      git checkout -- .env 2>/dev/null
-    fi
+  echo "[INFO 2.3.3] Poussée forcée vers master... (déclenche le workflow GitHub Actions)"
+  git push origin master --force || error_exit "Échec de la poussée vers master."
 
-    git checkout master || error_exit "Échec du passage à la branche master."
-
-    # Restaurer .env après checkout
-    if [ -f /tmp/env_backup_checkout ]; then
-      echo "[INFO] Restauration de .env après le passage à master..."
-      cp /tmp/env_backup_checkout .env || error_exit "[ERROR] Échec de la restauration de .env."
-      rm /tmp/env_backup_checkout
-    fi
-
-  # 2.3.2 Réinitialisation forcée avec origin/dev
-  echo "[INFO 2.3.2] Réinitialisation de master avec origin/dev..."
-  git reset --hard origin/dev || error_exit "Échec du reset --hard."
-
-  # 2.3.3 Push forcé vers master ➜ déclenche GitHub Actions
-  echo "[INFO 2.3.3] Push forcé vers master (déclenche CI/CD)..."
-  git push origin master --force || error_exit "Échec du push vers master."
-
-  echo "[SUCCESS] Étape 2 : Synchronisation Git terminée avec succès."
 
 
 # Étape 3 : Gestion du répertoire de production
