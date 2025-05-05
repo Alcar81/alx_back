@@ -9,7 +9,7 @@ if (!PORT) {
   process.exit(1);
 }
 
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = "http://localhost:${PORT}";
 
 // 🔥 Nouveau ➔ lire ADMIN_TEST_TOKEN de l'environnement
 const ADMIN_TEST_TOKEN = process.env.ADMIN_TEST_TOKEN;
