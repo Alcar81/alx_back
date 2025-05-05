@@ -496,13 +496,14 @@ jobs:
             # 8.12.4 - Liste des tables existantes dans la base de données...
             echo "[INFO - 8.12.4] Liste des tables existantes dans la base de données..."
 
-            ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" bash << EOF
-              CONTAINER_NAME="$CONTAINER_NAME"
-              DB_PASSWORD="$DB_PASSWORD"
-              DB_HOST="$DB_HOST"
-              DB_PORT_INT="$DB_PORT_INT"
-              DB_USERNAME="$DB_USERNAME"
-              DB_NAME="$DB_NAME"
+            echo "Info variables :"
+            echo "ENV=$ENV"
+            echo "CONTAINER_NAME=$CONTAINER_NAME"
+            echo "DB_PASSWORD=$DB_PASSWORD"            
+            echo "DB_HOST=$DB_HOST"
+            echo "DB_PORT_INT=$DB_PORT_INT" 
+            echo "DB_USERNAME=$DB_USERNAME"
+            echo "DB_NAME=$DB_NAME"
 
               if [ -z "\$DB_HOST" ] || [ -z "\$DB_PORT_INT" ]; then
                 echo "[WARN] ❌ DB_HOST ou DB_PORT_INT non défini. Impossible d'exécuter psql."
@@ -514,7 +515,7 @@ jobs:
 
               echo "📦 Toutes les relations (bonus) :"
               docker exec "\$CONTAINER_NAME" bash -c "PGPASSWORD=\"\$DB_PASSWORD\" psql -h \"\$DB_HOST\" -p \"\$DB_PORT_INT\" -U \"\$DB_USERNAME\" -d \"\$DB_NAME\" -c '\\d+'" || echo "[WARN] ❌ Impossible d’afficher les relations."
-          EOF
+
 
             # 8.13 - Nettoyage final
             echo "[INFO - 8.13] Suppression des fichiers temporaires..."
