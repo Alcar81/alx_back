@@ -2,6 +2,12 @@
 const fetch = require("node-fetch");
 const PORT = process.env.SERVER_PORT;
 
+// 🛡️ Vérifie que le port est bien défini
+if (!PORT) {
+  console.error("❌ SERVER_PORT non défini dans process.env");
+  process.exit(1);
+}
+
 (async () => {
   const url = `http://localhost:${PORT}/health`; // ✅ interpolation dynamique
   console.log(`🌐 Lancement de testHealth.js...\n📡 URL testée : ${url}`);
