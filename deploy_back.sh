@@ -86,7 +86,7 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   echo "=== Étape 2 : Synchronisation Git : $(date) ==="
 
   # 2.1 Vérifier si les branches existent
-  echo "[INFO 2.1] Vérification des branches Git..."
+  echo "[INFO 2.1] Vérification des branches Git...."
   if ! git show-ref --quiet refs/heads/master; then
     error_exit "La branche 'master' n'existe pas. Vérifiez votre dépôt."
   fi
