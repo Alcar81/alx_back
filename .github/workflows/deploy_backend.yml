@@ -300,7 +300,6 @@ jobs:
             APP_NAME=alxmultimedia_backend
             JWT_SECRET=$JWT_SECRET
             SERVER_PORT=$BACKEND_PORT
-            PORT=$BACKEND_PORT
             REACT_APP_API_URL=$REACT_APP_API_URL
             TRUST_PROXY=1
             LOG_LEVEL=info
