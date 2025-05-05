@@ -34,7 +34,7 @@ if (!PORT) {
     console.log("✅ Token reçu :", token.slice(0, 20) + "...");
 
     // ➤ 2. Requête vers la route protégée
-    const meRes = await fetch("http://localhost:7001/api/me", {
+    const meRes = await fetch(`http://localhost:${PORT}/api/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
