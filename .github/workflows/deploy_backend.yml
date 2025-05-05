@@ -505,16 +505,16 @@ jobs:
             echo "DB_USERNAME=$DB_USERNAME"
             echo "DB_NAME=$DB_NAME"
 
-              if [ -z "\$DB_HOST" ] || [ -z "\$DB_PORT_INT" ]; then
+              if [ -z "$DB_HOST" ] || [ -z "$DB_PORT_INT" ]; then
                 echo "[WARN] ❌ DB_HOST ou DB_PORT_INT non défini. Impossible d'exécuter psql."
                 exit 0
               fi
 
-              echo "📋 Tables dans la base \$DB_NAME :"
-              docker exec "\$CONTAINER_NAME" bash -c "PGPASSWORD=\"\$DB_PASSWORD\" psql -h \"\$DB_HOST\" -p \"\$DB_PORT_INT\" -U \"\$DB_USERNAME\" -d \"\$DB_NAME\" -c '\\dt'" || echo "[WARN] ❌ Impossible de lister les tables avec \\dt"
+              echo "📋 Tables dans la base $DB_NAME :"
+              docker exec "$CONTAINER_NAME" bash -c "PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT_INT" -U "$DB_USERNAME" -d "$DB_NAME" -c '\dt'" || echo "[WARN] ❌ Impossible de lister les tables avec \dt"
 
               echo "📦 Toutes les relations (bonus) :"
-              docker exec "\$CONTAINER_NAME" bash -c "PGPASSWORD=\"\$DB_PASSWORD\" psql -h \"\$DB_HOST\" -p \"\$DB_PORT_INT\" -U \"\$DB_USERNAME\" -d \"\$DB_NAME\" -c '\\d+'" || echo "[WARN] ❌ Impossible d’afficher les relations."
+              docker exec "$CONTAINER_NAME" bash -c "PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT_INT" -U "$DB_USERNAME" -d "$DB_NAME" -c '\d+'" || echo "[WARN] ❌ Impossible d’afficher les relations."
 
 
             # 8.13 - Nettoyage final
