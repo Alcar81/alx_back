@@ -14,7 +14,7 @@ if (!PORT) {
 
   try {
     // ➤ 1. Connexion avec un faux utilisateur pour obtenir le token
-    const loginRes = await fetch(`http://localhost:${PORT}/api/register`, {
+    const loginRes = await fetch(`http://localhost:${PORT}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
