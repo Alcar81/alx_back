@@ -7,7 +7,7 @@ const net = require("net");
 const args = process.argv.slice(2);
 const debug = args.includes("--debug");
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const debugMode = process.argv.includes("--debug");
 
 const runTest = async (description, command) => {
@@ -23,24 +23,28 @@ const runTest = async (description, command) => {
     process.exit(1);
   }
 
-  await sleep(300); // ⏱️ Petite pause pour éviter l'effet mitraillette
+  await sleep(300);
 };
 
-const checkPort = (port, host = '127.0.0.1') => {
+const checkPort = (port, host = "127.0.0.1") => {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     const timeout = 2000;
 
     socket.setTimeout(timeout);
-    socket.once('connect', () => {
-      socket.destroy();
-      resolve(true);
-    }).once('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    }).once('error', () => {
-      resolve(false);
-    }).connect(port, host);
+    socket
+      .once("connect", () => {
+        socket.destroy();
+        resolve(true);
+      })
+      .once("timeout", () => {
+        socket.destroy();
+        resolve(false);
+      })
+      .once("error", () => {
+        resolve(false);
+      })
+      .connect(port, host);
   });
 };
 
@@ -55,7 +59,7 @@ const printBanner = () => {
 ║ 🩺 Santé du serveur confirmée                         ║
 ║ 🧪 Prisma opérationnel                                ║
 ║ 🔐 Test de route protégée : OK                        ║
-║ 📂 Routes admin publiques accessibles : OK            ║
+║ 📂 Routes admin publiques accessibles : OK (si testé) ║
 ║ ❓ Gestion des erreurs 404 : OK                        ║
 ║ 🧼 Comportement sans payload JSON validé              ║
 ║                                                        ║
@@ -74,12 +78,13 @@ const printBanner = () => {
       console.log("📡 API = ", process.env.REACT_APP_API_URL);
     }
 
-    const portOpen = await checkPort(process.env.SERVER_PORT || 7001);
+    const port = process.env.SERVER_PORT || 7001;
+    const portOpen = await checkPort(port);
     if (!portOpen) {
-      console.error(`❌ Le port ${process.env.SERVER_PORT || 7001} n’est pas accessible !`);
+      console.error(`❌ Le port ${port} n’est pas accessible !`);
       process.exit(1);
     } else if (debugMode) {
-      console.log(`✅ Le port ${process.env.SERVER_PORT || 7001} est ouvert`);
+      console.log(`✅ Le port ${port} est ouvert`);
     }
 
     const files = [
@@ -90,8 +95,15 @@ const printBanner = () => {
       "testRegisterEmpty.js",
       "testProtectedRoute.js",
       "test404.js",
-      "testAdmin.js" // <--- ajouté ici
     ];
+
+    const adminToken = process.env.ADMIN_TEST_TOKEN;
+    const includeAdminTest = !!adminToken;
+    if (includeAdminTest) {
+      files.push("testAdmin.js");
+    } else {
+      console.log("⚠️ ADMIN_TEST_TOKEN absent ➜ testAdmin.js ignoré.");
+    }
 
     console.log("🔍 Vérification des fichiers de test...");
     files.forEach((file) => {
@@ -103,14 +115,12 @@ const printBanner = () => {
       console.log(`✅ ${file} trouvé`);
     });
 
-    await runTest("Test 1/8 - testPrisma.js", "node /app/tests/testPrisma.js");
-    await runTest("Test 2/8 - testHealth.js", "node /app/tests/testHealth.js");
-    await runTest("Test 3/8 - testRegister.js", "node /app/tests/testRegister.js");
-    await runTest("Test 4/8 - testLogin.js", "node /app/tests/testLogin.js");
-    await runTest("Test 5/8 - testRegisterEmpty.js", "node /app/tests/testRegisterEmpty.js");
-    await runTest("Test 6/8 - testProtectedRoute.js", "node /app/tests/testProtectedRoute.js");
-    await runTest("Test 7/8 - test404.js", "node /app/tests/test404.js");
-    await runTest("Test 8/8 - testAdmin.js", "node /app/tests/testAdmin.js"); // <--- ajouté ici aussi
+    for (let i = 0; i < files.length; i++) {
+      await runTest(
+        `Test ${i + 1}/${files.length} - ${files[i]}`,
+        `node /app/tests/${files[i]}`
+      );
+    }
 
     printBanner();
   } catch (e) {
