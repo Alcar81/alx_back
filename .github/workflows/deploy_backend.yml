@@ -514,7 +514,7 @@ jobs:
 
               echo "📦 Toutes les relations (bonus) :"
               docker exec "\$CONTAINER_NAME" bash -c "PGPASSWORD=\"\$DB_PASSWORD\" psql -h \"\$DB_HOST\" -p \"\$DB_PORT_INT\" -U \"\$DB_USERNAME\" -d \"\$DB_NAME\" -c '\\d+'" || echo "[WARN] ❌ Impossible d’afficher les relations."
-            EOF
+
 
             # 8.13 - Nettoyage final
             echo "[INFO - 8.13] Suppression des fichiers temporaires..."
