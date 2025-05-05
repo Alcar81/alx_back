@@ -2,27 +2,34 @@
 # Fichier : backend/migrate_auto.sh
 # Description : Migration automatique Prisma avec logs complets dans server.log uniquement.
 # Codes d'erreurs personnalisés :
-# 6 = Erreur lors du diff Prisma (migrate diff)
-# 7 = Échec d'application du patch SQL (psql)
+#   6 = Erreur lors du diff Prisma (migrate diff)
+#   7 = Échec d'application du patch SQL (psql)
 
 set -e
 
-# Début
-echo "                                                                     " 
+# ==============================================================================
+# 0. Informations générales
+# ==============================================================================
+echo ""
 echo " Début Migration ===================================================="
 echo "🧠 Script de migration automatique Prisma (dans le conteneur)"
 
-# Paramètres
+# ==============================================================================
+# 1. Déclaration des variables
+# ==============================================================================
 MIGRATION_NAME="migration"
 LOG_DIR="logs/migrations"
 SERVER_LOG="logs/server.log"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="$LOG_DIR/migrate_${TIMESTAMP}.log"
 DONE_FLAG="/tmp/migration_done.flag"
-SCHEMA_PATH_LOCAL="prisma/schema.prisma"
+SCHEMA_PATH="prisma/schema.prisma"
 MIGRATIONS_DIR="prisma/migrations"
+PATCH_FILE="prisma/generated_patch.sql"
 
-# Fonction log multi-destination (vers log fichier seulement)
+# ==============================================================================
+# 2. Fonction de journalisation
+# ==============================================================================
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] [migrate_auto] $1" | tee -a "$LOG_FILE" "$SERVER_LOG" > /dev/null
 }
@@ -35,58 +42,74 @@ log() {
   echo "═══════════════════════════════════════════════════════════════════════"
 } >> "$SERVER_LOG"
 
-# Nettoyage du flag existant
+# ==============================================================================
+# 3. Nettoyage initial
+# ==============================================================================
 rm -f "$DONE_FLAG"
+mkdir -p "$LOG_DIR" "$MIGRATIONS_DIR"
 
-# Étape 1 - Préparation des dossiers
-mkdir -p "$LOG_DIR"
-mkdir -p "$MIGRATIONS_DIR"
-log "📁 1. Dossier de logs créé : $LOG_DIR"
-log "📄 2. Log détaillé : $LOG_FILE"
+log "📁 3.1 Dossiers préparés : $LOG_DIR, $MIGRATIONS_DIR"
+log "📄 3.2 Fichier de log de migration : $LOG_FILE"
 
-# Étape 3 - Vérification du fichier schema.prisma
-log "📄 3. Vérification de la présence de $SCHEMA_PATH_LOCAL..."
-if [ ! -f "$SCHEMA_PATH_LOCAL" ]; then
-  log "❌ Fichier $SCHEMA_PATH_LOCAL introuvable."
+# ==============================================================================
+# 4. Vérification du fichier schema.prisma
+# ==============================================================================
+log "📄 4. Vérification de la présence de $SCHEMA_PATH..."
+if [ ! -f "$SCHEMA_PATH" ]; then
+  log "❌ 4.1 Fichier introuvable : $SCHEMA_PATH"
   exit 1
 fi
 
-# Étape 4 - Application des migrations
-log "🚀 4. Application des migrations Prisma existantes..."
+# ==============================================================================
+# 5. Application des migrations existantes
+# ==============================================================================
+log "🚀 5. Application des migrations existantes avec prisma migrate deploy..."
 if ! npx prisma migrate deploy >> "$LOG_FILE" 2>&1; then
-  log "❌ Échec de prisma migrate deploy."
+  log "❌ 5.1 Échec de prisma migrate deploy"
   exit 2
 fi
 
-# Étape 5 - Patch SQL s'il reste des écarts
-log "🚀 5. Génération du patch SQL pour diff entre le schema et la DB..."
-if npx prisma migrate diff --from-schema-datamodel prisma/schema.prisma --to-schema-database --script > prisma/generated_patch.sql 2>> "$LOG_FILE"; then
-  if grep -qE "(CREATE|ALTER|DROP|INSERT|UPDATE)" prisma/generated_patch.sql; then
-    log "⚙️ Différences détectées ➔ Application du patch SQL..."
-    if ! psql -U "$DB_USERNAME" -d "$DB_NAME" -f prisma/generated_patch.sql >> "$LOG_FILE" 2>&1; then
-      log "⚠️ Erreur lors de l'application du patch SQL."
+# ==============================================================================
+# 6. Génération et application du patch SQL si nécessaire
+# ==============================================================================
+log "🛠️ 6.1 Génération du patch SQL via prisma migrate diff..."
+if npx prisma migrate diff --from-schema-datamodel "$SCHEMA_PATH" --to-schema-database --script > "$PATCH_FILE" 2>> "$LOG_FILE"; then
+  if grep -Eq "(CREATE|ALTER|DROP|INSERT|UPDATE)" "$PATCH_FILE"; then
+    log "⚙️ 6.2 Différences détectées ➜ tentative d'application du patch..."
+    if ! psql -U "$DB_USERNAME" -d "$DB_NAME" -f "$PATCH_FILE" >> "$LOG_FILE" 2>&1; then
+      log "❌ 6.3 Échec lors de l'application du patch SQL"
+      exit 7
     else
-      log "✅ Patch SQL appliqué avec succès."
+      log "✅ 6.4 Patch SQL appliqué avec succès."
     fi
   else
-    log "✅ Aucun correctif à appliquer. Base déjà synchronisée."
+    log "✅ 6.5 Aucune modification détectée. La base est déjà à jour."
   fi
 else
-  log "❌ Erreur lors de la génération du patch SQL (code retour ignoré). Voir $LOG_FILE pour les détails."
+  log "❌ 6.6 Erreur lors du diff Prisma (diff ignoré mais logué)"
+  exit 6
 fi
 
-# Étape 6 - Regénération du client Prisma
-log "🔧 6. Regénération du client Prisma..."
+# ==============================================================================
+# 7. Regénération du Prisma Client
+# ==============================================================================
+log "🔧 7. Regénération du client Prisma..."
 npx prisma generate >> "$LOG_FILE" 2>&1
 
-# Étape 7 - Création du flag
-log "✅ 7. Création du flag de fin : $DONE_FLAG"
+# ==============================================================================
+# 8. Création du flag de succès
+# ==============================================================================
+log "✅ 8. Création du fichier de succès : $DONE_FLAG"
 touch "$DONE_FLAG"
 
-# Étape 8 - Nettoyage des anciens logs
-log "🪜 8. Nettoyage des logs de migration vieux de 30 jours..."
+# ==============================================================================
+# 9. Nettoyage des anciens logs (plus de 30 jours)
+# ==============================================================================
+log "🧹 9. Nettoyage des logs vieux de plus de 30 jours..."
 find "$LOG_DIR" -type f -name "*.log" -mtime +30 -exec rm -f {} \;
 
-# Étape 9 - Fin
-log "🏁 Fin du script de migration automatique"
+# ==============================================================================
+# 10. Fin du script
+# ==============================================================================
+log "🏁 10. Script de migration terminé avec succès."
 echo " Fin Migration ====================================================="
