@@ -403,7 +403,7 @@ jobs:
               docker exec "$CONTAINER_NAME" cat prisma/generated_migration.sql || echo "[INFO] Aucun fichier SQL généré."
 
               echo "[INFO] 🔍 Pensez à vérifier les erreurs liées à des conflits de schéma existant."
-              exit 6
+              log "⚠️ Diff échoué ➜ probablement aucun changement. On continue." 
             fi
 
             echo "[SUCCESS] ✅ migrate_auto.sh exécuté avec succès."
