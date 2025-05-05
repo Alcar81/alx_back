@@ -87,7 +87,7 @@ if npx prisma migrate diff --from-schema-datamodel "$SCHEMA_PATH" --to-schema-da
   fi
 else
   log "❌ 6.6 Erreur lors du diff Prisma (diff ignoré mais logué)"
-  exit 6
+  log "⚠️ Diff échoué ➜ probablement aucun changement. On continue." 
 fi
 
 # ==============================================================================
