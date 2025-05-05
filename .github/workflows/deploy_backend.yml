@@ -23,7 +23,7 @@ jobs:
       NETWORK: ${{ vars.NET }}_${{ vars.ENV }}
       SERVER_IP: ${{ secrets.SERVER_IP }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USER: ${{ secrets.SSH_USER }}     
+      SSH_USER: ${{ secrets.SSH_USER }}
       DB_USERNAME: ${{ vars.USR_DB }}_${{ vars.ENV }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       POSTGRES_CONTAINER_NAME: ${{ vars.DB_POST }}_${{ vars.ENV }}
@@ -56,8 +56,8 @@ jobs:
           mkdir -p backend/logs || (echo "Erreur : Impossible de créer le répertoire des logs." && exit 1)
           chmod -R 777 backend/logs
           echo "Répertoire de logs créé avec succès."
-          echo "=== Fin de la préparation initiale ==="  
-      
+          echo "=== Fin de la préparation initiale ==="
+
       # Étape 1.1 - Afficher les variables générées et valider leur présence
       - name: 1.1 - Afficher les variables générées
         run: |
@@ -70,11 +70,10 @@ jobs:
             fi
             echo "[INFO] $VAR=${!VAR}" | tee -a $LOG_FILE
           done
-      
+
       # Étape 2 - Récupérer le dépôt Git
       - name: 2 - Récupérer le dépôt
         uses: actions/checkout@v3
-        
 
       # Étape 2.1 - Vérification après checkout
       - name: 2.1 - Vérification après checkout
@@ -94,13 +93,13 @@ jobs:
           chmod 600 /tmp/git_id_rsa
           eval $(ssh-agent -s)
           ssh-add /tmp/git_id_rsa || (echo "[ERROR] Clé SSH invalide." && exit 1)
-          echo "[SUCCESS] Agent SSH configuré avec succès."      
-          
+          echo "[SUCCESS] Agent SSH configuré avec succès."
+
       # Étape 2.2 - Configurer la version de Node.js
       - name: 2.2 - Configurer Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20.18.1'
+          node-version: "20.18.1"
 
       # Étape 3 - Installer les dépendances et valider l'arbre de dépendances
       - name: 3 - Installer les dépendances et valider l'arbre de dépendances
@@ -125,27 +124,27 @@ jobs:
           else
             echo "[INFO - 3.4] Arbre de dépendances valide."
           fi
-          echo "[SUCCESS - 3.5] Dépendances prêtes pour le déploiement."  
+          echo "[SUCCESS - 3.5] Dépendances prêtes pour le déploiement."
 
       - name: 4 - Copier le code backend sur le serveur
         run: |
           echo "📂 Création d’un répertoire temporaire avec le backend..."
           mkdir -p backend_sync
           rsync -av --exclude='.git' --exclude='node_modules' --exclude='logs' ./ backend_sync/
-      
+
           echo "🚀 Envoi du backend au serveur distant..."
           ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $SSH_USER@$SERVER_IP "mkdir -p $MOUNT_PATH"
-      
+
           # 💥 C'est cette ligne qui manquait
           rsync -av -e "ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
             backend_sync/ $SSH_USER@$SERVER_IP:$MOUNT_PATH/
-      
+
           echo "🧼 Nettoyage du répertoire temporaire local..."
           rm -rf backend_sync
-      
+
           echo "✅ Backend copié avec succès vers $MOUNT_PATH sur le serveur."
-        
-      # Étape 6 - Configuration du conteneur PostgreSQL      
+
+      # Étape 6 - Configuration du conteneur PostgreSQL
       - name: 6 - Configuration du conteneur PostgreSQL
         run: |
           echo "=== Étape 6 : Configuration du conteneur PostgreSQL ==="
@@ -232,7 +231,7 @@ jobs:
           EOF
 
           # Nettoyer le fichier temporaire local
-          rm -f /tmp/env_vars.sh          
+          rm -f /tmp/env_vars.sh
 
       # Étape 7 - Création de la base de données et des utilisateurs
       - name: 7 - Création de la base de données et des utilisateurs
@@ -268,18 +267,18 @@ jobs:
       - name: 8 - Déployer le conteneur Backend (build + démarrage)
         run: |
           echo "=== Étape 8.0 : Déploiement du backend ==="
-      
+
           # 8.1 - Construction de DATABASE_URL
           DATABASE_URL="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT_INT}/${DB_NAME}"
           echo "[INFO - 8.1] DATABASE_URL construit : $DATABASE_URL"
-      
+
           # 8.2 - Connexion SSH et déploiement
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" \
           "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' REACT_APP_API_URL='$REACT_APP_API_URL' bash -s" << 'EOF'
-      
+
             set -e
             echo "=== Étape 8.2 : Déploiement sur le serveur ==="
-      
+
             # 8.2.1 - Vérification des variables d'environnement
             echo "[INFO - 8.2.1] Vérification des variables..."
             REQUIRED_VARS=(ENV DATABASE_URL JWT_SECRET BACKEND_PORT MOUNT_PATH DB_NAME DB_USERNAME DB_PASSWORD CONTAINER_NAME NETWORK)
@@ -291,7 +290,7 @@ jobs:
               fi
               echo "[OK] $VAR=$VALUE"
             done
-      
+
             # 8.2.2 - Génération du fichier .env
             echo "[INFO - 8.2.2] Création du fichier .env..."
             cat <<EOT > "$MOUNT_PATH/.env"
@@ -308,20 +307,20 @@ jobs:
             ENABLE_CACHE=false
             ADMIN_TEST_TOKEN=
           EOT
-      
+
             # 8.2.3 - Nettoyage des logs
             echo "[INFO - 8.2.3] Nettoyage des anciens logs..."
             mkdir -p "$MOUNT_PATH/logs"
             rm -f "$MOUNT_PATH/logs/*" || echo "[WARNING] Rien à supprimer."
             find "$MOUNT_PATH/logs/" -type f -name "*.log" -mtime +7 -exec rm -f {} \;
-      
+
             # 8.3 - Suppression de l'ancien conteneur
             echo "[INFO - 8.3] Suppression de l'ancien conteneur..."
             if docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
               docker stop "$CONTAINER_NAME" || true
               docker rm "$CONTAINER_NAME" || true
             fi
-      
+
             # 8.4 - Démarrage du nouveau conteneur vide
             echo "[INFO - 8.4] Démarrage d’un conteneur temporaire..."
             docker run -d --name "$CONTAINER_NAME" \
@@ -332,7 +331,7 @@ jobs:
               -p "127.0.0.1:$BACKEND_PORT:$BACKEND_PORT" \
               node:20 \
               tail -f /dev/null
-      
+
             # 8.5 - Installation des dépendances
             echo "[INFO - 8.5] Installation des dépendances..."
 
@@ -354,7 +353,7 @@ jobs:
               echo "[ERROR - 8.5.4] ❌ psql n'est pas installé correctement dans le conteneur."
               exit 1
             }
-      
+
             # 8.6.3 - Copie forcée du schema.prisma local dans le conteneur
             echo "[INFO - 8.6.3] Vérification et copie du fichier schema.prisma dans le conteneur..."
 
@@ -381,7 +380,7 @@ jobs:
             echo "[INFO - 8.6.4] Prisma generate et npm build..."
             docker exec "$CONTAINER_NAME" npx prisma generate
             docker exec "$CONTAINER_NAME" npm run build || echo "[INFO] Aucun build requis"
-      
+
             # 8.6.5 - Lancement de la migration automatique Prisma (migrate_auto.sh)
             echo "[INFO - 8.6.5] Lancement de migrate_auto.sh..."
 
@@ -403,7 +402,7 @@ jobs:
               docker exec "$CONTAINER_NAME" cat prisma/generated_migration.sql || echo "[INFO] Aucun fichier SQL généré."
 
               echo "[INFO] 🔍 Pensez à vérifier les erreurs liées à des conflits de schéma existant."
-              log "⚠️ Diff échoué ➜ probablement aucun changement. On continue." 
+              echo "⚠️ Diff échoué ➜ probablement aucun changement. On continue."
             fi
 
             echo "[SUCCESS] ✅ migrate_auto.sh exécuté avec succès."
@@ -412,7 +411,7 @@ jobs:
             echo "[INFO - 8.7] Test de connexion DB..."
             docker exec "$CONTAINER_NAME" node /app/tests/testDbConnection.js    
 
-      
+
             # 8.9 - Backup post-migration
             echo "[INFO - 8.9] Backup de la base après migration..."
             BACKUP_DIR="$(dirname "$MOUNT_PATH")/backup_bd"
@@ -420,11 +419,11 @@ jobs:
             BACKUP_FILE="$BACKUP_DIR/backup_after_migrate_$(date +%Y%m%d%H%M%S).sql"
             docker exec "$POSTGRES_CONTAINER_NAME" pg_dump -U "$DB_USERNAME" -d "$DB_NAME" > "$BACKUP_FILE"
             sleep 30
-      
+
             # 8.10 - Lancement du serveur backend
             echo "[INFO - 8.10] Démarrage du backend..."
             docker exec -d "$CONTAINER_NAME" npm start           
-      
+
             # 8.11 - Vérification endpoint /health
             echo "[INFO - 8.11] Vérification du endpoint /health sur port $BACKEND_PORT..."
 
@@ -512,14 +511,10 @@ jobs:
             echo "[SUCCESS ✅] Étape 8 terminée avec succès."
           EOF
 
-      
-        
-          
-
       # Étape 9 - Configurer l'URL Git distante
       - name: 9 - Configurer l'URL Git distante
         run: git remote set-url origin ${{ secrets.GIT_REPO_URL }}
 
       # Étape 10 - Nettoyage des fichiers temporaires
       - name: 10 - Nettoyage des fichiers temporaires
-        run: rm -f /tmp/git_id_rsa /tmp/env_vars.sh || true        
+        run: rm -f /tmp/git_id_rsa /tmp/env_vars.sh || true
