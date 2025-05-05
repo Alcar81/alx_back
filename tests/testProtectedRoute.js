@@ -1,15 +1,26 @@
 // 📁 backend/tests/testProtectedRoute.js
 const fetch = require("node-fetch");
 
+const PORT = process.env.SERVER_PORT;
+
+// 🛡️ Vérifie que le port est bien défini
+if (!PORT) {
+  console.error("❌ SERVER_PORT non défini dans process.env");
+  process.exit(1);
+}
+
 (async () => {
   console.log("🔐 Test d’une route protégée (/api/me)");
 
   try {
     // ➤ 1. Connexion avec un faux utilisateur pour obtenir le token
-    const loginRes = await fetch("http://localhost:7001/api/login", {
+    const loginRes = await fetch(`http://localhost:${PORT}/api/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "fakebot@example.com", password: "Fake1234!" }),
+      body: JSON.stringify({
+        email: "fakebot@example.com",
+        password: "Fake1234!",
+      }),
     });
 
     const loginData = await loginRes.json();
@@ -37,9 +48,11 @@ const fetch = require("node-fetch");
       console.warn(`⚠️ Réponse inattendue : status=${status}, data=`, data);
       process.exit(1);
     }
-
   } catch (err) {
-    console.error("❌ Erreur pendant le test de la route protégée :", err.message);
+    console.error(
+      "❌ Erreur pendant le test de la route protégée :",
+      err.message
+    );
     process.exit(1);
   }
 })();

@@ -1,8 +1,15 @@
 // 📁 backend/tests/testAdmin.js
 
 const fetch = require("node-fetch");
+const PORT = process.env.SERVER_PORT;
 
-const BASE_URL = "http://localhost:7001";
+// 🛡️ Vérifie que le port est bien défini
+if (!PORT) {
+  console.error("❌ SERVER_PORT non défini dans process.env");
+  process.exit(1);
+}
+
+const BASE_URL = `http://localhost:${PORT}`;
 
 // 🔥 Nouveau ➔ lire ADMIN_TEST_TOKEN de l'environnement
 const ADMIN_TEST_TOKEN = process.env.ADMIN_TEST_TOKEN;

@@ -1,11 +1,18 @@
 // test404.js
 const fetch = require("node-fetch");
+const PORT = process.env.SERVER_PORT;
+
+// 🛡️ Vérifie que le port est bien défini
+if (!PORT) {
+  console.error("❌ SERVER_PORT non défini dans process.env");
+  process.exit(1);
+}
 
 (async () => {
   console.log("🔍 Test d’une route inexistante...");
 
   try {
-    const response = await fetch("http://localhost:7001/api/doesnotexist", {
+    const response = await fetch(`http://localhost:${PORT}/api/register`, {
       method: "GET",
       headers: { "X-Test-Request": "true" },
     });
