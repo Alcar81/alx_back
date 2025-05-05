@@ -127,22 +127,23 @@ jobs:
           fi
           echo "[SUCCESS - 3.5] Dépendances prêtes pour le déploiement."  
 
-      # Étape 4 - Copier le code backend sur le serveur
       - name: 4 - Copier le code backend sur le serveur
         run: |
           echo "📂 Création d’un répertoire temporaire avec le backend..."
           mkdir -p backend_sync
           rsync -av --exclude='.git' --exclude='node_modules' --exclude='logs' ./ backend_sync/
-
+      
           echo "🚀 Envoi du backend au serveur distant..."
           ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $SSH_USER@$SERVER_IP "mkdir -p $MOUNT_PATH"
-          
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='logs' --include='migrate_auto.sh' ./ backend_sync/
-          
+      
+          # 💥 C'est cette ligne qui manquait
+          rsync -av -e "ssh -p $SSH_PORT -i /tmp/git_id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" \
+            backend_sync/ $SSH_USER@$SERVER_IP:$MOUNT_PATH/
+      
           echo "🧼 Nettoyage du répertoire temporaire local..."
           rm -rf backend_sync
-
-          echo "✅ Backend copié avec succès vers $MOUNT_PATH sur le serveur."  
+      
+          echo "✅ Backend copié avec succès vers $MOUNT_PATH sur le serveur."
         
       # Étape 6 - Configuration du conteneur PostgreSQL      
       - name: 6 - Configuration du conteneur PostgreSQL
