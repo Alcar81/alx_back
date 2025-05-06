@@ -5,6 +5,10 @@ const fs = require("fs");
 
 process.env.TZ = "America/Toronto";
 
+// Détecter le nom du fichier de log selon l'environnement
+const env = process.env.NODE_ENV === "production" ? "p" : "d";
+const logFileName = `server-${env}.log`;
+
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
@@ -27,7 +31,7 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
     new winston.transports.File({
-      filename: path.join(logDir, "server.log"),
+      filename: path.join(logDir, logFileName),
       handleExceptions: true,
     }),
   ],
