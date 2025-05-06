@@ -14,12 +14,19 @@ echo ""
 echo " Début Migration ===================================================="
 echo "🧠 Script de migration automatique Prisma (dans le conteneur)"
 
+# Identifier l'environnement
+env_short="d"
+if [ "$ENV" = "prod" ]; then
+  env_short="p"
+fi
+
+
 # ==============================================================================
 # 1. Déclaration des variables
 # ==============================================================================
 MIGRATION_NAME="migration"
 LOG_DIR="logs/migrations"
-SERVER_LOG="logs/server.log"
+SERVER_LOG="logs/server-$env_short.log"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="$LOG_DIR/migrate_${TIMESTAMP}.log"
 DONE_FLAG="/tmp/migration_done.flag"
