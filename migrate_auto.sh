@@ -16,7 +16,7 @@ echo "🧠 Script de migration automatique Prisma (dans le conteneur)"
 
 # Identifier l'environnement
 env_short="d"
-if [ "$NODE_ENV" = "prod" ]; then
+if [ "$APP_ENV" = "prod" ]; then
   env_short="p"
 fi
 
