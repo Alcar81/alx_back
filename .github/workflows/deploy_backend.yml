@@ -295,6 +295,7 @@ jobs:
             echo "[INFO - 8.2.2] Création du fichier .env..."
             cat <<EOT > "$MOUNT_PATH/.env"
             DATABASE_URL=$DATABASE_URL
+            NODE_ENV=$ENV
             APP_ENV=$ENV
             APP_NAME=alxmultimedia_backend
             JWT_SECRET=$JWT_SECRET
