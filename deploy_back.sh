@@ -252,7 +252,11 @@ echo "=== Étape 1 : Préparation de la migration : $(date) ==="
   echo "[INFO 3.3] Début de la synchronisation des fichiers..."
   START_TIME=$(date +%s)
 
-  rsync -a --delete --exclude=".git" --exclude=".env" "$REPO_DEV/" "$REPO_PROD/" || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
+  rsync -a --delete \
+    --exclude=".git" \
+    --exclude=".env" \
+    --exclude="scripts/dev-only" \
+    "$REPO_DEV/" "$REPO_PROD/" || error_exit "[ERROR 3.3] Échec de la synchronisation des fichiers."
   END_TIME=$(date +%s)
   DURATION=$((END_TIME - START_TIME))
   echo "[SUCCESS] Étape 3.3 Synchronisation terminée en $DURATION secondes."

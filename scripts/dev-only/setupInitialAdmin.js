@@ -1,68 +1,96 @@
-// 📁 backend/scripts/dev-only/setupInitialAdmin.js
+// 📁 backend/scripts/prod-only/setupInitialAdmin.js
+
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const logger = require("../../utils/logger");
-
 const prisma = new PrismaClient();
+
+const COLORS = {
+  reset: "\x1b[0m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+};
+
+const ADMIN_EMAIL = "admin@alxmultimedia.com";
+const ADMIN_PASSWORD = "Alx1234!Admin!";
+const ADMIN_FIRSTNAME = "Admin";
+const ADMIN_LASTNAME = "Alx";
 
 async function main() {
   try {
-    const adminRole = await prisma.role.findUnique({
-      where: { name: "ADMIN" },
-    });
+    logger.info("🔐 [setupInitialAdmin] ➜ Démarrage du script...");
 
-    // Vérifie si un utilisateur avec le rôle ADMIN existe
+    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
+
+    // 1. Vérifie si un utilisateur avec un rôle "ADMIN" existe
     const existingAdmin = await prisma.userRole.findFirst({
       where: {
-        role: {
-          name: "ADMIN",
-        },
-      },
-      include: {
-        user: true,
+        role: { name: "ADMIN" },
       },
     });
 
     if (existingAdmin) {
-      logger.info("🛡️ Un utilisateur admin existe déjà. Aucun changement.");
+      logger.info(
+        "✅ Un utilisateur avec le rôle ADMIN existe déjà. Aucun changement."
+      );
+      console.log(
+        `${COLORS.yellow}⚠️ Aucun admin créé : un utilisateur admin existe déjà.${COLORS.reset}`
+      );
       return;
     }
 
-    logger.info(
-      "🛠 Aucun administrateur trouvé ➜ création du premier compte admin..."
-    );
+    // 2. Création du compte utilisateur admin
+    let user = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
 
-    const password = "Alx1234!Admin!";
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!user) {
+      logger.info("👤 Utilisateur admin introuvable ➜ création...");
+      user = await prisma.user.create({
+        data: {
+          email: ADMIN_EMAIL,
+          firstName: ADMIN_FIRSTNAME,
+          lastName: ADMIN_LASTNAME,
+          password: hashedPassword,
+        },
+      });
+      console.log(
+        `${COLORS.green}✅ Utilisateur admin créé : ${ADMIN_EMAIL}${COLORS.reset}`
+      );
+    } else {
+      console.log(
+        `${COLORS.yellow}⚠️ Utilisateur ${ADMIN_EMAIL} déjà existant.${COLORS.reset}`
+      );
+    }
 
-    const newAdmin = await prisma.user.create({
-      data: {
-        email: "admin@alxmultimedia.com",
-        firstName: "Super",
-        lastName: "Admin",
-        password: hashedPassword,
-      },
+    // 3. Création du rôle ADMIN si nécessaire
+    let role = await prisma.role.findUnique({ where: { name: "ADMIN" } });
+    if (!role) {
+      logger.info("🛡️ Rôle ADMIN introuvable ➜ création...");
+      role = await prisma.role.create({ data: { name: "ADMIN" } });
+    }
+
+    // 4. Association UserRole
+    const existingUserRole = await prisma.userRole.findFirst({
+      where: { userId: user.id, roleId: role.id },
     });
 
-    // Crée le rôle ADMIN si nécessaire
-    const role =
-      adminRole ||
-      (await prisma.role.create({
-        data: { name: "ADMIN" },
-      }));
+    if (!existingUserRole) {
+      await prisma.userRole.create({
+        data: { userId: user.id, roleId: role.id },
+      });
+      console.log(
+        `${COLORS.green}✅ Rôle ADMIN associé à ${ADMIN_EMAIL}${COLORS.reset}`
+      );
+    } else {
+      console.log(
+        `${COLORS.yellow}⚠️ ${ADMIN_EMAIL} possède déjà le rôle ADMIN.${COLORS.reset}`
+      );
+    }
 
-    await prisma.userRole.create({
-      data: {
-        userId: newAdmin.id,
-        roleId: role.id,
-      },
-    });
-
-    logger.info(
-      "✅ Compte admin initial créé avec succès : admin@alxmultimedia.com / Admin1234!"
-    );
-  } catch (err) {
-    logger.error("❌ Erreur dans setupInitialAdmin.js : " + err.message);
+    logger.info("🏁 [setupInitialAdmin] Script terminé avec succès.");
+  } catch (error) {
+    logger.error(`❌ Erreur setupInitialAdmin : ${error.message}`);
+    console.error(`${COLORS.red}❌ Erreur : ${error.message}${COLORS.reset}`);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
