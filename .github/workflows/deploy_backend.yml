@@ -275,7 +275,7 @@ jobs:
 
           # 8.2 - Connexion SSH et déploiement
           ssh -p "$SSH_PORT" -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /tmp/git_id_rsa "$SSH_USER@$SERVER_IP" \
-          "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' DB_HOST='$DB_HOST' DB_PORT_INT='$DB_PORT_INT' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' REACT_APP_API_URL='$REACT_APP_API_URL' bash -s" << 'EOF'
+          "ENV='$ENV' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' BACKEND_PORT='$BACKEND_PORT' MOUNT_PATH='$MOUNT_PATH' POSTGRES_CONTAINER_NAME='$POSTGRES_CONTAINER_NAME' DB_USERNAME='$DB_USERNAME' DB_NAME='$DB_NAME' DB_HOST='$DB_HOST' DB_PORT_INT='$DB_PORT_INT' CONTAINER_NAME='$CONTAINER_NAME' NETWORK='$NETWORK' DOCKER_NAME='$DOCKER_NAME' DB_PASSWORD='$DB_PASSWORD' REACT_APP_API_URL='$REACT_APP_API_URL' SERVER_LOG='$SERVER_LOG' bash -s" << 'EOF'
 
             set -e
             echo "=== Étape 8.2 : Déploiement sur le serveur ==="
@@ -372,10 +372,6 @@ jobs:
             # Crée le dossier logs s'il n'existe pas
             mkdir -p "$MOUNT_PATH/logs"
 
-            env_short="d"
-            if [ "$ENV" = "prod" ]; then
-              env_short="p"
-            fi
 
             # Affiche le contenu du dossier pour vérification et le log vers logs/$SERVER_LOG
             docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a "$MOUNT_PATH/logs/$SERVER_LOG"
@@ -398,10 +394,7 @@ jobs:
             fi
 
             # Lancer le script et intercepter les erreurs
-            env_short="d"
-            if [ "$ENV" = "prod" ]; then
-              env_short="p"
-            fi
+            
             if ! docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh; then
               echo "[ERROR] ❌ Échec de l'exécution du script migrate_auto.sh"
               echo "[LOGS] 🔍 Dernières lignes de logs ($SERVER_LOG) :"
