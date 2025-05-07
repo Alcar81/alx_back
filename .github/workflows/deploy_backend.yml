@@ -491,11 +491,7 @@ jobs:
                 }
               fi
 
-              # 8.12.1.4 - Vérification de la création de l'utilisateur admin
-              if [ "$ENV" = "prod" ]; then
-                echo "[INFO] Vérification et création du compte admin initial si nécessaire..."
-                docker exec "$CONTAINER_NAME" node /app/scripts/dev-only/setupInitialAdmin.js
-              fi
+              
 
               # 8.12.2 - Lancer les tests backend avec ADMIN_TEST_TOKEN
               echo "[INFO - 8.12.2] Lancement des tests automatisés avec token..."
@@ -505,6 +501,12 @@ jobs:
               echo "[INFO] Mode production - testComplet.js"
               docker exec "$CONTAINER_NAME" node /app/tests/testComplet.js
             fi
+
+            # 8.12.3 - Vérification de la création de l'utilisateur admin
+              if [ "$ENV" = "prod" ]; then
+                echo "[INFO] Vérification et création du compte admin initial si nécessaire..."
+                docker exec "$CONTAINER_NAME" node /app/scripts/dev-only/setupInitialAdmin.js
+              fi
 
             # 8.12.4 - Liste des tables existantes dans la base de données...
             echo "[INFO - 8.12.4] Liste des tables existantes dans la base de données..."
@@ -533,6 +535,17 @@ jobs:
             # 8.13 - Nettoyage final
             echo "[INFO - 8.13] Suppression des fichiers temporaires..."
             rm -f /tmp/git_id_rsa /tmp/env_vars.sh
+
+            # 8.13.1 - Nettoyage du dossier scripts/dev-only (prod uniquement)
+            if [ "$ENV" = "prod" ]; then
+              echo "[INFO - 8.13.1] Suppression du dossier scripts/dev-only (conteneur et serveur)..."
+
+              # Supprimer dans le conteneur
+              docker exec "$CONTAINER_NAME" rm -rf /app/scripts/dev-only || echo "[WARN] ⚠️ Échec suppression dans le conteneur"
+
+              # Supprimer dans le répertoire monté (sur le serveur)
+              rm -rf "$MOUNT_PATH/scripts/dev-only" || echo "[WARN] ⚠️ Échec suppression dans le dossier monté"
+            fi
 
             echo "[SUCCESS ✅] Étape 8 terminée avec succès."
           EOF
