@@ -397,6 +397,10 @@ jobs:
             fi
 
             # Lancer le script et intercepter les erreurs
+            env_short="d"
+            if [ "$ENV" = "prod" ]; then
+              env_short="p"
+            fi
             if ! docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh; then
               echo "[ERROR] ❌ Échec de l'exécution du script migrate_auto.sh"
               echo "[LOGS] 🔍 Dernières lignes de logs (server-$env_short.log) :"
@@ -441,6 +445,10 @@ jobs:
             done
 
             # Test final : si au bout de 180 sec c'est toujours inaccessible, on arrête tout
+            env_short="d"
+            if [ "$ENV" = "prod" ]; then
+              env_short="p"
+            fi
             if ! docker exec "$CONTAINER_NAME" curl -sSf "http://localhost:$BACKEND_PORT/health" > /dev/null; then
               echo "[ERROR] ❌ /health n’a pas répondu après 180 secondes."
               docker exec "$CONTAINER_NAME" tail -n 50 logs/server-$env_short.log
