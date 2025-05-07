@@ -6,7 +6,7 @@ const fs = require("fs");
 process.env.TZ = "America/Toronto";
 
 // Détecter le nom du fichier de log selon l'environnement
-const env = process.env.ENV === "prod" ? "p" : "d";
+const env = process.env.ENV === "prod" ? "prod" : "dev";
 const logFileName = `server-${env}.log`;
 
 const logDir = path.join(__dirname, "../logs");

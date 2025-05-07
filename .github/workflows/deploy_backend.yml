@@ -38,6 +38,7 @@ jobs:
       GIT_REPO_URL: ${{ secrets.GIT_REPO_URL }}
       REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
       LOGS_DIR: backend/logs
+      SERVER_LOG: server-${{ vars.ENV }}.log
 
     steps:
       # Étape 0 - Configurer l'agent SSH global
@@ -376,8 +377,8 @@ jobs:
               env_short="p"
             fi
 
-            # Affiche le contenu du dossier pour vérification et le log vers logs/server-$env_short.log
-            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a "$MOUNT_PATH/logs/server-$env_short.log"
+            # Affiche le contenu du dossier pour vérification et le log vers logs/$SERVER_LOG
+            docker exec "$CONTAINER_NAME" ls -la /app/prisma | tee -a "$MOUNT_PATH/logs/$SERVER_LOG"
 
 
             # 8.6.4 - Prisma generate et npm build
@@ -403,8 +404,8 @@ jobs:
             fi
             if ! docker exec "$CONTAINER_NAME" sh ./migrate_auto.sh; then
               echo "[ERROR] ❌ Échec de l'exécution du script migrate_auto.sh"
-              echo "[LOGS] 🔍 Dernières lignes de logs (server-$env_short.log) :"
-              docker exec "$CONTAINER_NAME" tail -n 50 logs/server-$env_short.log || echo "[INFO] Pas de logs trouvés."
+              echo "[LOGS] 🔍 Dernières lignes de logs ($SERVER_LOG) :"
+              docker exec "$CONTAINER_NAME" tail -n 50 logs/$SERVER_LOG || echo "[INFO] Pas de logs trouvés."
 
               echo "[INFO] 📄 Tentative d'affichage du fichier generated_migration.sql :"
               docker exec "$CONTAINER_NAME" cat prisma/generated_migration.sql || echo "[INFO] Aucun fichier SQL généré."
@@ -451,7 +452,7 @@ jobs:
             fi
             if ! docker exec "$CONTAINER_NAME" curl -sSf "http://localhost:$BACKEND_PORT/health" > /dev/null; then
               echo "[ERROR] ❌ /health n’a pas répondu après 180 secondes."
-              docker exec "$CONTAINER_NAME" tail -n 50 logs/server-$env_short.log
+              docker exec "$CONTAINER_NAME" tail -n 50 logs/$SERVER_LOG
               exit 7
             fi
 
