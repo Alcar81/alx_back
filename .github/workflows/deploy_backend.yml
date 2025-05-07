@@ -491,6 +491,12 @@ jobs:
                 }
               fi
 
+              # 8.12.1.4 - Vérification de la création de l'utilisateur admin
+              if [ "$ENV" = "prod" ]; then
+                echo "[INFO] Vérification et création du compte admin initial si nécessaire..."
+                docker exec "$CONTAINER_NAME" node /app/scripts/dev-only/setupInitialAdmin.js
+              fi
+
               # 8.12.2 - Lancer les tests backend avec ADMIN_TEST_TOKEN
               echo "[INFO - 8.12.2] Lancement des tests automatisés avec token..."
               docker exec -e ADMIN_TEST_TOKEN="$ADMIN_TEST_TOKEN" "$CONTAINER_NAME" node /app/tests/testComplet.js --debug
