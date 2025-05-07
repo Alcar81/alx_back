@@ -1,6 +1,6 @@
 #!/bin/sh
 # Fichier : backend/migrate_auto.sh
-# Description : Migration automatique Prisma avec logs complets dans server.log uniquement.
+# Description : Migration automatique Prisma avec logs complets dans server-$env.log uniquement.
 # Codes d'erreurs personnalisés :
 #   6 = Erreur lors du diff Prisma (migrate diff)
 #   7 = Échec d'application du patch SQL (psql)
@@ -16,7 +16,7 @@ echo "🧠 Script de migration automatique Prisma (dans le conteneur)"
 
 # Identifier l'environnement
 env_short="d"
-if [ "$ENV" = "prod" ]; then
+if [ "$NODE_ENV" = "prod" ]; then
   env_short="p"
 fi
 
@@ -41,7 +41,7 @@ log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] [migrate_auto] $1" | tee -a "$LOG_FILE" "$SERVER_LOG" > /dev/null
 }
 
-# Section d'en-tête dans server.log
+# Section d'en-tête dans server-env.log
 {
   echo ""
   echo "═══════════════════════════════════════════════════════════════════════"
